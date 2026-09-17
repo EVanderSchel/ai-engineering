@@ -1,0 +1,9 @@
+Vector Databases
+
+A vector database stores embeddings alongside metadata and provides efficient similarity search over them. Unlike a traditional database that indexes exact values, a vector database indexes vectors so that a query like "find the 5 most similar vectors to this one" can be answered quickly even across millions of records.
+
+Exact nearest-neighbor search becomes slow as the number of vectors grows, so most vector databases use approximate nearest neighbor (ANN) algorithms such as HNSW (Hierarchical Navigable Small World graphs) or IVF (Inverted File Index). These trade a small amount of accuracy for a large speedup.
+
+Popular vector databases include Chroma (lightweight, easy to run locally, good for prototyping), Qdrant (production-grade, supports filtering and payloads), Pinecone (fully managed, hosted), Weaviate, Milvus, and pgvector (an extension that adds vector search to PostgreSQL).
+
+Most vector databases support metadata filtering, so a search can be restricted to, for example, only documents from a specific source or date range, in addition to the similarity search itself. This is often called "hybrid search" when combined with keyword-based filtering.

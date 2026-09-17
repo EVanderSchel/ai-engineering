@@ -1,0 +1,9 @@
+Retrieval-Augmented Generation
+
+Retrieval-Augmented Generation (RAG) is a technique for improving LLM responses by first retrieving relevant text from an external knowledge source and inserting it into the model's prompt as context, rather than relying solely on what the model memorized during training.
+
+A typical RAG pipeline has two phases. The ingestion phase: documents are split into chunks, each chunk is embedded, and the embeddings are stored in a vector database. The query phase: the user's question is embedded, the vector database returns the most similar chunks, and those chunks are inserted into a prompt template along with the question before being sent to the LLM for a final answer.
+
+RAG is useful because it lets an LLM answer questions about information it was never trained on, such as private documents or content published after the model's training cutoff, without the cost and complexity of fine-tuning. It also reduces hallucination, because the model is asked to answer based on retrieved evidence rather than from memory alone, and it allows citing sources since the retrieved chunks can be traced back to their original documents.
+
+Common failure modes include retrieving irrelevant chunks (often due to poor chunking or a mismatched embedding model), retrieving too few or too many chunks, and the LLM ignoring the retrieved context and answering from its own memory anyway. Evaluating retrieval quality separately from generation quality is important for diagnosing which part of the pipeline is failing.
