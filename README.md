@@ -5,10 +5,13 @@ A minimal, from-scratch Retrieval-Augmented Generation pipeline for learning how
 ## Pipeline
 
 1. **Chunk** — `src/chunking.py` splits documents into overlapping text chunks.
-2. **Embed + store** — `src/ingest.py` embeds each chunk (via Chroma's local default embedding model) and stores it in a persistent Chroma collection at `chroma_db/`.
-3. **Retrieve** — `src/query.py` embeds a question, does a similarity search against the collection, and prints the top-k matching chunks.
+2. **Embed + store** — `src/ingest.py` embeds each chunk with a chosen embedding model (`src/embeddings.py`) and stores it in a Chroma collection at `chroma_db/`. Each embedding model gets its own collection (`rag_docs__<model>`), since vectors from different models aren't comparable.
+3. **Retrieve** (`src/retrieval.py`) — three interchangeable strategies:
+   - **Vector search** — embed the question, do a similarity search against the collection.
+   - **Hybrid search** (`--hybrid`) — also ranks chunks with BM25 keyword search, then fuses the two rankings with Reciprocal Rank Fusion. Catches exact terms (names, numbers, acronyms) that don't always embed distinctively.
+   - **Reranking** (`--rerank`) — pulls a larger candidate set (vector or hybrid), then re-scores each candidate against the question with a cross-encoder model, which reads the pair jointly instead of comparing precomputed vectors. More accurate, too slow to run over a whole corpus, so it only re-orders a short candidate list.
 4. **Generate** (optional) — if `ANTHROPIC_API_KEY` is set, the retrieved chunks are passed to Claude to synthesize a final answer.
-5. **Evaluate** — `src/eval.py` runs a labeled set of (question, expected source) pairs through retrieval and reports Hit@1, Hit@k, and MRR, so you can measure retrieval quality directly instead of eyeballing results.
+5. **Evaluate** — `src/eval.py` runs a labeled set of (question, expected source) pairs through retrieval and reports Hit@1, Hit@k, and MRR, so you can measure the effect of any of the above choices directly instead of eyeballing results.
 
 ## Setup
 
@@ -46,6 +49,20 @@ python src\eval.py
 
 Add your own cases to `data/eval_set.json` (a list of `{"question": ..., "expected_source": ...}` objects) as you add documents.
 
+## Retrieval strategies
+
+All three of `ingest.py`, `query.py`, and `eval.py` accept `--embedding-model` (`default`, `mpnet`, or `bge-small` — see `src/embeddings.py`). `query.py` and `eval.py` also accept `--hybrid` and `--rerank`. Compare strategies against the eval set:
+
+```
+python src\eval.py --eval-file data\eval_set_current_events.json
+python src\eval.py --eval-file data\eval_set_current_events.json --hybrid
+python src\eval.py --eval-file data\eval_set_current_events.json --rerank
+python src\ingest.py --docs-dir data\current_events --embedding-model mpnet
+python src\eval.py --eval-file data\eval_set_current_events.json --embedding-model mpnet
+```
+
+Note that ingesting under the same `--embedding-model` always replaces that model's collection — collections are keyed by embedding model, not by corpus. Re-ingest before switching between `data/sample_docs` and `data/current_events` if you've been using a different corpus.
+
 ## Corpora
 
 - `data/sample_docs/` — short docs explaining RAG concepts themselves (chunking, embeddings, vector databases, RAG). Paired with `data/eval_set.json`.
@@ -60,6 +77,6 @@ python src\eval.py --eval-file data\eval_set_current_events.json
 
 ## Next steps
 
-- Swap the embedding model (e.g. a sentence-transformers or hosted model) and compare Hit@1/MRR before and after.
 - Try a different vector DB (Qdrant, pgvector) behind the same interface.
-- Point `--docs-dir` at your own, messier documents and see how retrieval quality holds up against the eval set.
+- Point `--docs-dir` at your own, messier documents and see how retrieval quality holds up, and whether hybrid search or reranking helps more than they did on the clean sample corpora.
+- Add a hosted embedding model (OpenAI, Cohere) to `src/embeddings.py` and compare cost/latency against the local options.

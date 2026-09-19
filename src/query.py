@@ -2,14 +2,9 @@
 
 import argparse
 import os
-import pathlib
 
-import chromadb
-from chromadb.utils import embedding_functions
-
-ROOT = pathlib.Path(__file__).resolve().parent.parent
-DB_DIR = ROOT / "chroma_db"
-COLLECTION_NAME = "rag_docs"
+from embeddings import MODELS
+from retrieval import retrieve
 
 ANSWER_PROMPT = """Answer the question using only the context below. \
 If the context doesn't contain the answer, say so.
@@ -18,20 +13,6 @@ Context:
 {context}
 
 Question: {question}"""
-
-
-def retrieve(question: str, k: int):
-    client = chromadb.PersistentClient(path=str(DB_DIR))
-    embedding_fn = embedding_functions.DefaultEmbeddingFunction()
-    collection = client.get_collection(COLLECTION_NAME, embedding_function=embedding_fn)
-
-    results = collection.query(query_texts=[question], n_results=k)
-    hits = []
-    for doc, meta, distance in zip(
-        results["documents"][0], results["metadatas"][0], results["distances"][0]
-    ):
-        hits.append({"text": doc, "source": meta["source"], "distance": distance})
-    return hits
 
 
 def synthesize_answer(question: str, hits: list[dict]) -> str | None:
@@ -55,13 +36,26 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("question", help="Question to ask the corpus")
     parser.add_argument("-k", type=int, default=3, help="Number of chunks to retrieve")
+    parser.add_argument("--embedding-model", choices=list(MODELS), default="default")
+    parser.add_argument("--hybrid", action="store_true", help="Combine vector search with BM25 keyword search")
+    parser.add_argument("--rerank", action="store_true", help="Rerank candidates with a cross-encoder")
+    parser.add_argument(
+        "--rerank-candidates", type=int, default=10, help="How many candidates to rerank (only with --rerank)"
+    )
     args = parser.parse_args()
 
-    hits = retrieve(args.question, args.k)
+    hits = retrieve(
+        args.question,
+        k=args.k,
+        embedding_model=args.embedding_model,
+        hybrid=args.hybrid,
+        use_reranker=args.rerank,
+        rerank_candidates=args.rerank_candidates,
+    )
 
     print(f"\nTop {len(hits)} retrieved chunks:\n")
     for i, hit in enumerate(hits, 1):
-        print(f"{i}. [{hit['source']}] (distance={hit['distance']:.4f})")
+        print(f"{i}. [{hit['source']}]")
         print(f"   {hit['text'][:200]}{'...' if len(hit['text']) > 200 else ''}\n")
 
     answer = synthesize_answer(args.question, hits)
