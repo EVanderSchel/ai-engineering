@@ -46,6 +46,18 @@ python src\eval.py
 
 Add your own cases to `data/eval_set.json` (a list of `{"question": ..., "expected_source": ...}` objects) as you add documents.
 
+## Corpora
+
+- `data/sample_docs/` — short docs explaining RAG concepts themselves (chunking, embeddings, vector databases, RAG). Paired with `data/eval_set.json`.
+- `data/current_events/` — a paraphrased digest of Wikipedia's Current Events Portal (September 2026), grouped by theme (armed conflicts, politics, business, science/disasters). Content published after the model's training cutoff, so any generated answer has to come from retrieval rather than memory. Paired with `data/eval_set_current_events.json`.
+
+Switch corpora with `--docs-dir` and `--eval-file`:
+
+```
+python src\ingest.py --docs-dir data\current_events
+python src\eval.py --eval-file data\eval_set_current_events.json
+```
+
 ## Next steps
 
 - Swap the embedding model (e.g. a sentence-transformers or hosted model) and compare Hit@1/MRR before and after.
