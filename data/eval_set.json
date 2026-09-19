@@ -1,0 +1,18 @@
+[
+  {"question": "What is the difference between fixed-size and semantic chunking?", "expected_source": "chunking.txt"},
+  {"question": "Why is overlap used between chunks?", "expected_source": "chunking.txt"},
+  {"question": "What happens if a chunk is too large?", "expected_source": "chunking.txt"},
+  {"question": "How is chunk size usually tuned?", "expected_source": "chunking.txt"},
+
+  {"question": "What is an embedding?", "expected_source": "embeddings.txt"},
+  {"question": "Which open-source models can generate embeddings locally?", "expected_source": "embeddings.txt"},
+  {"question": "How is similarity between two embeddings measured?", "expected_source": "embeddings.txt"},
+
+  {"question": "What algorithms do vector databases use for fast approximate search?", "expected_source": "vector_databases.txt"},
+  {"question": "Name some popular vector databases.", "expected_source": "vector_databases.txt"},
+  {"question": "What is hybrid search?", "expected_source": "vector_databases.txt"},
+
+  {"question": "Why does RAG reduce hallucination?", "expected_source": "retrieval_augmented_generation.txt"},
+  {"question": "What are common failure modes of a RAG pipeline?", "expected_source": "retrieval_augmented_generation.txt"},
+  {"question": "What are the two phases of a typical RAG pipeline?", "expected_source": "retrieval_augmented_generation.txt"}
+]
