@@ -11,7 +11,8 @@ A minimal, from-scratch Retrieval-Augmented Generation pipeline for learning how
    - **Hybrid search** (`--hybrid`) — also ranks chunks with BM25 keyword search, then fuses the two rankings with Reciprocal Rank Fusion. Catches exact terms (names, numbers, acronyms) that don't always embed distinctively.
    - **Reranking** (`--rerank`) — pulls a larger candidate set (vector or hybrid), then re-scores each candidate against the question with a cross-encoder model, which reads the pair jointly instead of comparing precomputed vectors. More accurate, too slow to run over a whole corpus, so it only re-orders a short candidate list.
 4. **Generate** (optional) — if `ANTHROPIC_API_KEY` is set, the retrieved chunks are passed to Claude to synthesize a final answer.
-5. **Evaluate** — `src/eval.py` runs a labeled set of (question, expected source) pairs through retrieval and reports Hit@1, Hit@k, and MRR, so you can measure the effect of any of the above choices directly instead of eyeballing results.
+5. **Evaluate retrieval** — `src/eval.py` runs a labeled set of (question, expected source) pairs through retrieval and reports Hit@1, Hit@k, and MRR, so you can measure the effect of any of the above choices directly instead of eyeballing results.
+6. **Evaluate generation** — `src/eval_generation.py` runs the same questions all the way through to a generated answer, then has a second Claude call (an LLM judge) score each answer for faithfulness (is every claim actually supported by the retrieved context?) and relevance (does it address the question?). Retrieval eval alone can't catch a system that retrieves the right chunk but then ignores it, or one that pads a correct answer with hallucinated detail.
 
 ## Setup
 
@@ -48,6 +49,16 @@ python src\eval.py
 ```
 
 Add your own cases to `data/eval_set.json` (a list of `{"question": ..., "expected_source": ...}` objects) as you add documents.
+
+## Generation eval
+
+Requires `ANTHROPIC_API_KEY` (one call generates each answer, a second, cheaper call on `claude-haiku-4-5` judges it):
+
+```
+python src\eval_generation.py --eval-file data\eval_set_current_events.json
+```
+
+Add `--limit N` while experimenting, since each case costs two API calls. Accepts the same `--embedding-model`, `--hybrid`, `--rerank` flags as `eval.py`, so you can see whether a retrieval change actually improved the final answers, not just which chunks got retrieved.
 
 ## Retrieval strategies
 
