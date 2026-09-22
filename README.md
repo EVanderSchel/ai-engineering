@@ -6,7 +6,7 @@ A small FastAPI service used as the vehicle for building up a full CI/CD pipelin
 
 - [x] **Stage 1 — App scaffold**: minimal FastAPI app, runnable locally
 - [x] **Stage 2 — Automated tests**: pytest unit tests for the API
-- [ ] **Stage 3 — Continuous Integration**: GitHub Actions workflow running lint + tests on push/PR
+- [x] **Stage 3 — Continuous Integration**: GitHub Actions workflow running tests on push/PR
 - [ ] **Stage 4 — Code quality gates**: linting (ruff) and formatting checks in CI
 - [ ] **Stage 5 — Containerization**: Dockerfile + build step in CI
 - [ ] **Stage 6 — Continuous Delivery**: push built image to a registry
@@ -31,3 +31,7 @@ Then visit http://127.0.0.1:8000/health
 pip install -r requirements-dev.txt
 pytest
 ```
+
+## Continuous Integration
+
+[.github/workflows/ci.yml](.github/workflows/ci.yml) runs on every push and pull request to `main`. It checks out the code, sets up Python, installs dependencies, and runs the pytest suite in a clean environment on GitHub's servers. Check the **Actions** tab on GitHub after pushing to see it run.
