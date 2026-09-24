@@ -14,9 +14,12 @@ A small FastAPI service used as the vehicle for building up a full CI/CD pipelin
 - [x] **Stage 8 — Environments & secrets**: staging vs. production, GitHub Environments, secret management
 - [x] **Stage 9 — Release management**: versioning/tagging, changelogs
 
+> **Part of the [ai-engineering](../README.md) monorepo.** This project was originally its own `CI-CD-Workflow` repo. Its GitHub Actions workflows now live at the repo root in [`.github/workflows/`](../.github/workflows/), because GitHub only runs workflows from there, and they only trigger when files under `ci-cd-workflow/` change. All commands below are run from inside the `ci-cd-workflow/` folder unless noted.
+
 ## Local development
 
 ```bash
+cd ci-cd-workflow
 py -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
@@ -34,7 +37,7 @@ pytest
 
 ## Continuous Integration
 
-[.github/workflows/ci.yml](.github/workflows/ci.yml) runs on every push and pull request to `main`, as six jobs:
+[.github/workflows/ci-cd-workflow-ci.yml](../.github/workflows/ci-cd-workflow-ci.yml) runs on every push and pull request to `main` that changes files under `ci-cd-workflow/` (or the workflow itself), as six jobs:
 
 - **lint** — `ruff check` (style/bug rules) and `ruff format --check` (formatting) against [pyproject.toml](pyproject.toml)'s config
 - **test** — the pytest suite
@@ -47,7 +50,7 @@ Check the **Actions** tab on GitHub after pushing to see them run.
 
 ## Continuous Delivery
 
-The **publish** job in [ci.yml](.github/workflows/ci.yml) runs after `lint`, `test`, and `build` all succeed, and only on pushes to `main` — PRs never publish an image. It authenticates to `ghcr.io` (GitHub Container Registry) using the automatically-provided `GITHUB_TOKEN` (no extra secrets or accounts needed), then pushes the image tagged two ways:
+The **publish** job in [ci-cd-workflow-ci.yml](../.github/workflows/ci-cd-workflow-ci.yml) runs after `lint`, `test`, and `build` all succeed, and only on pushes to `main` — PRs never publish an image. It authenticates to `ghcr.io` (GitHub Container Registry) using the automatically-provided `GITHUB_TOKEN` (no extra secrets or accounts needed), then pushes the image tagged two ways:
 
 - `latest` — always points at the most recent successful build on `main`
 - `<commit-sha>` — an immutable tag for that exact commit, so you can always trace a running container back to the exact code that produced it
@@ -59,6 +62,8 @@ docker pull ghcr.io/evanderschel/ci-cd-workflow:latest
 ```
 
 Note: GHCR packages published via `GITHUB_TOKEN` default to **private**. To pull anonymously (e.g. from another machine), open the package settings on GitHub and change its visibility to public.
+
+Note: the `ci-cd-workflow` package was first created by the original `CI-CD-Workflow` repo, so it's linked to that repo. For the `ai-engineering` repo to push to it, open the package's **Package settings → Manage Actions access**, add `ai-engineering`, and give it the **Write** role. Otherwise `publish` fails with `permission_denied: write_package`.
 
 ## Continuous Deployment
 
@@ -88,7 +93,7 @@ This pipeline auto-deploys to staging on every push, but **pauses `deploy-produc
 
 1. **Second Render service.** Repeat the Stage 7 Render steps to create a second Web Service — e.g. `ci-cd-workflow-staging` — also deploying `ghcr.io/evanderschel/ci-cd-workflow:latest` on port `8000`. Copy its Deploy Hook URL too. You now have two: one for staging, one for the original (production) service.
 
-2. **Create the GitHub Environments.** In this repo: **Settings → Environments → New environment**. Create one named exactly `staging` and one named exactly `production` (names must match the `environment:` values in [ci.yml](.github/workflows/ci.yml)).
+2. **Create the GitHub Environments.** In this repo: **Settings → Environments → New environment**. Create one named exactly `staging` and one named exactly `production` (names must match the `environment:` values in [ci-cd-workflow-ci.yml](../.github/workflows/ci-cd-workflow-ci.yml)).
 
 3. **Add a required reviewer to `production`.** Open the `production` environment → under **Deployment protection rules**, check **Required reviewers** and add yourself. Leave `staging` with no protection rules.
 
@@ -108,11 +113,11 @@ Everything so far tracks `main` — `:latest` always means "whatever's on `main`
 **To cut a release:**
 
 ```bash
-git tag v0.2.0
-git push origin v0.2.0
+git tag ci-cd-workflow-v0.2.0
+git push origin ci-cd-workflow-v0.2.0
 ```
 
-Pushing a tag matching `v*.*.*` triggers [.github/workflows/release.yml](.github/workflows/release.yml), which:
+Tags are prefixed with the project name because every project in the monorepo shares one tag namespace. Pushing a tag matching `ci-cd-workflow-v*.*.*` triggers [.github/workflows/ci-cd-workflow-release.yml](../.github/workflows/ci-cd-workflow-release.yml), which strips the prefix to get the version (`0.2.0`) and then:
 
 1. Builds and pushes the image tagged with the version only — `ghcr.io/evanderschel/ci-cd-workflow:0.2.0` — separate from `:latest`, which stays under the continuous `main` pipeline's control
 2. Creates a **GitHub Release** for that tag, with release notes auto-generated from the commits/PRs merged since the last tag (GitHub does this natively — no changelog tooling required)
