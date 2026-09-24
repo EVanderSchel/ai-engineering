@@ -12,7 +12,7 @@ A small FastAPI service used as the vehicle for building up a full CI/CD pipelin
 - [x] **Stage 6 — Continuous Delivery**: push built image to a registry
 - [x] **Stage 7 — Continuous Deployment**: deploy to an environment automatically
 - [x] **Stage 8 — Environments & secrets**: staging vs. production, GitHub Environments, secret management
-- [ ] **Stage 9 — Release management**: versioning/tagging, changelogs
+- [x] **Stage 9 — Release management**: versioning/tagging, changelogs
 
 ## Local development
 
@@ -98,6 +98,26 @@ This pipeline auto-deploys to staging on every push, but **pauses `deploy-produc
    - Delete the old repository-level `RENDER_DEPLOY_HOOK_URL` secret (Settings → Secrets and variables → Actions) so there's only one source of truth per environment.
 
 After this, pushing to `main` will deploy to staging immediately, then the Actions run will show `deploy-production` sitting in a **"Waiting for review"** state until you approve it from the run's page.
+
+## Release management
+
+Everything so far tracks `main` — `:latest` always means "whatever's on `main` right now." Releases are different: a **release** is a deliberately named, permanent snapshot you can always come back to, versioned with [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH` — bump `MAJOR` for breaking changes, `MINOR` for new backward-compatible features, `PATCH` for fixes).
+
+[CHANGELOG.md](CHANGELOG.md) tracks notable changes under an `[Unreleased]` heading as you make them, following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. When you're ready to cut a release, move those entries under a new version heading.
+
+**To cut a release:**
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+Pushing a tag matching `v*.*.*` triggers [.github/workflows/release.yml](.github/workflows/release.yml), which:
+
+1. Builds and pushes the image tagged with the version only — `ghcr.io/evanderschel/ci-cd-workflow:0.2.0` — separate from `:latest`, which stays under the continuous `main` pipeline's control
+2. Creates a **GitHub Release** for that tag, with release notes auto-generated from the commits/PRs merged since the last tag (GitHub does this natively — no changelog tooling required)
+
+The tagged image is permanent: `ci-cd-workflow:0.2.0` will always mean the exact same code, even after `:latest` has moved on. This is what lets you roll a deployment back to a known-good version by pointing Render at a specific tag instead of `:latest`.
 
 ## Linting & formatting locally
 
