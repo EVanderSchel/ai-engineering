@@ -1,0 +1,9 @@
+Embeddings
+
+An embedding is a numerical vector representation of a piece of text, produced by a neural network trained so that texts with similar meaning end up close together in vector space. Embedding models typically output vectors with a few hundred to a few thousand dimensions.
+
+In a RAG pipeline, both the documents (at ingestion time) and the user's query (at retrieval time) are converted into embeddings using the same embedding model. Retrieval then becomes a nearest-neighbor search: find the document vectors closest to the query vector.
+
+Popular embedding models include OpenAI's text-embedding-3 family, Cohere's embed models, and open-source options like sentence-transformers' all-MiniLM-L6-v2 or BAAI's bge models. Open-source models can run locally with no API cost, which is useful for experimentation, though they are often less accurate than the largest hosted models.
+
+Similarity between two embeddings is usually measured with cosine similarity or dot product. Cosine similarity measures the angle between two vectors regardless of magnitude, which works well when vector length varies with document length.

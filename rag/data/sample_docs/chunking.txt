@@ -1,0 +1,9 @@
+Chunking in RAG Systems
+
+Chunking is the process of splitting long documents into smaller pieces before they are embedded and stored in a vector database. Because embedding models have limited context windows and because retrieval works best when a chunk represents a single coherent idea, chunk size matters a great deal.
+
+Common chunking strategies include fixed-size chunking (splitting every N characters or tokens, often with overlap between chunks so context isn't lost at boundaries), sentence-based chunking (splitting on sentence boundaries and grouping sentences up to a size limit), and semantic chunking (using an embedding model or heuristics to detect topic shifts and split there).
+
+Overlap between chunks is a common technique to avoid losing context at chunk boundaries. A typical setup might use 500-character chunks with 50-character overlap. Too small a chunk size loses context; too large a chunk size dilutes the embedding and makes retrieval less precise, because the vector represents an average of multiple ideas rather than one specific concept.
+
+The right chunk size is often found empirically by evaluating retrieval quality on a held-out set of questions and expected answers.

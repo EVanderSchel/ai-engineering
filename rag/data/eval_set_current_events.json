@@ -1,0 +1,18 @@
+[
+  {"question": "What ship was struck by Iran's Revolutionary Guard in the Strait of Hormuz?", "expected_source": "armed_conflicts.txt"},
+  {"question": "How many people have fled their homes in Yemen due to Houthi offensives?", "expected_source": "armed_conflicts.txt"},
+  {"question": "What happened with a Russian drone over Lithuania?", "expected_source": "armed_conflicts.txt"},
+  {"question": "Who claimed responsibility for the mosque bombing in Pakistan?", "expected_source": "armed_conflicts.txt"},
+
+  {"question": "Who won Sweden's September election?", "expected_source": "politics_international_relations.txt"},
+  {"question": "What basing rights deal did Denmark and the United States reach?", "expected_source": "politics_international_relations.txt"},
+  {"question": "What did the UN General Assembly vote on regarding Palestinian officials?", "expected_source": "politics_international_relations.txt"},
+
+  {"question": "By how much did the Bank of Japan raise interest rates?", "expected_source": "business_economy.txt"},
+  {"question": "Why did the Panama Canal Authority reduce daily ship transits?", "expected_source": "business_economy.txt"},
+  {"question": "Who bought full control of Chelsea FC?", "expected_source": "business_economy.txt"},
+
+  {"question": "What new wild cat species was identified in Bolivia?", "expected_source": "science_disasters.txt"},
+  {"question": "What is notable about the exoplanet Elias 2-24 b?", "expected_source": "science_disasters.txt"},
+  {"question": "What disaster happened in Sudan's West Kordofan?", "expected_source": "science_disasters.txt"}
+]
