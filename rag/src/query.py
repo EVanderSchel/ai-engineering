@@ -15,6 +15,15 @@ Context:
 Question: {question}"""
 
 
+ANSWER_MODEL = "claude-sonnet-5"
+ANSWER_MAX_TOKENS = 500
+
+
+def build_messages(question: str, hits: list[dict]) -> list[dict]:
+    context = "\n\n".join(f"[{h['source']}] {h['text']}" for h in hits)
+    return [{"role": "user", "content": ANSWER_PROMPT.format(context=context, question=question)}]
+
+
 def synthesize_answer(question: str, hits: list[dict]) -> str | None:
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
@@ -22,14 +31,29 @@ def synthesize_answer(question: str, hits: list[dict]) -> str | None:
 
     import anthropic
 
-    context = "\n\n".join(f"[{h['source']}] {h['text']}" for h in hits)
     client = anthropic.Anthropic(api_key=api_key)
     response = client.messages.create(
-        model="claude-sonnet-5",
-        max_tokens=500,
-        messages=[{"role": "user", "content": ANSWER_PROMPT.format(context=context, question=question)}],
+        model=ANSWER_MODEL,
+        max_tokens=ANSWER_MAX_TOKENS,
+        messages=build_messages(question, hits),
     )
     return response.content[0].text
+
+
+def stream_answer(client, question: str, hits: list[dict]):
+    """Yield the answer piece by piece as Claude generates it, then yield the final Message.
+
+    The final item is the complete Message object (with stop_reason and token usage), so the
+    caller can tell text chunks (str) apart from the end-of-stream summary.
+    """
+    with client.messages.stream(
+        model=ANSWER_MODEL,
+        max_tokens=ANSWER_MAX_TOKENS,
+        messages=build_messages(question, hits),
+    ) as stream:
+        for text in stream.text_stream:
+            yield text
+        yield stream.get_final_message()
 
 
 if __name__ == "__main__":

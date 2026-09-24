@@ -2,3 +2,5 @@ chromadb>=0.5
 anthropic>=0.40
 sentence-transformers>=3.0
 rank_bm25>=0.2
+fastapi>=0.115
+uvicorn[standard]>=0.30
