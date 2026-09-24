@@ -92,11 +92,22 @@ jobs:
             ghcr.io/${{ env.IMAGE_NAME }}:latest
             ghcr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-  deploy:
+  deploy-staging:
     runs-on: ubuntu-latest
     needs: [publish]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: staging
 
     steps:
-      - name: Trigger Render deploy
+      - name: Trigger Render deploy (staging)
+        run: curl --fail -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - name: Trigger Render deploy (production)
         run: curl --fail -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"

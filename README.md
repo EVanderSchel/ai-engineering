@@ -11,7 +11,7 @@ A small FastAPI service used as the vehicle for building up a full CI/CD pipelin
 - [x] **Stage 5 — Containerization**: Dockerfile + build step in CI
 - [x] **Stage 6 — Continuous Delivery**: push built image to a registry
 - [x] **Stage 7 — Continuous Deployment**: deploy to an environment automatically
-- [ ] **Stage 8 — Environments & secrets**: staging vs. production, GitHub Environments, secret management
+- [x] **Stage 8 — Environments & secrets**: staging vs. production, GitHub Environments, secret management
 - [ ] **Stage 9 — Release management**: versioning/tagging, changelogs
 
 ## Local development
@@ -34,13 +34,14 @@ pytest
 
 ## Continuous Integration
 
-[.github/workflows/ci.yml](.github/workflows/ci.yml) runs on every push and pull request to `main`, as five jobs:
+[.github/workflows/ci.yml](.github/workflows/ci.yml) runs on every push and pull request to `main`, as six jobs:
 
 - **lint** — `ruff check` (style/bug rules) and `ruff format --check` (formatting) against [pyproject.toml](pyproject.toml)'s config
 - **test** — the pytest suite
 - **build** — builds the [Dockerfile](Dockerfile) into an image on every push/PR, to catch build breakage early
 - **publish** — only on a push to `main` (not on PRs), rebuilds the image and pushes it to GitHub Container Registry (see below)
-- **deploy** — only after `publish` succeeds, triggers a live deployment on Render (see below)
+- **deploy-staging** — only after `publish` succeeds, triggers a deploy to the staging Render service
+- **deploy-production** — only after `deploy-staging` succeeds, and only after manual approval, triggers a deploy to the production Render service (see below)
 
 Check the **Actions** tab on GitHub after pushing to see them run.
 
@@ -73,6 +74,30 @@ The **deploy** job runs after `publish` succeeds and sends a POST request to a R
 6. In this GitHub repo: **Settings → Secrets and variables → Actions → New repository secret**, name it `RENDER_DEPLOY_HOOK_URL`, and paste the URL.
 
 Once that's set up, every push to `main` that passes lint/test/build/publish will automatically redeploy the live service.
+
+## Environments & secrets
+
+`deploy-staging` and `deploy-production` each declare a GitHub **Environment** (`environment: staging` / `environment: production`). Environments let you:
+
+- scope secrets to a specific environment (so `staging` and `production` can hold *different values* for a secret with the *same name*, `RENDER_DEPLOY_HOOK_URL`, without the workflow needing to know which one it's using)
+- attach **protection rules** — e.g. require a human to click "approve" before a job targeting that environment is allowed to run
+
+This pipeline auto-deploys to staging on every push, but **pauses `deploy-production` for manual approval** — the same promotion pattern real teams use: ship to staging automatically, promote to production deliberately.
+
+**One-time setup (manual — only you can do this):**
+
+1. **Second Render service.** Repeat the Stage 7 Render steps to create a second Web Service — e.g. `ci-cd-workflow-staging` — also deploying `ghcr.io/evanderschel/ci-cd-workflow:latest` on port `8000`. Copy its Deploy Hook URL too. You now have two: one for staging, one for the original (production) service.
+
+2. **Create the GitHub Environments.** In this repo: **Settings → Environments → New environment**. Create one named exactly `staging` and one named exactly `production` (names must match the `environment:` values in [ci.yml](.github/workflows/ci.yml)).
+
+3. **Add a required reviewer to `production`.** Open the `production` environment → under **Deployment protection rules**, check **Required reviewers** and add yourself. Leave `staging` with no protection rules.
+
+4. **Move the deploy hook secrets into their environments.** Inside each environment's page there's its own **Environment secrets** section:
+   - In `staging` → add secret `RENDER_DEPLOY_HOOK_URL` = the **staging** service's deploy hook
+   - In `production` → add secret `RENDER_DEPLOY_HOOK_URL` = the **original** service's deploy hook (the one from Stage 7)
+   - Delete the old repository-level `RENDER_DEPLOY_HOOK_URL` secret (Settings → Secrets and variables → Actions) so there's only one source of truth per environment.
+
+After this, pushing to `main` will deploy to staging immediately, then the Actions run will show `deploy-production` sitting in a **"Waiting for review"** state until you approve it from the run's page.
 
 ## Linting & formatting locally
 
