@@ -80,7 +80,7 @@ def ask(req: AskRequest):
     if client is None:
         raise HTTPException(503, "ANTHROPIC_API_KEY is not set")
     hits = _retrieve(req)
-    return AskResponse(answer=synthesize_answer(req.question, hits), sources=_sources(hits))
+    return AskResponse(answer=synthesize_answer(req.question, hits, client), sources=_sources(hits))
 
 
 @app.post("/ask/stream")

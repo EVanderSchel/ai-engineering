@@ -60,6 +60,29 @@ python src\eval_generation.py --eval-file data\eval_set_current_events.json
 
 Add `--limit N` while experimenting, since each case costs two API calls. Accepts the same `--embedding-model`, `--hybrid`, `--rerank` flags as `eval.py`, so you can see whether a retrieval change actually improved the final answers, not just which chunks got retrieved.
 
+## API
+
+`src/api.py` serves the pipeline over HTTP with FastAPI:
+
+```
+python -m uvicorn api:app --app-dir src --reload
+```
+
+- `GET /health`: liveness check; also reports whether an API key is configured.
+- `POST /ask`: returns the full answer and its sources as one JSON response.
+- `POST /ask/stream`: streams the answer as Server-Sent Events: a `sources` event, then `token` events as Claude writes, then `done` (stop reason and token usage), or `error` if generation fails partway.
+
+Interactive docs are at http://localhost:8000/docs.
+
+## Tests
+
+```
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+The API tests replace Claude and retrieval with fakes (`tests/conftest.py`), so they need no API key or Chroma index, cost nothing, and run in well under a second.
+
 ## Retrieval strategies
 
 All three of `ingest.py`, `query.py`, and `eval.py` accept `--embedding-model` (`default`, `mpnet`, or `bge-small` — see `src/embeddings.py`). `query.py` and `eval.py` also accept `--hybrid` and `--rerank`. Compare strategies against the eval set:

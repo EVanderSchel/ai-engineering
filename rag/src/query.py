@@ -24,14 +24,17 @@ def build_messages(question: str, hits: list[dict]) -> list[dict]:
     return [{"role": "user", "content": ANSWER_PROMPT.format(context=context, question=question)}]
 
 
-def synthesize_answer(question: str, hits: list[dict]) -> str | None:
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        return None
+def synthesize_answer(question: str, hits: list[dict], client=None) -> str | None:
+    """Return Claude's answer, or None if no client was given and ANTHROPIC_API_KEY isn't set."""
+    if client is None:
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            return None
 
-    import anthropic
+        import anthropic
 
-    client = anthropic.Anthropic(api_key=api_key)
+        client = anthropic.Anthropic(api_key=api_key)
+
     response = client.messages.create(
         model=ANSWER_MODEL,
         max_tokens=ANSWER_MAX_TOKENS,
