@@ -1,4 +1,4 @@
-chromadb>=0.5
+chromadb==1.5.9  # must match the chroma server image in docker-compose.yml
 anthropic>=0.40
 sentence-transformers>=3.0
 rank_bm25>=0.2

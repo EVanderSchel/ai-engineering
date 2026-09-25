@@ -1,22 +1,18 @@
 """Retrieval strategies: vector search, BM25 keyword search, hybrid fusion, and cross-encoder reranking."""
 
-import pathlib
 import re
 
-import chromadb
 from rank_bm25 import BM25Okapi
 
 from embeddings import collection_name, get_embedding_function
-
-ROOT = pathlib.Path(__file__).resolve().parent.parent
-DB_DIR = ROOT / "chroma_db"
+import vector_store
 
 _bm25_cache: dict[str, tuple] = {}
 _reranker = None
 
 
 def _get_collection(embedding_model: str):
-    client = chromadb.PersistentClient(path=str(DB_DIR))
+    client = vector_store.get_client()
     embedding_fn = get_embedding_function(embedding_model)
     return client.get_collection(collection_name(embedding_model), embedding_function=embedding_fn)
 

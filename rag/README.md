@@ -74,6 +74,17 @@ python -m uvicorn api:app --app-dir src --reload
 
 Interactive docs are at http://localhost:8000/docs.
 
+## Docker
+
+`docker-compose.yml` runs two containers: the API, and a standalone Chroma server that replaces the local `chroma_db/` folder. Setting `CHROMA_HOST` is what switches the code from the folder to the server (`src/vector_store.py`). Embeddings are still computed in the API container; Chroma only stores vectors and searches them.
+
+```
+docker compose up -d --build
+docker compose run --rm api python src/ingest.py --docs-dir data/current_events
+```
+
+Then call the API at http://localhost:8000 as above. Two named volumes persist data across restarts: `chroma-data` (the index) and `model-cache` (downloaded embedding/reranker models). `ANTHROPIC_API_KEY` is passed through from your shell environment. `docker compose down` stops everything; add `-v` to also delete the volumes.
+
 ## Tests
 
 ```

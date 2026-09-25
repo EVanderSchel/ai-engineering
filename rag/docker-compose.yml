@@ -1,0 +1,37 @@
+services:
+  chroma:
+    # Must match the chromadb client version pinned in requirements.txt.
+    image: chromadb/chroma:1.5.9
+    volumes:
+      - chroma-data:/data
+    ports:
+      - "8001:8000" # optional: lets you reach Chroma from the host for debugging
+    healthcheck:
+      # The image has no curl, so use bash's built-in /dev/tcp to call the heartbeat endpoint.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8000 && printf 'GET /api/v2/heartbeat HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q heartbeat <&3"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      CHROMA_HOST: chroma # the service name doubles as a hostname on the compose network
+      CHROMA_PORT: "8000"
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-} # passed through from your shell, never written here
+    volumes:
+      - model-cache:/home/appuser/.cache
+    depends_on:
+      chroma:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  chroma-data:
+  model-cache:

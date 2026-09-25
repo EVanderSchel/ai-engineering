@@ -1,19 +1,17 @@
-"""Chunk documents from a directory and load them into a local Chroma collection."""
+"""Chunk documents from a directory and load them into a Chroma collection (local folder or server)."""
 
 import argparse
 import pathlib
 
-import chromadb
-
 from chunking import chunk_text
 from embeddings import collection_name, get_embedding_function, MODELS
+import vector_store
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-DB_DIR = ROOT / "chroma_db"
 
 
 def build_collection(docs_dir: pathlib.Path, chunk_size: int, overlap: int, embedding_model: str):
-    client = chromadb.PersistentClient(path=str(DB_DIR))
+    client = vector_store.get_client()
     embedding_fn = get_embedding_function(embedding_model)
     name = collection_name(embedding_model)
 
@@ -37,7 +35,7 @@ def build_collection(docs_dir: pathlib.Path, chunk_size: int, overlap: int, embe
         return
 
     collection.add(ids=ids, documents=documents, metadatas=metadatas)
-    print(f"Ingested {len(documents)} chunks from {docs_dir} into '{name}' at {DB_DIR}")
+    print(f"Ingested {len(documents)} chunks from {docs_dir} into '{name}' at {vector_store.describe()}")
 
 
 if __name__ == "__main__":
