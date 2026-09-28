@@ -1,5 +1,7 @@
 name: ci-cd-workflow CI
 
+# Pull requests always start this workflow; the `changes` job skips the checks when ci-cd-workflow/
+# wasn't touched, so they can be required on main (skipped counts as passing). See rag-ci.yml.
 on:
   push:
     branches: [main]
@@ -8,15 +10,44 @@ on:
       - ".github/workflows/ci-cd-workflow-ci.yml"
   pull_request:
     branches: [main]
-    paths:
-      - "ci-cd-workflow/**"
-      - ".github/workflows/ci-cd-workflow-ci.yml"
 
 env:
   PROJECT_DIR: ci-cd-workflow
 
 jobs:
+  changes:
+    name: ci-cd-workflow-changes
+    runs-on: ubuntu-latest
+    outputs:
+      project: ${{ steps.filter.outputs.project }}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # for a pull request, HEAD is a merge commit; HEAD^1 is the tip of main
+
+      - name: Detect changes to ci-cd-workflow/
+        id: filter
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            # Push to main: the paths filter above already decided this workflow is relevant.
+            echo "project=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only HEAD^1 HEAD)
+          echo "Files changed by this pull request:"
+          echo "$changed"
+          if grep -qE '^(ci-cd-workflow/|\.github/workflows/ci-cd-workflow-ci\.yml$)' <<< "$changed"; then
+            echo "project=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "project=false" >> "$GITHUB_OUTPUT"
+          fi
+
   lint:
+    name: ci-cd-workflow-lint
+    needs: changes
+    if: needs.changes.outputs.project == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -41,6 +72,9 @@ jobs:
         run: ruff format --check .
 
   test:
+    name: ci-cd-workflow-test
+    needs: changes
+    if: needs.changes.outputs.project == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -62,6 +96,9 @@ jobs:
         run: pytest -v
 
   build:
+    name: ci-cd-workflow-build
+    needs: changes
+    if: needs.changes.outputs.project == 'true'
     runs-on: ubuntu-latest
 
     steps:

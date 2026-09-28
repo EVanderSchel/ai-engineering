@@ -1,5 +1,10 @@
 name: rag CI
 
+# Pull requests always start this workflow, and the `changes` job decides whether rag/ was touched.
+# If not, the other jobs are skipped, and GitHub counts a skipped job as passing. That lets their
+# checks be *required* on main without blocking pull requests that only change other projects.
+# (A `paths:` filter on pull_request would stop the workflow from starting at all, leaving required
+# checks stuck at "Expected - Waiting for status to be reported".)
 on:
   push:
     branches: [main]
@@ -8,12 +13,41 @@ on:
       - ".github/workflows/rag-ci.yml"
   pull_request:
     branches: [main]
-    paths:
-      - "rag/**"
-      - ".github/workflows/rag-ci.yml"
 
 jobs:
+  changes:
+    name: rag-changes
+    runs-on: ubuntu-latest
+    outputs:
+      rag: ${{ steps.filter.outputs.rag }}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # for a pull request, HEAD is a merge commit; HEAD^1 is the tip of main
+
+      - name: Detect changes to rag/
+        id: filter
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            # Push to main: the paths filter above already decided this workflow is relevant.
+            echo "rag=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only HEAD^1 HEAD)
+          echo "Files changed by this pull request:"
+          echo "$changed"
+          if grep -qE '^(rag/|\.github/workflows/rag-ci\.yml$)' <<< "$changed"; then
+            echo "rag=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "rag=false" >> "$GITHUB_OUTPUT"
+          fi
+
   test:
+    name: rag-test
+    needs: changes
+    if: needs.changes.outputs.rag == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -40,6 +74,9 @@ jobs:
         run: python -m pytest -v
 
   eval-gate:
+    name: rag-eval-gate
+    needs: changes
+    if: needs.changes.outputs.rag == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
