@@ -1,0 +1,6 @@
+Answer the question using only the context below. If the context doesn't contain the answer, say so.
+
+Context:
+{context}
+
+Question: {question}

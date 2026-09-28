@@ -24,7 +24,7 @@ from pydantic import BaseModel, Field
 import telemetry
 import tracing
 from embeddings import MODELS
-from query import ANSWER_MAX_TOKENS, ANSWER_MODEL, build_messages, generate, stream_answer
+from query import ANSWER_MAX_TOKENS, ANSWER_MODEL, ANSWER_PROMPT, build_messages, generate, stream_answer
 from retrieval import retrieve
 
 
@@ -94,6 +94,7 @@ def _new_record(endpoint: str, req: AskRequest) -> dict:
     return {
         "request_id": uuid.uuid4().hex,
         "endpoint": endpoint,
+        "prompt": ANSWER_PROMPT.id,
         "question_chars": len(req.question),
         "k": req.k,
         "embedding_model": req.embedding_model,
@@ -126,6 +127,8 @@ def _start_generation(root, req: AskRequest, hits: list[dict]):
         as_type="generation",
         model=ANSWER_MODEL,
         model_parameters={"max_tokens": ANSWER_MAX_TOKENS},
+        version=ANSWER_PROMPT.id,  # Langfuse can filter and compare traces by this
+        metadata={"prompt_sha256": ANSWER_PROMPT.sha256},
         input=build_messages(req.question, hits),
     )
 

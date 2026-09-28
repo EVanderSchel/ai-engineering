@@ -1,0 +1,1 @@
+{"date": "2026-09-28", "prompt": "answer/v1", "prompt_sha256": "d3b087ae6cd1", "model": "claude-sonnet-5", "judge_model": "claude-haiku-4-5-20251001", "eval_file": "data/eval_set_current_events.json", "k": 3, "embedding_model": "default", "hybrid": false, "rerank": false, "faithfulness": 1.0, "relevance": 1.0, "avg_output_tokens": 60.8, "generation_cost_usd": 0.020048, "n": 13}
