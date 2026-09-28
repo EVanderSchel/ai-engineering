@@ -1,0 +1,10 @@
+{
+  "active": "v1",
+  "versions": {
+    "v1": {
+      "sha256": "d3b087ae6cd17c0e7ccb83f2fcf2f32bd85196b57bf72b8955c1dacec3b7b042",
+      "created": "2026-09-28",
+      "notes": "Original prompt from query.py: answer only from the context, say so if the answer is missing."
+    }
+  }
+}

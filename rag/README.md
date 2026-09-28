@@ -104,6 +104,16 @@ docker compose run --rm api python src/ingest.py --docs-dir data/current_events
 
 Then call the API at http://localhost:8000 as above. Two named volumes persist data across restarts: `chroma-data` (the index) and `model-cache` (downloaded embedding/reranker models). `ANTHROPIC_API_KEY` is passed through from your shell environment. `docker compose down` stops everything; add `-v` to also delete the volumes.
 
+## Prompt versions
+
+The answer prompt lives in `prompts/answer/<version>.txt`, not in code (`src/prompts.py`). `prompts/answer/manifest.json` names the active version and records each version's SHA-256 fingerprint. Published versions are immutable: a test fails if a registered file changes, so every logged request (`"prompt": "answer/v1"`), Langfuse generation (`version`), and eval result always points at the exact text that produced it.
+
+To try a prompt change:
+
+1. Add `prompts/answer/v2.txt` and register it in the manifest (fingerprint: `python -c "import sys; sys.path.insert(0, 'src'); import prompts; print(prompts.fingerprint(prompts.read_template('answer', 'v2')))"`).
+2. Compare it with the current version: `python src/eval_generation.py --prompt-version v2 --eval-file data/eval_set_current_events.json`. Each full run is appended to `data/generation_eval_history.jsonl`; `python src/eval_generation.py --history` shows all runs side by side.
+3. If it wins, set `"active": "v2"` in the manifest. `RAG_PROMPT_ANSWER=v2` overrides the active version for a single process.
+
 ## Eval regression gate
 
 `src/eval_gate.py` runs the retrieval eval for every combination in `data/eval_baseline.json` (both corpora × vector / hybrid / rerank) and exits with an error if any Hit@1, Hit@k, or MRR score falls below its recorded baseline. Each corpus is ingested into a throwaway Chroma folder, so it never touches `chroma_db/`.

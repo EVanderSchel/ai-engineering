@@ -29,6 +29,7 @@ RUN useradd --create-home appuser \
 
 COPY src/ ./src/
 COPY data/ ./data/
+COPY prompts/ ./prompts/
 
 USER appuser
 

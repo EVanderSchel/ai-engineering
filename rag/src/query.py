@@ -3,28 +3,23 @@
 import argparse
 import os
 
+import prompts
 from embeddings import MODELS
 from retrieval import retrieve
 
-ANSWER_PROMPT = """Answer the question using only the context below. \
-If the context doesn't contain the answer, say so.
-
-Context:
-{context}
-
-Question: {question}"""
-
-
+# The prompt text lives in prompts/answer/<version>.txt; see prompts.py for how versions work.
+ANSWER_PROMPT = prompts.load("answer")
 ANSWER_MODEL = "claude-sonnet-5"
 ANSWER_MAX_TOKENS = 500
 
 
-def build_messages(question: str, hits: list[dict]) -> list[dict]:
+def build_messages(question: str, hits: list[dict], prompt: prompts.Prompt | None = None) -> list[dict]:
+    prompt = prompt or ANSWER_PROMPT
     context = "\n\n".join(f"[{h['source']}] {h['text']}" for h in hits)
-    return [{"role": "user", "content": ANSWER_PROMPT.format(context=context, question=question)}]
+    return [{"role": "user", "content": prompt.format(context=context, question=question)}]
 
 
-def synthesize_answer(question: str, hits: list[dict], client=None) -> str | None:
+def synthesize_answer(question: str, hits: list[dict], client=None, prompt=None) -> str | None:
     """Return Claude's answer, or None if no client was given and ANTHROPIC_API_KEY isn't set."""
     if client is None:
         api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -35,19 +30,19 @@ def synthesize_answer(question: str, hits: list[dict], client=None) -> str | Non
 
         client = anthropic.Anthropic(api_key=api_key)
 
-    return generate(client, question, hits).content[0].text
+    return generate(client, question, hits, prompt).content[0].text
 
 
-def generate(client, question: str, hits: list[dict]):
+def generate(client, question: str, hits: list[dict], prompt=None):
     """Return the full Message (answer text plus stop_reason and token usage)."""
     return client.messages.create(
         model=ANSWER_MODEL,
         max_tokens=ANSWER_MAX_TOKENS,
-        messages=build_messages(question, hits),
+        messages=build_messages(question, hits, prompt),
     )
 
 
-def stream_answer(client, question: str, hits: list[dict]):
+def stream_answer(client, question: str, hits: list[dict], prompt=None):
     """Yield the answer piece by piece as Claude generates it, then yield the final Message.
 
     The final item is the complete Message object (with stop_reason and token usage), so the
@@ -56,7 +51,7 @@ def stream_answer(client, question: str, hits: list[dict]):
     with client.messages.stream(
         model=ANSWER_MODEL,
         max_tokens=ANSWER_MAX_TOKENS,
-        messages=build_messages(question, hits),
+        messages=build_messages(question, hits, prompt),
     ) as stream:
         for text in stream.text_stream:
             yield text
