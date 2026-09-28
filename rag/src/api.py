@@ -4,20 +4,26 @@ Run from the rag/ folder:
     venv\\Scripts\\python.exe -m uvicorn api:app --app-dir src --reload
 
 Endpoints:
-    GET  /health       liveness check
+    GET  /health       liveness check (never requires a key)
     POST /ask          retrieve + generate, return the whole answer as one JSON response
     POST /ask/stream   retrieve + generate, stream the answer as Server-Sent Events (SSE)
+
+If RAG_API_KEY is set, the /ask endpoints require it in an X-API-Key header. Leave it unset for
+local development; always set it for anything reachable from the internet, since every
+request spends Anthropic credits.
 """
 
 import json
+import logging
 import os
+import secrets
 import time
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 import anthropic
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import Depends, FastAPI, Header, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -25,11 +31,25 @@ import telemetry
 import tracing
 from embeddings import MODELS
 from query import ANSWER_MAX_TOKENS, ANSWER_MODEL, ANSWER_PROMPT, build_messages, generate, stream_answer
-from retrieval import retrieve
+from retrieval import retrieve, warm_up
+
+# uvicorn's own logger already prints to the console, so startup messages appear next to its own.
+logger = logging.getLogger("uvicorn.error")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Load models and indexes before accepting traffic, so the first user doesn't wait ~1 s for
+    # them. This matters most when the host scales to zero and every idle period ends in a cold start.
+    if os.environ.get("RAG_WARM_UP", "true").lower() != "false":
+        start = time.perf_counter()
+        try:
+            warm_up(rerank=os.environ.get("RAG_WARM_UP_RERANKER", "false").lower() == "true")
+            logger.info("Warm-up finished in %.0f ms", (time.perf_counter() - start) * 1000)
+        except Exception:
+            # A missing index shouldn't stop the server from starting; the first request will
+            # hit the same error and report it properly.
+            logger.exception("Warm-up failed; continuing without it")
     yield
     tracing.flush()  # on shutdown, send traces still waiting in Langfuse's background batch
 
@@ -83,9 +103,25 @@ def _sse(event: str, data) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
 
 
+def require_api_key(x_api_key: str | None = Header(default=None)) -> None:
+    """Reject the request unless it carries the configured key. Read on every request, so the
+    key can be rotated by restarting with a new value."""
+    expected = os.environ.get("RAG_API_KEY")
+    if not expected:
+        return
+    # compare_digest takes the same time whether the first or the last character differs, so the
+    # response time can't be used to guess the key one character at a time.
+    if x_api_key is None or not secrets.compare_digest(x_api_key.encode(), expected.encode()):
+        raise HTTPException(401, "Missing or invalid API key", headers={"WWW-Authenticate": "X-API-Key"})
+
+
 @app.get("/health")
 def health():
-    return {"status": "ok", "generation_enabled": client is not None}
+    return {
+        "status": "ok",
+        "generation_enabled": client is not None,
+        "auth_required": bool(os.environ.get("RAG_API_KEY")),
+    }
 
 
 def _new_record(endpoint: str, req: AskRequest) -> dict:
@@ -152,7 +188,7 @@ def _fail(obs, message: str) -> None:
     obs.update(level="ERROR", status_message=message)
 
 
-@app.post("/ask", response_model=AskResponse)
+@app.post("/ask", response_model=AskResponse, dependencies=[Depends(require_api_key)])
 def ask(req: AskRequest, response: Response):
     if client is None:
         raise HTTPException(503, "ANTHROPIC_API_KEY is not set")
@@ -187,7 +223,7 @@ def ask(req: AskRequest, response: Response):
         root.end()
 
 
-@app.post("/ask/stream")
+@app.post("/ask/stream", dependencies=[Depends(require_api_key)])
 def ask_stream(req: AskRequest):
     if client is None:
         raise HTTPException(503, "ANTHROPIC_API_KEY is not set")

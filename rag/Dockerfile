@@ -24,14 +24,20 @@ WORKDIR /app
 # volume there so they survive container restarts. The directory must exist and belong to
 # appuser so the volume inherits that ownership.
 RUN useradd --create-home appuser \
- && mkdir -p /home/appuser/.cache \
- && chown appuser /home/appuser/.cache
+ && mkdir -p /home/appuser/.cache /app/chroma_db \
+ && chown appuser /home/appuser/.cache /app/chroma_db
 
 COPY src/ ./src/
 COPY data/ ./data/
 COPY prompts/ ./prompts/
 
 USER appuser
+
+# Build the search index into the image, so a deployed container needs no database server: the
+# corpus is small and static, and changing it means rebuilding the image anyway. This also
+# downloads the embedding model into the image. docker-compose ignores this built-in index,
+# because it sets CHROMA_HOST and uses its Chroma server instead.
+RUN python src/ingest.py --docs-dir data/current_events
 
 EXPOSE 8000
 
