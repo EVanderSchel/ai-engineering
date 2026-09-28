@@ -1,5 +1,6 @@
 """Measure generation quality: is Claude's synthesized answer faithful to the retrieved
-context, and does it actually address the question?
+context, does it address the question, does it cite its sources, and does it admit when the
+context doesn't contain the answer?
 
 Retrieval eval (eval.py) only checks whether the right chunk was found. It's blind to
 generation - a system can retrieve perfectly and still answer badly, by ignoring the
@@ -7,10 +8,16 @@ context and answering from memory, or by mixing in unsupported claims. This scri
 that gap with an LLM-as-judge: a second, independent Claude call scores each (question,
 context, answer) triple rather than trusting the generating call's own self-report.
 
-Each run is appended to data/generation_eval_history.jsonl along with the exact prompt version
-(and its fingerprint) that produced the answers, so prompt versions can be compared over time:
+Eval files can mix two kinds of case. Answerable cases (the default) check faithfulness,
+relevance, citations, and that the model didn't wrongly refuse. Cases marked
+"answerable": false ask about things the corpus doesn't cover, and check that the model says
+so instead of guessing.
 
-    python src/eval_generation.py --prompt-version v2 --eval-file data/eval_set_current_events.json
+Each full run is appended to data/generation_eval_history.jsonl along with the exact prompt
+version (and its fingerprint) that produced the answers, so versions can be compared:
+
+    python src/eval_generation.py --prompt-version v2 \\
+        --eval-file data/eval_set_current_events.json data/eval_set_unanswerable.json
     python src/eval_generation.py --history
 """
 
@@ -19,6 +26,7 @@ import datetime
 import json
 import os
 import pathlib
+import re
 
 import prompts
 import telemetry
@@ -34,6 +42,8 @@ HISTORY_FILE = ROOT / "data" / "generation_eval_history.jsonl"
 # using a different model than the one being judged avoids the judge favoring its
 # own generation style.
 JUDGE_MODEL = "claude-haiku-4-5-20251001"
+# Bump when JUDGE_PROMPT changes: scores from different judge versions aren't comparable.
+JUDGE_VERSION = "judge/v2"
 
 JUDGE_PROMPT = """You are evaluating a RAG system's generated answer against the context it was given.
 
@@ -45,14 +55,18 @@ Retrieved context:
 Generated answer:
 {answer}
 
-Score the answer on two criteria:
+Score the answer on three criteria:
 1. faithful: true if every factual claim in the answer is directly supported by the retrieved \
 context (no invented facts, no outside knowledge), false otherwise. An answer that correctly \
 says the context doesn't contain the answer is faithful.
 2. relevant: true if the answer actually addresses the question asked, false otherwise.
+3. declined: true if the answer states that the context does not contain the answer (or not \
+enough information to answer it) instead of answering, false if it gives an answer.
 
 Respond with ONLY a JSON object, no other text, in this exact format:
-{{"faithful": true, "relevant": true, "reasoning": "one sentence explanation"}}"""
+{{"faithful": true, "relevant": true, "declined": false, "reasoning": "one sentence explanation"}}"""
+
+CITATION = re.compile(r"\[([^\[\]]+?\.txt)\]")
 
 
 def judge_answer(client, question: str, hits: list[dict], answer: str) -> dict:
@@ -66,9 +80,43 @@ def judge_answer(client, question: str, hits: list[dict], answer: str) -> dict:
     return json.loads(raw)
 
 
-def run_eval(
-    eval_path: pathlib.Path, k: int, limit: int | None, prompt: prompts.Prompt, **retrieve_kwargs
-) -> dict | None:
+def check_citations(answer: str, hits: list[dict]) -> dict:
+    """Checked with code, not the judge: which [file.txt] citations appear, and are they real?"""
+    cited = set(CITATION.findall(answer))
+    retrieved = {h["source"] for h in hits}
+    return {"cited": bool(cited & retrieved), "invalid_citations": sorted(cited - retrieved)}
+
+
+def summarize(results: list[dict]) -> dict:
+    """Turn per-case results into the run's metrics (fractions 0-1, or None if no cases apply).
+
+    - faithfulness: every case, answerable or not
+    - relevance, false_refusal_rate: answerable cases
+    - citation_rate: answerable cases the model actually answered, citing at least one retrieved
+      source and no source that wasn't retrieved
+    - correct_refusal_rate: unanswerable cases where the model said the context lacks the answer
+    """
+
+    def rate(cases, predicate):
+        return round(sum(map(predicate, cases)) / len(cases), 4) if cases else None
+
+    answerable = [r for r in results if r["answerable"]]
+    unanswerable = [r for r in results if not r["answerable"]]
+    answered = [r for r in answerable if not r["declined"]]
+    return {
+        "faithfulness": rate(results, lambda r: r["faithful"]),
+        "relevance": rate(answerable, lambda r: r["relevant"]),
+        "citation_rate": rate(answered, lambda r: r["cited"] and not r["invalid_citations"]),
+        "false_refusal_rate": rate(answerable, lambda r: r["declined"]),
+        "correct_refusal_rate": rate(unanswerable, lambda r: r["declined"]),
+        "avg_output_tokens": round(sum(r["output_tokens"] for r in results) / len(results), 1),
+        "generation_cost_usd": round(sum(r["cost_usd"] for r in results), 6),
+        "n": len(results),
+        "n_unanswerable": len(unanswerable),
+    }
+
+
+def run_eval(cases: list[dict], k: int, prompt: prompts.Prompt, **retrieve_kwargs) -> dict | None:
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         print("ANTHROPIC_API_KEY is not set - generation eval needs it to both generate and judge answers.")
@@ -77,52 +125,60 @@ def run_eval(
     import anthropic
 
     client = anthropic.Anthropic(api_key=api_key)
-    cases = json.loads(eval_path.read_text(encoding="utf-8"))
-    if limit:
-        cases = cases[:limit]
     print(f"Prompt {prompt.id} (sha256 {prompt.sha256[:12]}), {len(cases)} cases\n")
 
-    faithful_count = 0
-    relevant_count = 0
-    output_tokens = 0
-    cost = 0.0
-
+    results = []
     for case in cases:
         question = case["question"]
+        answerable = case.get("answerable", True)
         hits = retrieve(question, k=k, **retrieve_kwargs)
         message = generate(client, question, hits, prompt)
         answer = message.content[0].text
-        output_tokens += message.usage.output_tokens
-        cost += telemetry.cost_usd(ANSWER_MODEL, message.usage.input_tokens, message.usage.output_tokens) or 0
         verdict = judge_answer(client, question, hits, answer)
+        result = {
+            "answerable": answerable,
+            "faithful": bool(verdict["faithful"]),
+            "relevant": bool(verdict["relevant"]),
+            "declined": bool(verdict["declined"]),
+            **check_citations(answer, hits),
+            "output_tokens": message.usage.output_tokens,
+            "cost_usd": telemetry.cost_usd(ANSWER_MODEL, message.usage.input_tokens, message.usage.output_tokens) or 0,
+        }
+        results.append(result)
 
-        faithful_count += verdict["faithful"]
-        relevant_count += verdict["relevant"]
-
-        tags = "".join(
-            [
-                "[faithful]" if verdict["faithful"] else "[UNFAITHFUL]",
-                "[relevant]" if verdict["relevant"] else "[IRRELEVANT]",
+        if answerable:
+            tags = [
+                "faithful" if result["faithful"] else "UNFAITHFUL",
+                "relevant" if result["relevant"] else "IRRELEVANT",
+                "WRONGLY-DECLINED" if result["declined"] else ("cited" if result["cited"] else "no-citation"),
             ]
-        )
-        print(f"{tags} q={question!r}")
+        else:
+            tags = [
+                "faithful" if result["faithful"] else "UNFAITHFUL",
+                "declined-correctly" if result["declined"] else "ANSWERED-UNANSWERABLE",
+            ]
+        if result["invalid_citations"]:
+            tags.append(f"INVALID-CITATION {result['invalid_citations']}")
+        print(f"[{']['.join(tags)}] q={question!r}")
         print(f"    answer: {answer[:150]}{'...' if len(answer) > 150 else ''}")
         print(f"    judge:  {verdict['reasoning']}\n")
 
-    n = len(cases)
-    print(f"Faithfulness: {faithful_count}/{n} ({faithful_count / n:.0%})")
-    print(f"Relevance:    {relevant_count}/{n} ({relevant_count / n:.0%})")
-    print(f"Avg output tokens: {output_tokens / n:.0f}   Generation cost: ${cost:.4f}")
-    return {
-        "faithfulness": round(faithful_count / n, 4),
-        "relevance": round(relevant_count / n, 4),
-        "avg_output_tokens": round(output_tokens / n, 1),
-        "generation_cost_usd": round(cost, 6),
-        "n": n,
-    }
+    metrics = summarize(results)
+
+    def pct(value):
+        return "n/a" if value is None else f"{value:.0%}"
+
+    print(f"Faithfulness:          {pct(metrics['faithfulness'])}")
+    print(f"Relevance:             {pct(metrics['relevance'])}")
+    print(f"Citation rate:         {pct(metrics['citation_rate'])}")
+    print(f"False refusals:        {pct(metrics['false_refusal_rate'])}  (lower is better)")
+    print(f"Correct refusals:      {pct(metrics['correct_refusal_rate'])}")
+    print(f"Avg output tokens:     {metrics['avg_output_tokens']:.0f}")
+    print(f"Generation cost:       ${metrics['generation_cost_usd']:.4f}")
+    return metrics
 
 
-def record(result: dict, prompt: prompts.Prompt, eval_path: pathlib.Path, settings: dict) -> None:
+def record(result: dict, prompt: prompts.Prompt, eval_paths: list[pathlib.Path], settings: dict) -> None:
     """Append one run to the history file, tagged with exactly what produced it."""
     entry = {
         "date": datetime.date.today().isoformat(),
@@ -130,7 +186,8 @@ def record(result: dict, prompt: prompts.Prompt, eval_path: pathlib.Path, settin
         "prompt_sha256": prompt.sha256[:12],
         "model": ANSWER_MODEL,
         "judge_model": JUDGE_MODEL,
-        "eval_file": eval_path.resolve().relative_to(ROOT).as_posix(),
+        "judge": JUDGE_VERSION,
+        "eval_file": " + ".join(p.resolve().relative_to(ROOT).as_posix() for p in eval_paths),
         **settings,
         **result,
     }
@@ -144,23 +201,34 @@ def print_history() -> None:
         print("No recorded runs yet.")
         return
     rows = [json.loads(line) for line in HISTORY_FILE.read_text(encoding="utf-8").splitlines() if line.strip()]
-    header = f"{'date':<11} {'prompt':<11} {'eval file':<36} {'n':>3} {'faithful':>9} {'relevant':>9} {'out tok':>8} {'cost $':>8}"
-    print(header)
-    print("-" * len(header))
+
+    def pct(row, key):
+        value = row.get(key)
+        return "-" if value is None else f"{value:.0%}"
+
+    columns = ["date", "prompt", "judge", "n", "faithful", "relevant", "cited", "false ref", "correct ref", "out tok", "cost $"]
+    widths = [10, 10, 8, 3, 8, 8, 6, 9, 11, 7, 7]
+    print(" ".join(c.ljust(w) if i < 3 else c.rjust(w) for i, (c, w) in enumerate(zip(columns, widths))))
+    print("-" * (sum(widths) + len(widths) - 1))
     for r in rows:
-        print(
-            f"{r['date']:<11} {r['prompt']:<11} {r['eval_file'].removeprefix('data/'):<36} {r['n']:>3}"
-            f" {r['faithfulness']:>9.0%} {r['relevance']:>9.0%} {r['avg_output_tokens']:>8.0f} {r['generation_cost_usd']:>8.4f}"
-        )
+        cells = [
+            r["date"], r["prompt"], r.get("judge", "judge/v1"), str(r["n"]),
+            pct(r, "faithfulness"), pct(r, "relevance"), pct(r, "citation_rate"),
+            pct(r, "false_refusal_rate"), pct(r, "correct_refusal_rate"),
+            f"{r['avg_output_tokens']:.0f}", f"{r['generation_cost_usd']:.4f}",
+        ]
+        print(" ".join(c.ljust(w) if i < 3 else c.rjust(w) for i, (c, w) in enumerate(zip(cells, widths))))
+        print(f"{'':11}eval: {r['eval_file']}")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
         "--eval-file",
         type=pathlib.Path,
-        default=ROOT / "data" / "eval_set.json",
-        help="JSON file of {question, expected_source} pairs (default: data/eval_set.json)",
+        nargs="+",
+        default=[ROOT / "data" / "eval_set.json"],
+        help="One or more JSON files of cases (default: data/eval_set.json)",
     )
     parser.add_argument("-k", type=int, default=3, help="Number of chunks to retrieve per question")
     parser.add_argument("--embedding-model", choices=list(MODELS), default="default")
@@ -181,6 +249,9 @@ if __name__ == "__main__":
         print_history()
         raise SystemExit
 
+    cases = [case for path in args.eval_file for case in json.loads(path.read_text(encoding="utf-8"))]
+    if args.limit:
+        cases = cases[: args.limit]
     prompt = prompts.load("answer", args.prompt_version)
     settings = {
         "k": args.k,
@@ -189,9 +260,8 @@ if __name__ == "__main__":
         "rerank": args.rerank,
     }
     result = run_eval(
-        args.eval_file,
+        cases,
         args.k,
-        args.limit,
         prompt,
         embedding_model=args.embedding_model,
         hybrid=args.hybrid,

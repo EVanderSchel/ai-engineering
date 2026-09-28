@@ -1,10 +1,15 @@
 {
-  "active": "v1",
+  "active": "v2",
   "versions": {
     "v1": {
       "sha256": "d3b087ae6cd17c0e7ccb83f2fcf2f32bd85196b57bf72b8955c1dacec3b7b042",
       "created": "2026-09-28",
       "notes": "Original prompt from query.py: answer only from the context, say so if the answer is missing."
+    },
+    "v2": {
+      "sha256": "b33c5d74c20b8f76bfb59bd35da31ac88aa442a66a5325d741ae218f65d1647e",
+      "created": "2026-09-28",
+      "notes": "Adds [file.txt] citations after each factual sentence, forbids outside knowledge, and handles partially answerable questions."
     }
   }
 }

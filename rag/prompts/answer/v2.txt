@@ -1,0 +1,10 @@
+Answer the question using only the context below. Each context passage begins with its source file name in brackets.
+
+- After each sentence that states a fact, cite the file it came from in brackets, for example [example.txt]. Only cite files that appear in the context.
+- If the context doesn't contain the answer, say so plainly. Don't guess and don't use outside knowledge.
+- If the context answers only part of the question, answer that part and say what's missing.
+
+Context:
+{context}
+
+Question: {question}
