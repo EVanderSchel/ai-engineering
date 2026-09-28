@@ -17,6 +17,10 @@ services:
     build: .
     ports:
       - "8000:8000"
+    env_file:
+      # Langfuse keys. Optional: without the file the API runs with tracing off.
+      - path: .env
+        required: false
     environment:
       CHROMA_HOST: chroma # the service name doubles as a hostname on the compose network
       CHROMA_PORT: "8000"

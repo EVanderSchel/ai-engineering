@@ -158,3 +158,59 @@ def test_stream_failure_is_logged_as_error(http, fake_client, fake_retrieve, cap
     [record] = logged_records(caplog)
     assert (record["status"], record["error"]) == ("error", "APIConnectionError")
     assert "cost_usd" not in record  # the final message never arrived, so usage is unknown
+
+
+def assert_trace_shape(root, request_id):
+    """One trace per request: a retrieval step and a generation step, every observation ended exactly once."""
+    assert root.fields["request_id"] == request_id
+    assert [c.name for c in root.children] == ["retrieval", "answer"]
+    assert all(obs.end_calls == 1 for obs in [root, *root.children])
+    retrieval, answer = root.children
+    assert retrieval.fields["as_type"] == "retriever"
+    assert [s["source"] for s in retrieval.fields["output"]] == ["doc_a.txt", "doc_b.txt"]
+    assert answer.fields["as_type"] == "generation"
+    assert answer.fields["model"] == "claude-sonnet-5"
+    return answer
+
+
+def test_ask_trace_records_retrieval_and_generation_with_cost(http, fake_client, fake_retrieve, fake_traces):
+    resp = http.post("/ask", json={"question": "What ship was struck?"})
+
+    [root] = fake_traces
+    answer = assert_trace_shape(root, resp.headers["X-Request-ID"])
+    assert answer.fields["usage_details"] == {"input": 100, "output": 5}
+    assert answer.fields["cost_details"] == {"total": 0.00025}
+    assert root.fields["trace_output"] == "The tanker Trend was struck."
+
+
+def test_stream_trace_records_time_to_first_token(http, fake_client, fake_retrieve, fake_traces):
+    resp = http.post("/ask/stream", json={"question": "What ship was struck?"})
+
+    [root] = fake_traces
+    answer = assert_trace_shape(root, resp.headers["X-Request-ID"])
+    assert "completion_start_time" in answer.fields
+    assert answer.fields["usage_details"] == {"input": 100, "output": 5}
+
+
+def test_failed_generation_is_marked_as_error_in_trace(http, fake_client, fake_retrieve, fake_traces):
+    fake_client.messages.error = api_error()
+    http.post("/ask/stream", json={"question": "q"})
+    http.post("/ask", json={"question": "q"})
+
+    for root in fake_traces:
+        assert root.fields["level"] == "ERROR"
+        assert root.children[1].fields["level"] == "ERROR"
+        assert all(obs.end_calls == 1 for obs in [root, *root.children])
+
+
+def test_rejected_request_still_closes_its_trace(http, fake_client, fake_retrieve, fake_traces, monkeypatch):
+    def failing_retrieve(question, **kwargs):
+        raise RuntimeError("chroma is down")
+
+    monkeypatch.setattr(api, "retrieve", failing_retrieve)
+    http_no_raise = type(http)(api.app, raise_server_exceptions=False)
+    assert http_no_raise.post("/ask/stream", json={"question": "q"}).status_code == 500
+
+    [root] = fake_traces
+    assert root.end_calls == 1
+    assert root.children[0].fields["level"] == "ERROR"

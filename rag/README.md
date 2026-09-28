@@ -76,6 +76,23 @@ Interactive docs are at http://localhost:8000/docs.
 
 Every request logs one JSON line (`src/telemetry.py`) with a request ID (also returned in the `X-Request-ID` header), per-stage timings (`retrieval_ms`, `generation_ms`, `ttft_ms` for streams, `total_ms`), token usage, dollar cost, and status (`ok`, `error`, or `cancelled` if a streaming client disconnects). The question text is deliberately not logged. Update `PRICES_PER_MTOK` when changing models.
 
+### Tracing with Langfuse (optional)
+
+With Langfuse keys configured, each request also becomes a trace in [Langfuse](https://langfuse.com) (`src/tracing.py`): a root span holding the question and answer, a `retrieval` step with the retrieved chunks, and an `answer` generation with the prompt, model, token usage, cost, and time to first token. The trace ID equals the log line's `request_id`, so any log line can be looked up in Langfuse.
+
+Create `rag/.env` (gitignored) with keys from your Langfuse project's settings:
+
+```
+LANGFUSE_PUBLIC_KEY=pk-lf-...
+LANGFUSE_SECRET_KEY=sk-lf-...
+LANGFUSE_BASE_URL=https://cloud.langfuse.com
+LANGFUSE_TRACING_ENVIRONMENT=development
+```
+
+Use `https://us.cloud.langfuse.com` for a US-region project. Local runs load the file with python-dotenv; docker-compose passes it to the API container. Without it, tracing is simply off. Tests always disable tracing.
+
+Two timings differ on purpose: the log's `ttft_ms` is measured from when the request arrived (what the user experiences, including retrieval), while Langfuse's time to first token is measured from when generation started (the model's own latency).
+
 ## Docker
 
 `docker-compose.yml` runs two containers: the API, and a standalone Chroma server that replaces the local `chroma_db/` folder. Setting `CHROMA_HOST` is what switches the code from the folder to the server (`src/vector_store.py`). Embeddings are still computed in the API container; Chroma only stores vectors and searches them.

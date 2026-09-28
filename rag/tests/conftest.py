@@ -1,6 +1,11 @@
 """Shared test fixtures: a fake Claude client and a fake retriever, so tests are fast, free, and deterministic."""
 
+import os
 from types import SimpleNamespace
+
+# Never send test traffic to Langfuse, even when rag/.env holds real keys. Must be set before
+# `import api`, because tracing.py decides whether to create a Langfuse client at import time.
+os.environ["LANGFUSE_TRACING_ENABLED"] = "false"
 
 import numpy as np
 import pytest
@@ -88,6 +93,47 @@ def fake_retrieve(monkeypatch):
 
     monkeypatch.setattr(api, "retrieve", retrieve)
     return calls
+
+
+class FakeObservation:
+    """Records what the API does to a Langfuse observation, instead of sending it anywhere."""
+
+    def __init__(self, name: str, **kwargs):
+        self.name = name
+        self.fields = dict(kwargs)
+        self.children: list["FakeObservation"] = []
+        self.end_calls = 0
+
+    def start_observation(self, *, name: str, **kwargs):
+        child = FakeObservation(name, **kwargs)
+        self.children.append(child)
+        return child
+
+    def update(self, **kwargs):
+        self.fields.update(kwargs)
+        return self
+
+    def set_trace_io(self, **kwargs):
+        self.fields.update({f"trace_{k}": v for k, v in kwargs.items()})
+        return self
+
+    def end(self, **kwargs):
+        self.end_calls += 1
+        return self
+
+
+@pytest.fixture
+def fake_traces(monkeypatch):
+    """Capture the trace of each request; the list holds one root observation per request."""
+    roots = []
+
+    def start_trace(request_id, name, input, metadata):
+        root = FakeObservation(name, request_id=request_id, input=input, metadata=metadata)
+        roots.append(root)
+        return root
+
+    monkeypatch.setattr(api.tracing, "start_trace", start_trace)
+    return roots
 
 
 @pytest.fixture

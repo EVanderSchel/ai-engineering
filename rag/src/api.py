@@ -13,6 +13,8 @@ import json
 import os
 import time
 import uuid
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 import anthropic
 from fastapi import FastAPI, HTTPException, Response
@@ -20,11 +22,19 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 import telemetry
+import tracing
 from embeddings import MODELS
-from query import ANSWER_MODEL, generate, stream_answer
+from query import ANSWER_MAX_TOKENS, ANSWER_MODEL, build_messages, generate, stream_answer
 from retrieval import retrieve
 
-app = FastAPI(title="RAG API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    tracing.flush()  # on shutdown, send traces still waiting in Langfuse's background batch
+
+
+app = FastAPI(title="RAG API", lifespan=lifespan)
 
 # One client for the whole process: it holds a connection pool, so reusing it avoids
 # a new TLS handshake per request. It reads ANTHROPIC_API_KEY from the environment.
@@ -92,6 +102,53 @@ def _new_record(endpoint: str, req: AskRequest) -> dict:
     }
 
 
+def _trace_metadata(req: AskRequest) -> dict:
+    return {"k": req.k, "embedding_model": req.embedding_model, "hybrid": req.hybrid, "rerank": req.rerank}
+
+
+def _traced_retrieve(root, req: AskRequest) -> list[dict]:
+    span = root.start_observation(name="retrieval", as_type="retriever", input=req.question)
+    try:
+        hits = _retrieve(req)
+    except Exception as e:
+        span.update(level="ERROR", status_message=str(e))
+        raise
+    else:
+        span.update(output=[s.model_dump() for s in _sources(hits)])
+        return hits
+    finally:
+        span.end()
+
+
+def _start_generation(root, req: AskRequest, hits: list[dict]):
+    return root.start_observation(
+        name="answer",
+        as_type="generation",
+        model=ANSWER_MODEL,
+        model_parameters={"max_tokens": ANSWER_MAX_TOKENS},
+        input=build_messages(req.question, hits),
+    )
+
+
+def _finish_generation(gen, root, record: dict, message) -> str:
+    """Copy usage and cost onto the log record and the trace, and return the answer text."""
+    answer = message.content[0].text
+    record.update(telemetry.usage_fields(ANSWER_MODEL, message))
+    gen.update(
+        output=answer,
+        usage_details={"input": record["input_tokens"], "output": record["output_tokens"]},
+        cost_details={"total": record["cost_usd"]} if record["cost_usd"] is not None else None,
+    )
+    gen.end()
+    root.update(output=answer)
+    root.set_trace_io(output=answer)
+    return answer
+
+
+def _fail(obs, message: str) -> None:
+    obs.update(level="ERROR", status_message=message)
+
+
 @app.post("/ask", response_model=AskResponse)
 def ask(req: AskRequest, response: Response):
     if client is None:
@@ -99,24 +156,32 @@ def ask(req: AskRequest, response: Response):
     start = time.perf_counter()
     record = _new_record("/ask", req)
     response.headers["X-Request-ID"] = record["request_id"]
-
-    with telemetry.timed(record, "retrieval_ms"):
-        hits = _retrieve(req)
-    record["n_hits"] = len(hits)
+    root = tracing.start_trace(record["request_id"], "rag-ask", req.question, _trace_metadata(req))
 
     try:
-        with telemetry.timed(record, "generation_ms"):
-            message = generate(client, req.question, hits)
-    except anthropic.APIError as e:
-        record.update(status="error", error=type(e).__name__, total_ms=telemetry.elapsed_ms(start))
-        telemetry.log_request(record)
-        # 502 Bad Gateway: our server is fine, the service it depends on failed.
-        raise HTTPException(502, f"Generation failed: {type(e).__name__}")
+        with telemetry.timed(record, "retrieval_ms"):
+            hits = _traced_retrieve(root, req)
+        record["n_hits"] = len(hits)
 
-    record.update(telemetry.usage_fields(ANSWER_MODEL, message))
-    record.update(status="ok", total_ms=telemetry.elapsed_ms(start))
-    telemetry.log_request(record)
-    return AskResponse(answer=message.content[0].text, sources=_sources(hits))
+        gen = _start_generation(root, req, hits)
+        try:
+            with telemetry.timed(record, "generation_ms"):
+                message = generate(client, req.question, hits)
+        except anthropic.APIError as e:
+            _fail(gen, type(e).__name__)
+            gen.end()
+            _fail(root, f"Generation failed: {type(e).__name__}")
+            record.update(status="error", error=type(e).__name__, total_ms=telemetry.elapsed_ms(start))
+            telemetry.log_request(record)
+            # 502 Bad Gateway: our server is fine, the service it depends on failed.
+            raise HTTPException(502, f"Generation failed: {type(e).__name__}")
+
+        answer = _finish_generation(gen, root, record, message)
+        record.update(status="ok", total_ms=telemetry.elapsed_ms(start))
+        telemetry.log_request(record)
+        return AskResponse(answer=answer, sources=_sources(hits))
+    finally:
+        root.end()
 
 
 @app.post("/ask/stream")
@@ -125,11 +190,16 @@ def ask_stream(req: AskRequest):
         raise HTTPException(503, "ANTHROPIC_API_KEY is not set")
     start = time.perf_counter()
     record = _new_record("/ask/stream", req)
+    root = tracing.start_trace(record["request_id"], "rag-ask-stream", req.question, _trace_metadata(req))
 
     # Retrieve before streaming starts, so a bad request still gets a normal HTTP error.
     # Once the first byte is sent the status code is locked in at 200.
-    with telemetry.timed(record, "retrieval_ms"):
-        hits = _retrieve(req)
+    try:
+        with telemetry.timed(record, "retrieval_ms"):
+            hits = _traced_retrieve(root, req)
+    except Exception:
+        root.end()
+        raise
     record["n_hits"] = len(hits)
 
     def events():
@@ -137,16 +207,20 @@ def ask_stream(req: AskRequest):
         # the generator is closed at a yield and only the finally block runs.
         record["status"] = "cancelled"
         generation_start = time.perf_counter()
+        gen = _start_generation(root, req, hits)
         try:
             yield _sse("sources", [s.model_dump() for s in _sources(hits)])
             for item in stream_answer(client, req.question, hits):
                 if isinstance(item, str):
-                    # Time to first token: how long the user stares at nothing before text appears.
-                    record.setdefault("ttft_ms", telemetry.elapsed_ms(start))
+                    if "ttft_ms" not in record:
+                        # Time to first token: how long the user stares at nothing before text appears.
+                        record["ttft_ms"] = telemetry.elapsed_ms(start)
+                        # Langfuse derives its own time-to-first-token from this timestamp.
+                        gen.update(completion_start_time=datetime.now(timezone.utc))
                     yield _sse("token", item)
                 else:
                     record["generation_ms"] = telemetry.elapsed_ms(generation_start)
-                    record.update(telemetry.usage_fields(ANSWER_MODEL, item))
+                    _finish_generation(gen, root, record, item)
                     record.update(status="ok", total_ms=telemetry.elapsed_ms(start))
                     done = {k: record.get(k) for k in (
                         "stop_reason", "input_tokens", "output_tokens", "cost_usd",
@@ -155,9 +229,16 @@ def ask_stream(req: AskRequest):
                     yield _sse("done", done)
         except anthropic.APIError as e:
             record.update(status="error", error=type(e).__name__)
+            _fail(gen, type(e).__name__)
+            _fail(root, f"Generation failed: {type(e).__name__}")
             # Too late for an HTTP error status, so report the failure as an event instead.
             yield _sse("error", {"type": type(e).__name__, "message": str(e)})
         finally:
+            if record["status"] == "cancelled":
+                root.update(level="WARNING", status_message="client disconnected mid-answer")
+            if record["status"] != "ok":
+                gen.end()  # on success _finish_generation already ended it
+            root.end()
             record.setdefault("total_ms", telemetry.elapsed_ms(start))
             telemetry.log_request(record)
 
