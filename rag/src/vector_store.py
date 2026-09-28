@@ -4,6 +4,7 @@ Either way, embedding happens in this process (see embeddings.py); the server on
 vectors and runs the similarity search.
 """
 
+import functools
 import os
 import pathlib
 
@@ -14,10 +15,26 @@ DB_DIR = ROOT / "chroma_db"
 
 
 def get_client():
+    """Return a client for the configured location, reusing it across calls.
+
+    Creating a client isn't free (an HttpClient makes round trips to the server before it's
+    usable), and retrieval asks for one on every query. The cache is keyed by location, so
+    switching CHROMA_PATH (as eval_gate.py does per corpus) still gets the right database.
+    """
     host = os.environ.get("CHROMA_HOST")
     if host:
-        return chromadb.HttpClient(host=host, port=int(os.environ.get("CHROMA_PORT", "8000")))
-    return chromadb.PersistentClient(path=str(_local_path()))
+        return _http_client(host, int(os.environ.get("CHROMA_PORT", "8000")))
+    return _local_client(str(_local_path()))
+
+
+@functools.cache
+def _http_client(host: str, port: int):
+    return chromadb.HttpClient(host=host, port=port)
+
+
+@functools.cache
+def _local_client(path: str):
+    return chromadb.PersistentClient(path=path)
 
 
 def _local_path() -> pathlib.Path:

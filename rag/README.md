@@ -125,6 +125,18 @@ python src/eval_gate.py --update   # accept current scores as the new baseline
 
 GitHub Actions (`.github/workflows/rag-ci.yml`) runs the tests and this gate on every pull request that changes `rag/`, and posts the score table on the run's summary page. When a change genuinely improves scores, run `--update` and commit the new baseline in the same pull request, so the improvement becomes the new minimum.
 
+## Performance
+
+`python src/bench_retrieval.py` measures steady-state retrieval latency per strategy over the eval questions. Warm p50 on the development laptop (18 chunks):
+
+| strategy | before (2026-09-28) | after |
+|---|---|---|
+| vector | 274 ms | 42 ms |
+| hybrid | 277 ms | 47 ms |
+| rerank | 457 ms | 233 ms |
+
+The fix: Chroma's `DefaultEmbeddingFunction` reloads its ONNX model on every call, and Chroma bypasses any embedding function you pass for collections using that default. Retrieval now embeds the question itself with a model loaded once per process (`embeddings.CachedDefaultEmbeddingFunction`) and queries Chroma by vector; Chroma clients are also reused. Vectors are identical, so eval scores are unchanged. The first request after startup is still slow (~0.9 s) because models load lazily.
+
 ## Tests
 
 ```
