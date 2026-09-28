@@ -11,6 +11,11 @@ _bm25_cache: dict[str, tuple] = {}
 _reranker = None
 
 
+def clear_caches() -> None:
+    """Forget cached BM25 indexes, e.g. after re-ingesting a different corpus into the same collection."""
+    _bm25_cache.clear()
+
+
 def _get_collection(embedding_model: str):
     client = vector_store.get_client()
     embedding_fn = get_embedding_function(embedding_model)

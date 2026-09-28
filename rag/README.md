@@ -104,6 +104,17 @@ docker compose run --rm api python src/ingest.py --docs-dir data/current_events
 
 Then call the API at http://localhost:8000 as above. Two named volumes persist data across restarts: `chroma-data` (the index) and `model-cache` (downloaded embedding/reranker models). `ANTHROPIC_API_KEY` is passed through from your shell environment. `docker compose down` stops everything; add `-v` to also delete the volumes.
 
+## Eval regression gate
+
+`src/eval_gate.py` runs the retrieval eval for every combination in `data/eval_baseline.json` (both corpora × vector / hybrid / rerank) and exits with an error if any Hit@1, Hit@k, or MRR score falls below its recorded baseline. Each corpus is ingested into a throwaway Chroma folder, so it never touches `chroma_db/`.
+
+```
+python src/eval_gate.py            # check against the baseline
+python src/eval_gate.py --update   # accept current scores as the new baseline
+```
+
+GitHub Actions (`.github/workflows/rag-ci.yml`) runs the tests and this gate on every pull request that changes `rag/`, and posts the score table on the run's summary page. When a change genuinely improves scores, run `--update` and commit the new baseline in the same pull request, so the improvement becomes the new minimum.
+
 ## Tests
 
 ```

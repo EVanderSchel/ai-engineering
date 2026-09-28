@@ -17,10 +17,15 @@ def get_client():
     host = os.environ.get("CHROMA_HOST")
     if host:
         return chromadb.HttpClient(host=host, port=int(os.environ.get("CHROMA_PORT", "8000")))
-    return chromadb.PersistentClient(path=str(DB_DIR))
+    return chromadb.PersistentClient(path=str(_local_path()))
+
+
+def _local_path() -> pathlib.Path:
+    # CHROMA_PATH lets a caller (e.g. eval_gate.py) use a throwaway folder instead of chroma_db/.
+    return pathlib.Path(os.environ.get("CHROMA_PATH", DB_DIR))
 
 
 def describe() -> str:
     """Human-readable location, for log messages."""
     host = os.environ.get("CHROMA_HOST")
-    return f"http://{host}:{os.environ.get('CHROMA_PORT', '8000')}" if host else str(DB_DIR)
+    return f"http://{host}:{os.environ.get('CHROMA_PORT', '8000')}" if host else str(_local_path())

@@ -10,7 +10,8 @@ from retrieval import retrieve
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 
-def run_eval(eval_path: pathlib.Path, k: int, **retrieve_kwargs):
+def run_eval(eval_path: pathlib.Path, k: int, verbose: bool = True, **retrieve_kwargs) -> dict:
+    """Score retrieval on every case in the eval file and return the metrics as fractions (0-1)."""
     cases = json.loads(eval_path.read_text(encoding="utf-8"))
 
     hits_at_1 = 0
@@ -29,14 +30,17 @@ def run_eval(eval_path: pathlib.Path, k: int, **retrieve_kwargs):
         if rank is not None:
             hits_at_k += 1
 
-        status = "OK" if rank else "MISS"
-        print(f"[{status}] rank={rank or '-'} expected={expected!r} q={question!r}")
+        if verbose:
+            status = "OK" if rank else "MISS"
+            print(f"[{status}] rank={rank or '-'} expected={expected!r} q={question!r}")
 
     n = len(cases)
     mrr = sum(reciprocal_ranks) / n
-    print(f"\nHit@1: {hits_at_1}/{n} ({hits_at_1 / n:.0%})")
-    print(f"Hit@{k}: {hits_at_k}/{n} ({hits_at_k / n:.0%})")
-    print(f"MRR: {mrr:.2f}")
+    if verbose:
+        print(f"\nHit@1: {hits_at_1}/{n} ({hits_at_1 / n:.0%})")
+        print(f"Hit@{k}: {hits_at_k}/{n} ({hits_at_k / n:.0%})")
+        print(f"MRR: {mrr:.2f}")
+    return {"hit_at_1": hits_at_1 / n, "hit_at_k": hits_at_k / n, "mrr": mrr}
 
 
 if __name__ == "__main__":
