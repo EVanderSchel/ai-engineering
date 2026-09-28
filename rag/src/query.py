@@ -35,12 +35,16 @@ def synthesize_answer(question: str, hits: list[dict], client=None) -> str | Non
 
         client = anthropic.Anthropic(api_key=api_key)
 
-    response = client.messages.create(
+    return generate(client, question, hits).content[0].text
+
+
+def generate(client, question: str, hits: list[dict]):
+    """Return the full Message (answer text plus stop_reason and token usage)."""
+    return client.messages.create(
         model=ANSWER_MODEL,
         max_tokens=ANSWER_MAX_TOKENS,
         messages=build_messages(question, hits),
     )
-    return response.content[0].text
 
 
 def stream_answer(client, question: str, hits: list[dict]):

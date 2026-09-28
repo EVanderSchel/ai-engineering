@@ -56,6 +56,8 @@ class FakeMessages:
 
     def create(self, **kwargs):
         self.calls.append(kwargs)
+        if self.error:
+            raise self.error
         return _final_message("".join(self.chunks))
 
     def stream(self, **kwargs):

@@ -1,4 +1,5 @@
 import json
+import logging
 
 import anthropic
 import httpx2
@@ -79,7 +80,11 @@ def test_stream_sends_sources_then_tokens_then_done(http, fake_client, fake_retr
     assert names == ["sources", "token", "token", "token", "done"]
     assert [s["id"] for s in events[0][1]] == ["doc_a::chunk0", "doc_b::chunk3"]
     assert "".join(data for name, data in events if name == "token") == "The tanker Trend was struck."
-    assert events[-1][1] == {"stop_reason": "end_turn", "input_tokens": 100, "output_tokens": 5}
+    done = events[-1][1]
+    assert done["stop_reason"] == "end_turn"
+    assert (done["input_tokens"], done["output_tokens"]) == (100, 5)
+    assert done["cost_usd"] == 0.00025  # 100 * $2/M + 5 * $10/M
+    assert done["retrieval_ms"] <= done["ttft_ms"] <= done["total_ms"]
 
 
 def test_stream_reports_midstream_failure_as_error_event(http, fake_client, fake_retrieve):
@@ -93,3 +98,63 @@ def test_stream_reports_midstream_failure_as_error_event(http, fake_client, fake
     events = parse_sse(resp.text)
     assert [name for name, _ in events] == ["sources", "token", "token", "token", "error"]
     assert events[-1][1]["type"] == "APIConnectionError"
+
+
+def logged_records(caplog) -> list[dict]:
+    return [json.loads(r.getMessage()) for r in caplog.records if r.name == "rag.requests"]
+
+
+def api_error():
+    return anthropic.APIConnectionError(request=httpx2.Request("POST", "https://api.anthropic.com/v1/messages"))
+
+
+def test_ask_logs_one_record_with_usage_and_cost(http, fake_client, fake_retrieve, caplog):
+    caplog.set_level(logging.INFO, logger="rag.requests")
+    resp = http.post("/ask", json={"question": "What ship was struck?"})
+
+    [record] = logged_records(caplog)
+    assert record["request_id"] == resp.headers["X-Request-ID"]
+    assert record["status"] == "ok"
+    assert record["model"] == "claude-sonnet-5"
+    assert record["cost_usd"] == 0.00025
+    assert record["n_hits"] == 2
+    for key in ("retrieval_ms", "generation_ms", "total_ms"):
+        assert record[key] >= 0
+
+
+def test_logs_never_contain_the_question_text(http, fake_client, fake_retrieve, caplog):
+    caplog.set_level(logging.INFO, logger="rag.requests")
+    http.post("/ask", json={"question": "my policy number is 12345"})
+    http.post("/ask/stream", json={"question": "my policy number is 12345"})
+
+    assert "12345" not in caplog.text
+    assert [r["question_chars"] for r in logged_records(caplog)] == [25, 25]
+
+
+def test_ask_upstream_failure_returns_502_and_is_logged(http, fake_client, fake_retrieve, caplog):
+    caplog.set_level(logging.INFO, logger="rag.requests")
+    fake_client.messages.error = api_error()
+
+    assert http.post("/ask", json={"question": "q"}).status_code == 502
+    [record] = logged_records(caplog)
+    assert (record["status"], record["error"]) == ("error", "APIConnectionError")
+
+
+def test_stream_logs_record_matching_request_id(http, fake_client, fake_retrieve, caplog):
+    caplog.set_level(logging.INFO, logger="rag.requests")
+    resp = http.post("/ask/stream", json={"question": "q"})
+
+    [record] = logged_records(caplog)
+    assert record["request_id"] == resp.headers["X-Request-ID"]
+    assert record["status"] == "ok"
+    assert record["ttft_ms"] <= record["total_ms"]
+
+
+def test_stream_failure_is_logged_as_error(http, fake_client, fake_retrieve, caplog):
+    caplog.set_level(logging.INFO, logger="rag.requests")
+    fake_client.messages.error = api_error()
+    http.post("/ask/stream", json={"question": "q"})
+
+    [record] = logged_records(caplog)
+    assert (record["status"], record["error"]) == ("error", "APIConnectionError")
+    assert "cost_usd" not in record  # the final message never arrived, so usage is unknown

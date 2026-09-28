@@ -74,6 +74,8 @@ python -m uvicorn api:app --app-dir src --reload
 
 Interactive docs are at http://localhost:8000/docs.
 
+Every request logs one JSON line (`src/telemetry.py`) with a request ID (also returned in the `X-Request-ID` header), per-stage timings (`retrieval_ms`, `generation_ms`, `ttft_ms` for streams, `total_ms`), token usage, dollar cost, and status (`ok`, `error`, or `cancelled` if a streaming client disconnects). The question text is deliberately not logged. Update `PRICES_PER_MTOK` when changing models.
+
 ## Docker
 
 `docker-compose.yml` runs two containers: the API, and a standalone Chroma server that replaces the local `chroma_db/` folder. Setting `CHROMA_HOST` is what switches the code from the folder to the server (`src/vector_store.py`). Embeddings are still computed in the API container; Chroma only stores vectors and searches them.
