@@ -74,6 +74,13 @@ python -m uvicorn api:app --app-dir src --reload
 
 Interactive docs are at http://localhost:8000/docs.
 
+Configuration for anything reachable from the internet:
+
+- `RAG_API_KEY`: when set, `/ask` and `/ask/stream` require it in an `X-API-Key` header (401 otherwise). `/health` stays open and reports `auth_required`. Leave unset for local development.
+- `RAG_WARM_UP` (default `true`): load the embedding model and indexes at startup, so the first request isn't slow. `RAG_WARM_UP_RERANKER=true` also preloads the reranker.
+
+The Docker image builds the `data/current_events` search index into itself at build time, so a single container runs with no Chroma server. docker-compose sets `CHROMA_HOST` and uses its Chroma server instead.
+
 Every request logs one JSON line (`src/telemetry.py`) with a request ID (also returned in the `X-Request-ID` header), per-stage timings (`retrieval_ms`, `generation_ms`, `ttft_ms` for streams, `total_ms`), token usage, dollar cost, and status (`ok`, `error`, or `cancelled` if a streaming client disconnects). The question text is deliberately not logged. Update `PRICES_PER_MTOK` when changing models.
 
 ### Tracing with Langfuse (optional)

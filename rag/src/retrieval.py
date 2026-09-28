@@ -109,6 +109,15 @@ def rerank(question: str, hits: list[dict], k: int) -> list[dict]:
     return [dict(hit, rerank_score=float(score)) for hit, score in ranked]
 
 
+def warm_up(embedding_model: str = "default", rerank: bool = False) -> None:
+    """Load the embedding model, the collection, and the BM25 index now instead of on the first query.
+    The reranker is optional because it's slow to load and most requests don't use it."""
+    vector_retrieve("warm up", k=1, embedding_model=embedding_model)
+    _load_bm25_index(embedding_model)
+    if rerank:
+        _get_reranker()
+
+
 def retrieve(
     question: str,
     k: int = 3,

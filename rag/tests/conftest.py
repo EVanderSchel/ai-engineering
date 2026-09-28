@@ -6,6 +6,8 @@ from types import SimpleNamespace
 # Never send test traffic to Langfuse, even when rag/.env holds real keys. Must be set before
 # `import api`, because tracing.py decides whether to create a Langfuse client at import time.
 os.environ["LANGFUSE_TRACING_ENABLED"] = "false"
+# Don't load real models when a test starts the app's lifespan.
+os.environ["RAG_WARM_UP"] = "false"
 
 import numpy as np
 import pytest
@@ -73,6 +75,12 @@ class FakeMessages:
 class FakeClient:
     def __init__(self, chunks: list[str]):
         self.messages = FakeMessages(chunks)
+
+
+@pytest.fixture(autouse=True)
+def no_api_key(monkeypatch):
+    """Tests run with auth off unless they set RAG_API_KEY themselves, even if the shell has one."""
+    monkeypatch.delenv("RAG_API_KEY", raising=False)
 
 
 @pytest.fixture
