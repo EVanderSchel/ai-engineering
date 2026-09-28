@@ -37,7 +37,11 @@ def _load_bm25_index(embedding_model: str):
 
 def vector_retrieve(question: str, k: int, embedding_model: str = "default") -> list[dict]:
     collection = _get_collection(embedding_model)
-    results = collection.query(query_texts=[question], n_results=k)
+    # Embed the question here rather than passing query_texts=: for collections on Chroma's default
+    # model, Chroma ignores the embedding function we hand it and rebuilds the model from the
+    # collection's config on every query (~230 ms). Our cached function does it in ~35 ms.
+    query_embedding = get_embedding_function(embedding_model).embed_query([question])
+    results = collection.query(query_embeddings=query_embedding, n_results=k)
     return [
         {"id": doc_id, "text": doc, "source": meta["source"], "distance": distance}
         for doc_id, doc, meta, distance in zip(
