@@ -1,4 +1,4 @@
-﻿# One-time setup that lets GitHub Actions deploy to Azure without storing any password.
+# One-time setup that lets GitHub Actions deploy to Azure without storing any password.
 #
 # How it works (OIDC federation): Azure is told to trust tokens that GitHub issues to workflow jobs in
 # this repository's "rag-production" environment. When the deploy job runs, GitHub gives it a token
@@ -49,22 +49,32 @@ if (-not $spId) {
     $spId = Invoke-Az ad sp create --id $appId --query id -o tsv
 }
 
-Write-Host "Trusting GitHub tokens for repo:${Repo}:environment:$GitHubEnvironment only"
+# GitHub's token subject includes the permanent numeric IDs of the owner and repository
+# (repo:owner@id/name@id:...), so a new repo that reuses this name after a rename or delete can't
+# match. Azure compares the subject exactly, so build it the same way.
+$ownerName, $repoName = $Repo.Split("/")
+$ownerId = Invoke-Gh api "repos/$Repo" --jq .owner.id
+$repoId = Invoke-Gh api "repos/$Repo" --jq .id
+$subject = "repo:${ownerName}@${ownerId}/${repoName}@${repoId}:environment:$GitHubEnvironment"
+
+Write-Host "Trusting GitHub tokens for $subject only"
 $credentialName = "github-$GitHubEnvironment"
-$existing = Invoke-Az ad app federated-credential list --id $appId --query "[?name=='$credentialName'].name" -o tsv
-if (-not $existing) {
-    $tmp = New-TemporaryFile
-    try {
-        @{
-            name      = $credentialName
-            issuer    = "https://token.actions.githubusercontent.com"
-            subject   = "repo:${Repo}:environment:$GitHubEnvironment"
-            audiences = @("api://AzureADTokenExchange")
-        } | ConvertTo-Json | Set-Content -Path $tmp -Encoding ascii
+$tmp = New-TemporaryFile
+try {
+    @{
+        name      = $credentialName
+        issuer    = "https://token.actions.githubusercontent.com"
+        subject   = $subject
+        audiences = @("api://AzureADTokenExchange")
+    } | ConvertTo-Json | Set-Content -Path $tmp -Encoding ascii
+    $current = Invoke-Az ad app federated-credential list --id $appId --query "[?name=='$credentialName'].subject" -o tsv
+    if (-not $current) {
         Invoke-Az ad app federated-credential create --id $appId --parameters "@$tmp" -o none
-    } finally {
-        Remove-Item $tmp -Force
+    } elseif ($current -ne $subject) {
+        Invoke-Az ad app federated-credential update --id $appId --federated-credential-id $credentialName --parameters "@$tmp" -o none
     }
+} finally {
+    Remove-Item $tmp -Force
 }
 
 Write-Host "Granting least-privilege roles"
