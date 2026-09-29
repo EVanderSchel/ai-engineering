@@ -36,11 +36,13 @@ Query it:
 python src\query.py "What is the difference between fixed-size and semantic chunking?"
 ```
 
-To point at your own documents instead of the sample corpus, drop `.txt` files into a folder and run:
+To add your own documents, drop `.txt` files into a folder and run:
 
 ```
 python src\ingest.py --docs-dir path\to\your\docs
 ```
+
+Ingesting a folder adds it alongside what's already in the collection: re-ingesting the same folder replaces only its own chunks, so several corpora can be searched together. Add `--reset` to empty the collection first.
 
 Run the retrieval eval:
 
@@ -169,16 +171,17 @@ python src\ingest.py --docs-dir data\current_events --embedding-model mpnet
 python src\eval.py --eval-file data\eval_set_current_events.json --embedding-model mpnet
 ```
 
-Note that ingesting under the same `--embedding-model` always replaces that model's collection — collections are keyed by embedding model, not by corpus. Re-ingest before switching between `data/sample_docs` and `data/current_events` if you've been using a different corpus.
+Each embedding model has its own collection, so ingest each corpus once per model you want to compare.
 
 ## Corpora
 
 - `data/sample_docs/` — short docs explaining RAG concepts themselves (chunking, embeddings, vector databases, RAG). Paired with `data/eval_set.json`.
 - `data/current_events/` — a paraphrased digest of Wikipedia's Current Events Portal (September 2026), grouped by theme (armed conflicts, politics, business, science/disasters). Content published after the model's training cutoff, so any generated answer has to come from retrieval rather than memory. Paired with `data/eval_set_current_events.json`.
 
-Switch corpora with `--docs-dir` and `--eval-file`:
+Ingest both, then evaluate either one; each corpus's chunks act as distractors for the other's questions:
 
 ```
+python src\ingest.py
 python src\ingest.py --docs-dir data\current_events
 python src\eval.py --eval-file data\eval_set_current_events.json
 ```
