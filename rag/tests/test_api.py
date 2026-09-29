@@ -18,7 +18,7 @@ def parse_sse(body: str) -> list[tuple[str, object]]:
 
 def test_health_reports_generation_disabled_without_key(http, monkeypatch):
     monkeypatch.setattr(api, "client", None)
-    assert http.get("/health").json() == {"status": "ok", "generation_enabled": False, "auth_required": False}
+    assert http.get("/health").json() == {"status": "ok", "generation_enabled": False, "auth_required": False, "version": "dev"}
 
 
 def test_ask_returns_answer_and_sources(http, fake_client, fake_retrieve):

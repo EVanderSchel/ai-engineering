@@ -18,6 +18,10 @@ COPY --from=builder /opt/venv /opt/venv
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONUNBUFFERED=1
 
+# The commit this image was built from, reported by /health so a deploy can confirm which version is live.
+ARG GIT_SHA=dev
+ENV RAG_VERSION=$GIT_SHA
+
 WORKDIR /app
 
 # Embedding and reranker models download into ~/.cache on first use; docker-compose mounts a

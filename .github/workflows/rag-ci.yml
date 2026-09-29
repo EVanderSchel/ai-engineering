@@ -153,5 +153,62 @@ jobs:
             ${{ env.IMAGE_NAME }}:latest
           # Links the package to this repository on GitHub.
           labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          build-args: GIT_SHA=${{ github.sha }}
           cache-from: type=gha,scope=rag-api
           cache-to: type=gha,mode=max,scope=rag-api
+
+  # Roll the new image out to Azure Container Apps. Waits for your approval (the rag-production
+  # environment requires it), then logs in with OIDC: GitHub hands this job a short-lived token that
+  # Azure trusts for this repo's rag-production environment only, so no Azure password is stored.
+  deploy:
+    name: rag-deploy
+    needs: publish
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: rag-production
+      url: ${{ steps.deploy.outputs.url }}
+
+    permissions:
+      id-token: write # lets the job request the OIDC token
+      contents: read
+
+    env:
+      RESOURCE_GROUP: rg-rag-demo
+      APP_NAME: ca-rag-api
+
+    steps:
+      - name: Log in to Azure (OIDC, no stored secret)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy this commit's image
+        id: deploy
+        run: |
+          image="ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/rag-api:${GITHUB_SHA}"
+          az config set extension.use_dynamic_install=yes_without_prompt --only-show-errors
+          az containerapp update -n "$APP_NAME" -g "$RESOURCE_GROUP" --image "$image" --only-show-errors -o none
+          fqdn=$(az containerapp show -n "$APP_NAME" -g "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv --only-show-errors)
+          echo "url=https://$fqdn" >> "$GITHUB_OUTPUT"
+
+      # /health reports the commit its image was built from, so this confirms the *new* version is
+      # serving, not the old one still answering while Azure switches over. The first call may take
+      # ~30 s: with scale-to-zero, it starts a container.
+      - name: Wait for this commit to be live
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          for attempt in $(seq 1 30); do
+            version=$(curl -s --max-time 90 "$URL/health" | python3 -c "import sys, json; print(json.load(sys.stdin).get('version', ''))" 2>/dev/null || true)
+            echo "attempt $attempt: live version '${version}'"
+            if [ "$version" = "$GITHUB_SHA" ]; then
+              echo "Deployed ${GITHUB_SHA} to $URL"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::$URL never reported version $GITHUB_SHA"
+          exit 1

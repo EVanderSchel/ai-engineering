@@ -121,6 +121,7 @@ def health():
         "status": "ok",
         "generation_enabled": client is not None,
         "auth_required": bool(os.environ.get("RAG_API_KEY")),
+        "version": os.environ.get("RAG_VERSION", "dev"),
     }
 
 
