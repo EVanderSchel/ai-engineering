@@ -30,6 +30,19 @@ The scripts are Windows PowerShell. If your execution policy blocks them, run ea
 
 Names live in `azure-config.ps1`.
 
+## Automatic deploys
+
+After a merge to `main`, `.github/workflows/rag-ci.yml` runs `rag-test` and `rag-eval-gate`, then `rag-publish` pushes `rag-api:<sha>`, then `rag-deploy`:
+
+1. **Waits for your approval.** The `rag-production` GitHub environment requires it, and only `main` may deploy there. Approve under Actions → the run → Review deployments.
+2. **Logs in to Azure with OIDC.** GitHub gives the job a short-lived token that Azure trusts only for this repo's `rag-production` environment, so no Azure password is stored in GitHub. The deploy identity (`github-rag-deploy`) can only update container apps in `rg-rag-demo` (*Container Apps Contributor*) and attach `id-rag-api` (*Managed Identity Operator*).
+3. **Swaps the image** with `az containerapp update`, which creates a new revision.
+4. **Waits until `/health` reports this commit's SHA** (baked into the image as `RAG_VERSION`), so it confirms the new version is serving, not the old one mid-switchover.
+
+One-time setup for this: `.zure-github-oidc.ps1` (app registration, federated credential, roles, GitHub environment and its variables).
+
+To roll back, re-run the `rag-deploy` job of an earlier successful run, or: `az containerapp update -n ca-rag-api -g rg-rag-demo --image ghcr.io/evanderschel/rag-api:<older-sha>`.
+
 ## Using it
 
 ```
