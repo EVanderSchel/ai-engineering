@@ -111,6 +111,10 @@ docker compose run --rm api python src/ingest.py --docs-dir data/current_events
 
 Then call the API at http://localhost:8000 as above. Two named volumes persist data across restarts: `chroma-data` (the index) and `model-cache` (downloaded embedding/reranker models). `ANTHROPIC_API_KEY` is passed through from your shell environment. `docker compose down` stops everything; add `-v` to also delete the volumes.
 
+## Deployment
+
+The API runs on Azure Container Apps, with secrets in Key Vault and an API key required on `/ask`. See [deploy/README.md](deploy/README.md) for the architecture, setup scripts, and cold-start behavior.
+
 ## Prompt versions
 
 The answer prompt lives in `prompts/answer/<version>.txt`, not in code (`src/prompts.py`). `prompts/answer/manifest.json` names the active version and records each version's SHA-256 fingerprint. Published versions are immutable: a test fails if a registered file changes, so every logged request (`"prompt": "answer/v1"`), Langfuse generation (`version`), and eval result always points at the exact text that produced it.
