@@ -32,7 +32,9 @@ Names live in `azure-config.ps1`.
 
 ## Automatic deploys
 
-After a merge to `main`, `.github/workflows/rag-ci.yml` runs `rag-test` and `rag-eval-gate`, then `rag-publish` pushes `rag-api:<sha>`, then `rag-deploy`:
+On every pull request, `rag-image` builds the image and runs `deploy/smoke_test.sh` against it (a required check), so a broken Dockerfile or a file missing from the image is caught before merging. The script needs no API keys: it checks offline search with reranking (models and index are inside the image), that the server starts and `/health` reports the right version, and that `/ask` rejects a missing key (401) and reaches the endpoint with the right one. Run it locally with `bash deploy/smoke_test.sh <image> [expected-version]`.
+
+After a merge to `main`, `.github/workflows/rag-ci.yml` runs `rag-test` and `rag-eval-gate`, then `rag-publish` builds the image, smoke-tests that exact image, and only then pushes `rag-api:<sha>`, then `rag-deploy`:
 
 1. **Waits for your approval.** The `rag-production` GitHub environment requires it, and only `main` may deploy there. Approve under Actions → the run → Review deployments.
 2. **Logs in to Azure with OIDC.** GitHub gives the job a short-lived token that Azure trusts only for this repo's `rag-production` environment, so no Azure password is stored in GitHub. The deploy identity (`github-rag-deploy`) can only update container apps in `rg-rag-demo` (*Container Apps Contributor*) and attach `id-rag-api` (*Managed Identity Operator*).

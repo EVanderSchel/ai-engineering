@@ -143,6 +143,36 @@ jobs:
       - name: Run retrieval eval gate
         run: python src/eval_gate.py
 
+  # Required check on pull requests: build the image and smoke-test it, so a broken Dockerfile or a
+  # file missing from the image is caught before merging, not in production. Not pushed anywhere.
+  # (On main, rag-publish runs the same test on the exact image it's about to push.)
+  image:
+    name: rag-image
+    needs: changes
+    if: needs.changes.outputs.rag == 'true' && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      # Same Dockerfile and layer cache as rag-publish, so this mostly reuses cached layers.
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: rag
+          load: true
+          push: false
+          tags: rag-api:pr-${{ github.sha }}
+          build-args: GIT_SHA=${{ github.sha }}
+          cache-from: type=gha,scope=rag-api
+
+      - name: Smoke test the image
+        run: bash rag/deploy/smoke_test.sh "rag-api:pr-${{ github.sha }}" "${{ github.sha }}"
+
   # After a merge to main passes the checks, build the image and push it to GitHub Container
   # Registry, tagged with the commit SHA (what gets deployed) and "latest" (for convenience).
   publish:
@@ -174,11 +204,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Build and push image
+      # Build into the runner's local Docker first (load: true, push: false), so the exact image that
+      # will be deployed can be smoke-tested before anything reaches the registry.
+      - name: Build image
         uses: docker/build-push-action@v7
         with:
           context: rag
-          push: true
+          load: true
+          push: false
           tags: |
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
             ${{ env.IMAGE_NAME }}:latest
@@ -187,6 +220,15 @@ jobs:
           build-args: GIT_SHA=${{ github.sha }}
           cache-from: type=gha,scope=rag-api
           cache-to: type=gha,mode=max,scope=rag-api
+
+      - name: Smoke test the image
+        run: bash rag/deploy/smoke_test.sh "${{ env.IMAGE_NAME }}:${{ github.sha }}" "${{ github.sha }}"
+
+      # Push the image that was just tested, not a rebuild of it.
+      - name: Push image
+        run: |
+          docker push "${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          docker push "${{ env.IMAGE_NAME }}:latest"
 
   # Roll the new image out to Azure Container Apps. Waits for your approval (the rag-production
   # environment requires it), then logs in with OIDC: GitHub hands this job a short-lived token that
