@@ -1,0 +1,32 @@
+[
+  {
+    "question": "What is the name of Sweden's prime minister?",
+    "answerable": false,
+    "trap": "The context names Ulf Kristersson as prime minister but says he resigned after the election; it does not say who replaced him."
+  },
+  {
+    "question": "How many sailors died in the attack on the tanker Trend?",
+    "answerable": false,
+    "trap": "The context says two sailors went missing, but from a different ship (the El Gaia), and missing is not dead. It gives no casualty figure for the Trend."
+  },
+  {
+    "question": "How much did Clearlake Capital pay for its original stake in Chelsea FC?",
+    "answerable": false,
+    "trap": "The context gives about 950 million pounds, but that was for buying Todd Boehly and Mark Walter's stakes, not Clearlake's original stake."
+  },
+  {
+    "question": "How many Yemeni refugees have arrived in Djibouti in total?",
+    "answerable": false,
+    "trap": "The context says 2,400 refugees arrived in Djibouti in just four days, which is not a total."
+  },
+  {
+    "question": "Who is the new chairman of Chelsea FC?",
+    "answerable": false,
+    "trap": "The context says Clearlake Capital, a company, acquired full control; it names no chairman."
+  },
+  {
+    "question": "How many people died when the KNBC news helicopter crashed in the Philippines?",
+    "answerable": false,
+    "trap": "The KNBC helicopter crash (three deaths) was in Chatsworth, California. The Philippines accident was a truck plunging into a ravine (six deaths)."
+  }
+]

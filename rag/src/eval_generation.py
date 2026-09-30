@@ -43,7 +43,7 @@ HISTORY_FILE = ROOT / "data" / "generation_eval_history.jsonl"
 # own generation style.
 JUDGE_MODEL = "claude-haiku-4-5-20251001"
 # Bump when JUDGE_PROMPT changes: scores from different judge versions aren't comparable.
-JUDGE_VERSION = "judge/v2"
+JUDGE_VERSION = "judge/v3"
 
 JUDGE_PROMPT = """You are evaluating a RAG system's generated answer against the context it was given.
 
@@ -55,26 +55,38 @@ Retrieved context:
 Generated answer:
 {answer}
 
-Score the answer on three criteria:
+Score the answer on four criteria:
 1. faithful: true if every factual claim in the answer is directly supported by the retrieved \
 context (no invented facts, no outside knowledge), false otherwise. An answer that correctly \
 says the context doesn't contain the answer is faithful.
 2. relevant: true if the answer actually addresses the question asked, false otherwise.
 3. declined: true if the answer states that the context does not contain the answer (or not \
 enough information to answer it) instead of answering, false if it gives an answer.
+4. misled: {misled_criterion}
 
 Respond with ONLY a JSON object, no other text, in this exact format:
-{{"faithful": true, "relevant": true, "declined": false, "reasoning": "one sentence explanation"}}"""
+{{"faithful": true, "relevant": true, "declined": false, "misled": false, "reasoning": "one sentence explanation"}}"""
+
+# Trap cases: the context holds a related fact that looks like the answer but isn't. A faithfulness
+# check can't catch presenting it as the answer, since the fact itself is in the context.
+TRAP_CRITERION = (
+    "This question is a trap: {trap} Set misled to true if the answer presents that related "
+    "information as the answer to the question. Set it to false if the answer makes clear that the "
+    "context doesn't answer the question, even if it also mentions the related information."
+)
+NO_TRAP_CRITERION = "Always false for this question."
 
 CITATION = re.compile(r"\[([^\[\]]+?\.txt)\]")
 
 
-def judge_answer(client, question: str, hits: list[dict], answer: str) -> dict:
+def judge_answer(client, question: str, hits: list[dict], answer: str, trap: str | None = None) -> dict:
     context = "\n\n".join(f"[{h['source']}] {h['text']}" for h in hits)
+    criterion = TRAP_CRITERION.format(trap=trap) if trap else NO_TRAP_CRITERION
+    prompt = JUDGE_PROMPT.format(context=context, question=question, answer=answer, misled_criterion=criterion)
     response = client.messages.create(
         model=JUDGE_MODEL,
-        max_tokens=200,
-        messages=[{"role": "user", "content": JUDGE_PROMPT.format(context=context, question=question, answer=answer)}],
+        max_tokens=300,
+        messages=[{"role": "user", "content": prompt}],
     )
     raw = answer_text(response).strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
     return json.loads(raw)
@@ -94,14 +106,16 @@ def summarize(results: list[dict]) -> dict:
     - relevance, false_refusal_rate: answerable cases
     - citation_rate: answerable cases the model actually answered, citing at least one retrieved
       source and no source that wasn't retrieved
-    - correct_refusal_rate: unanswerable cases where the model said the context lacks the answer
+    - correct_refusal_rate: unanswerable cases (not traps) where the model said the context lacks the answer
+    - trap_resistance: trap cases where the model did NOT present the look-alike fact as the answer
     """
 
     def rate(cases, predicate):
         return round(sum(map(predicate, cases)) / len(cases), 4) if cases else None
 
     answerable = [r for r in results if r["answerable"]]
-    unanswerable = [r for r in results if not r["answerable"]]
+    unanswerable = [r for r in results if not r["answerable"] and not r.get("trap")]
+    traps = [r for r in results if r.get("trap")]
     answered = [r for r in answerable if not r["declined"]]
     return {
         "faithfulness": rate(results, lambda r: r["faithful"]),
@@ -109,10 +123,12 @@ def summarize(results: list[dict]) -> dict:
         "citation_rate": rate(answered, lambda r: r["cited"] and not r["invalid_citations"]),
         "false_refusal_rate": rate(answerable, lambda r: r["declined"]),
         "correct_refusal_rate": rate(unanswerable, lambda r: r["declined"]),
+        "trap_resistance": rate(traps, lambda r: not r["misled"]),
         "avg_output_tokens": round(sum(r["output_tokens"] for r in results) / len(results), 1),
         "generation_cost_usd": round(sum(r["cost_usd"] for r in results), 6),
         "n": len(results),
         "n_unanswerable": len(unanswerable),
+        "n_traps": len(traps),
     }
 
 
@@ -134,9 +150,11 @@ def run_eval(cases: list[dict], k: int, prompt: prompts.Prompt, **retrieve_kwarg
         hits = retrieve(question, k=k, **retrieve_kwargs)
         message = generate(client, question, hits, prompt)
         answer = answer_text(message)
-        verdict = judge_answer(client, question, hits, answer)
+        verdict = judge_answer(client, question, hits, answer, case.get("trap"))
         result = {
             "answerable": answerable,
+            "trap": bool(case.get("trap")),
+            "misled": bool(verdict.get("misled", False)),
             "faithful": bool(verdict["faithful"]),
             "relevant": bool(verdict["relevant"]),
             "declined": bool(verdict["declined"]),
@@ -151,6 +169,11 @@ def run_eval(cases: list[dict], k: int, prompt: prompts.Prompt, **retrieve_kwarg
                 "faithful" if result["faithful"] else "UNFAITHFUL",
                 "relevant" if result["relevant"] else "IRRELEVANT",
                 "WRONGLY-DECLINED" if result["declined"] else ("cited" if result["cited"] else "no-citation"),
+            ]
+        elif result["trap"]:
+            tags = [
+                "faithful" if result["faithful"] else "UNFAITHFUL",
+                "MISLED-BY-TRAP" if result["misled"] else "resisted-trap",
             ]
         else:
             tags = [
@@ -173,6 +196,7 @@ def run_eval(cases: list[dict], k: int, prompt: prompts.Prompt, **retrieve_kwarg
     print(f"Citation rate:         {pct(metrics['citation_rate'])}")
     print(f"False refusals:        {pct(metrics['false_refusal_rate'])}  (lower is better)")
     print(f"Correct refusals:      {pct(metrics['correct_refusal_rate'])}")
+    print(f"Trap resistance:       {pct(metrics['trap_resistance'])}")
     print(f"Avg output tokens:     {metrics['avg_output_tokens']:.0f}")
     print(f"Generation cost:       ${metrics['generation_cost_usd']:.4f}")
     return metrics
@@ -206,15 +230,16 @@ def print_history() -> None:
         value = row.get(key)
         return "-" if value is None else f"{value:.0%}"
 
-    columns = ["date", "prompt", "judge", "n", "faithful", "relevant", "cited", "false ref", "correct ref", "out tok", "cost $"]
-    widths = [10, 10, 8, 3, 8, 8, 6, 9, 11, 7, 7]
+    columns = ["date", "prompt", "judge", "n", "faithful", "relevant", "cited", "false ref", "correct ref", "trap ok",
+               "out tok", "cost $"]
+    widths = [10, 10, 8, 3, 8, 8, 6, 9, 11, 7, 7, 7]
     print(" ".join(c.ljust(w) if i < 3 else c.rjust(w) for i, (c, w) in enumerate(zip(columns, widths))))
     print("-" * (sum(widths) + len(widths) - 1))
     for r in rows:
         cells = [
             r["date"], r["prompt"], r.get("judge", "judge/v1"), str(r["n"]),
             pct(r, "faithfulness"), pct(r, "relevance"), pct(r, "citation_rate"),
-            pct(r, "false_refusal_rate"), pct(r, "correct_refusal_rate"),
+            pct(r, "false_refusal_rate"), pct(r, "correct_refusal_rate"), pct(r, "trap_resistance"),
             f"{r['avg_output_tokens']:.0f}", f"{r['generation_cost_usd']:.4f}",
         ]
         print(" ".join(c.ljust(w) if i < 3 else c.rjust(w) for i, (c, w) in enumerate(zip(cells, widths))))
