@@ -1,5 +1,5 @@
 {
-  "active": "v2",
+  "active": "v3",
   "versions": {
     "v1": {
       "sha256": "d3b087ae6cd17c0e7ccb83f2fcf2f32bd85196b57bf72b8955c1dacec3b7b042",
@@ -10,6 +10,11 @@
       "sha256": "b33c5d74c20b8f76bfb59bd35da31ac88aa442a66a5325d741ae218f65d1647e",
       "created": "2026-09-28",
       "notes": "Adds [file.txt] citations after each factual sentence, forbids outside knowledge, and handles partially answerable questions."
+    },
+    "v3": {
+      "sha256": "94bcbc8de9e054b0d0c9433247a8abe179a75bcab83f2c04cb563e521c874915",
+      "created": "2026-09-30",
+      "notes": "v2 plus one rule: don't present a fact the context says has changed or ended (resigned, replaced, cancelled) as still true. Targets the Sweden-PM trap."
     }
   }
 }
