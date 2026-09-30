@@ -10,7 +10,15 @@ from retrieval import retrieve
 # The prompt text lives in prompts/answer/<version>.txt; see prompts.py for how versions work.
 ANSWER_PROMPT = prompts.load("answer")
 ANSWER_MODEL = "claude-sonnet-5"
-ANSWER_MAX_TOKENS = 500
+# Room for a full answer: real answers to comparison questions reached ~400 tokens, and hitting the
+# cap cuts the answer off mid-sentence (stop_reason "max_tokens").
+ANSWER_MAX_TOKENS = 1024
+
+
+def answer_text(message) -> str:
+    """The answer's text. A response can hold several content blocks (for example a thinking block
+    before the text), so join every text block rather than assuming the first block is text."""
+    return "".join(block.text for block in message.content if block.type == "text")
 
 
 def build_messages(question: str, hits: list[dict], prompt: prompts.Prompt | None = None) -> list[dict]:
@@ -30,7 +38,7 @@ def synthesize_answer(question: str, hits: list[dict], client=None, prompt=None)
 
         client = anthropic.Anthropic(api_key=api_key)
 
-    return generate(client, question, hits, prompt).content[0].text
+    return answer_text(generate(client, question, hits, prompt))
 
 
 def generate(client, question: str, hits: list[dict], prompt=None):

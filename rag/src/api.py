@@ -24,14 +24,16 @@ from datetime import datetime, timezone
 
 import anthropic
 import chromadb.errors
+import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 import telemetry
 import tracing
+import vector_store
 from embeddings import MODELS
-from query import ANSWER_MAX_TOKENS, ANSWER_MODEL, ANSWER_PROMPT, build_messages, generate, stream_answer
+from query import ANSWER_MAX_TOKENS, ANSWER_MODEL, ANSWER_PROMPT, answer_text, build_messages, generate, stream_answer
 from retrieval import retrieve, warm_up
 
 # uvicorn's own logger already prints to the console, so startup messages appear next to its own.
@@ -57,9 +59,18 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="RAG API", lifespan=lifespan)
 
+# The SDK's default timeout is 10 minutes per attempt, with 2 retries, so one stuck call could hold a
+# request for half an hour. Answers here take a few seconds; a minute means something is wrong.
+CLAUDE_TIMEOUT_SECONDS = 60.0
+
+
+def make_client() -> anthropic.Anthropic:
+    return anthropic.Anthropic(timeout=CLAUDE_TIMEOUT_SECONDS)
+
+
 # One client for the whole process: it holds a connection pool, so reusing it avoids
 # a new TLS handshake per request. It reads ANTHROPIC_API_KEY from the environment.
-client = anthropic.Anthropic() if os.environ.get("ANTHROPIC_API_KEY") else None
+client = make_client() if os.environ.get("ANTHROPIC_API_KEY") else None
 
 
 class AskRequest(BaseModel):
@@ -79,6 +90,8 @@ class Source(BaseModel):
 class AskResponse(BaseModel):
     answer: str
     sources: list[Source]
+    # "end_turn" means a complete answer; "max_tokens" means it was cut off at the length limit.
+    stop_reason: str
 
 
 def _retrieve(req: AskRequest) -> list[dict]:
@@ -92,6 +105,10 @@ def _retrieve(req: AskRequest) -> list[dict]:
             hybrid=req.hybrid,
             use_reranker=req.rerank,
         )
+    except (vector_store.VectorStoreUnavailable, httpx.TransportError):
+        # The Chroma server is down or unreachable: temporary, so tell the caller to retry.
+        raise HTTPException(503, "The search index is temporarily unavailable. Try again shortly.",
+                            headers={"Retry-After": "10"})
     except chromadb.errors.NotFoundError:
         # A valid model name, but nobody has built its index on this server (each embedding model
         # needs its own). That's the caller's choice to fix, not a server fault, so not a 500.
@@ -182,7 +199,7 @@ def _start_generation(root, req: AskRequest, hits: list[dict]):
 
 def _finish_generation(gen, root, record: dict, message) -> str:
     """Copy usage and cost onto the log record and the trace, and return the answer text."""
-    answer = message.content[0].text
+    answer = answer_text(message)
     record.update(telemetry.usage_fields(ANSWER_MODEL, message))
     gen.update(
         output=answer,
@@ -197,6 +214,10 @@ def _finish_generation(gen, root, record: dict, message) -> str:
 
 def _fail(obs, message: str) -> None:
     obs.update(level="ERROR", status_message=message)
+
+
+def _error_name(e: Exception) -> str:
+    return f"HTTP {e.status_code}" if isinstance(e, HTTPException) else type(e).__name__
 
 
 @app.post("/ask", response_model=AskResponse, dependencies=[Depends(require_api_key)])
@@ -220,17 +241,29 @@ def ask(req: AskRequest, response: Response):
         except anthropic.APIError as e:
             _fail(gen, type(e).__name__)
             gen.end()
-            _fail(root, f"Generation failed: {type(e).__name__}")
-            record.update(status="error", error=type(e).__name__, total_ms=telemetry.elapsed_ms(start))
-            telemetry.log_request(record)
+            record.update(status="error", error=type(e).__name__)
             # 502 Bad Gateway: our server is fine, the service it depends on failed.
             raise HTTPException(502, f"Generation failed: {type(e).__name__}")
 
         answer = _finish_generation(gen, root, record, message)
-        record.update(status="ok", total_ms=telemetry.elapsed_ms(start))
-        telemetry.log_request(record)
-        return AskResponse(answer=answer, sources=_sources(hits))
+        if message.stop_reason == "refusal":
+            # Claude declined; any text is at most a fragment, so don't present it as an answer.
+            record["status"] = "refused"
+            root.update(level="WARNING", status_message="Claude declined to answer")
+            raise HTTPException(422, "Claude declined to answer this question.")
+        record["status"] = "ok"
+        return AskResponse(answer=answer, sources=_sources(hits), stop_reason=message.stop_reason)
+    except Exception as e:
+        # Covers our own HTTP errors (422, 502, 503) and anything unexpected, which becomes a 500.
+        record.setdefault("status", "error")
+        record.setdefault("error", _error_name(e))
+        if record["status"] == "error":
+            _fail(root, record["error"])
+        raise
     finally:
+        # Exactly one log line per request, whatever happened above.
+        record.setdefault("total_ms", telemetry.elapsed_ms(start))
+        telemetry.log_request(record)
         root.end()
 
 
@@ -247,7 +280,10 @@ def ask_stream(req: AskRequest):
     try:
         with telemetry.timed(record, "retrieval_ms"):
             hits = _traced_retrieve(root, req)
-    except Exception:
+    except Exception as e:
+        record.update(status="error", error=_error_name(e), total_ms=telemetry.elapsed_ms(start))
+        _fail(root, record["error"])
+        telemetry.log_request(record)
         root.end()
         raise
     record["n_hits"] = len(hits)
@@ -258,6 +294,7 @@ def ask_stream(req: AskRequest):
         record["status"] = "cancelled"
         generation_start = time.perf_counter()
         gen = _start_generation(root, req, hits)
+        finished = False  # whether _finish_generation has already ended the generation span
         try:
             yield _sse("sources", [s.model_dump() for s in _sources(hits)])
             for item in stream_answer(client, req.question, hits):
@@ -271,7 +308,13 @@ def ask_stream(req: AskRequest):
                 else:
                     record["generation_ms"] = telemetry.elapsed_ms(generation_start)
                     _finish_generation(gen, root, record, item)
-                    record.update(status="ok", total_ms=telemetry.elapsed_ms(start))
+                    finished = True
+                    # The client sees stop_reason in the done event: "max_tokens" means the answer
+                    # was cut off, "refusal" means Claude declined partway.
+                    record.update(
+                        status="refused" if item.stop_reason == "refusal" else "ok",
+                        total_ms=telemetry.elapsed_ms(start),
+                    )
                     done = {k: record.get(k) for k in (
                         "stop_reason", "input_tokens", "output_tokens", "cost_usd",
                         "retrieval_ms", "ttft_ms", "total_ms",
@@ -286,8 +329,8 @@ def ask_stream(req: AskRequest):
         finally:
             if record["status"] == "cancelled":
                 root.update(level="WARNING", status_message="client disconnected mid-answer")
-            if record["status"] != "ok":
-                gen.end()  # on success _finish_generation already ended it
+            if not finished:
+                gen.end()
             root.end()
             record.setdefault("total_ms", telemetry.elapsed_ms(start))
             telemetry.log_request(record)

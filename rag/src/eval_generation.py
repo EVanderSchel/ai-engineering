@@ -31,7 +31,7 @@ import re
 import prompts
 import telemetry
 from embeddings import MODELS
-from query import ANSWER_MODEL, generate
+from query import ANSWER_MODEL, answer_text, generate
 from retrieval import retrieve
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -76,7 +76,7 @@ def judge_answer(client, question: str, hits: list[dict], answer: str) -> dict:
         max_tokens=200,
         messages=[{"role": "user", "content": JUDGE_PROMPT.format(context=context, question=question, answer=answer)}],
     )
-    raw = response.content[0].text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    raw = answer_text(response).strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
     return json.loads(raw)
 
 
@@ -133,7 +133,7 @@ def run_eval(cases: list[dict], k: int, prompt: prompts.Prompt, **retrieve_kwarg
         answerable = case.get("answerable", True)
         hits = retrieve(question, k=k, **retrieve_kwargs)
         message = generate(client, question, hits, prompt)
-        answer = message.content[0].text
+        answer = answer_text(message)
         verdict = judge_answer(client, question, hits, answer)
         result = {
             "answerable": answerable,
