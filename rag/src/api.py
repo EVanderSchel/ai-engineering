@@ -23,6 +23,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 import anthropic
+import chromadb.errors
 from fastapi import Depends, FastAPI, Header, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -83,13 +84,22 @@ class AskResponse(BaseModel):
 def _retrieve(req: AskRequest) -> list[dict]:
     if req.embedding_model not in MODELS:
         raise HTTPException(422, f"embedding_model must be one of {list(MODELS)}")
-    return retrieve(
-        req.question,
-        k=req.k,
-        embedding_model=req.embedding_model,
-        hybrid=req.hybrid,
-        use_reranker=req.rerank,
-    )
+    try:
+        return retrieve(
+            req.question,
+            k=req.k,
+            embedding_model=req.embedding_model,
+            hybrid=req.hybrid,
+            use_reranker=req.rerank,
+        )
+    except chromadb.errors.NotFoundError:
+        # A valid model name, but nobody has built its index on this server (each embedding model
+        # needs its own). That's the caller's choice to fix, not a server fault, so not a 500.
+        raise HTTPException(
+            422,
+            f"No index has been built for embedding_model '{req.embedding_model}' on this server. "
+            f"Use another model, or run: python src/ingest.py --embedding-model {req.embedding_model}",
+        )
 
 
 def _sources(hits: list[dict]) -> list[Source]:

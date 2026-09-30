@@ -214,3 +214,18 @@ def test_rejected_request_still_closes_its_trace(http, fake_client, fake_retriev
     [root] = fake_traces
     assert root.end_calls == 1
     assert root.children[0].fields["level"] == "ERROR"
+
+
+def test_model_without_an_index_returns_clear_422_not_500(http, fake_client, monkeypatch):
+    """A valid model name whose index was never built (e.g. mpnet) is the caller's to fix."""
+    import chromadb.errors
+
+    def missing(question, **kwargs):
+        raise chromadb.errors.NotFoundError("Collection [rag_docs__mpnet] does not exist")
+
+    monkeypatch.setattr(api, "retrieve", missing)
+    for path in ("/ask", "/ask/stream"):
+        resp = http.post(path, json={"question": "q", "embedding_model": "mpnet"})
+        assert resp.status_code == 422
+        assert "No index has been built for embedding_model 'mpnet'" in resp.json()["detail"]
+    assert fake_client.messages.calls == []  # never reached Claude
