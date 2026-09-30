@@ -74,7 +74,18 @@ python -m uvicorn api:app --app-dir src --reload
 - `POST /ask`: returns the full answer and its sources as one JSON response.
 - `POST /ask/stream`: streams the answer as Server-Sent Events: a `sources` event, then `token` events as Claude writes, then `done` (stop reason and token usage), or `error` if generation fails partway.
 
-Interactive docs are at http://localhost:8000/docs.
+Interactive docs are at http://localhost:8000/docs (use http://127.0.0.1:8000/docs if Docker Desktop is also holding port 8000).
+
+`/ask` returns `answer`, `sources`, and `stop_reason`: `end_turn` for a complete answer, `max_tokens` if it was cut off at the length limit (1024 tokens). Errors:
+
+| Status | Meaning |
+|---|---|
+| 401 | Missing or wrong `X-API-Key` (only when `RAG_API_KEY` is set) |
+| 422 | Invalid request, unknown `embedding_model`, no index built for that model, or Claude declined to answer |
+| 502 | The Claude API call failed (after the SDK's 2 retries; each attempt times out after 60 s) |
+| 503 | No Anthropic key configured, or the Chroma server is unreachable (`Retry-After: 10`) |
+
+Every request, including failed ones, writes exactly one JSON log line with its `status` (`ok`, `error`, `refused`, or `cancelled`).
 
 Configuration for anything reachable from the internet:
 

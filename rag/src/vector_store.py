@@ -14,6 +14,10 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 DB_DIR = ROOT / "chroma_db"
 
 
+class VectorStoreUnavailable(RuntimeError):
+    """The Chroma server can't be reached: a temporary outage, not a problem with the request."""
+
+
 def get_client():
     """Return a client for the configured location, reusing it across calls.
 
@@ -23,7 +27,12 @@ def get_client():
     """
     host = os.environ.get("CHROMA_HOST")
     if host:
-        return _http_client(host, int(os.environ.get("CHROMA_PORT", "8000")))
+        port = int(os.environ.get("CHROMA_PORT", "8000"))
+        try:
+            return _http_client(host, port)
+        except Exception as e:
+            # Failed creations aren't cached, so the next request tries again.
+            raise VectorStoreUnavailable(f"Can't reach the Chroma server at {host}:{port}") from e
     return _local_client(str(_local_path()))
 
 

@@ -43,6 +43,10 @@ USER appuser
 # because it sets CHROMA_HOST and uses its Chroma server instead.
 RUN python src/ingest.py --docs-dir data/current_events
 
+# Download the reranker (~90 MB) now too. Otherwise every cold start's first rerank request downloads
+# it from Hugging Face: slow, and it fails whenever Hugging Face is unreachable or rate-limits us.
+RUN python -c "import sys; sys.path.insert(0, 'src'); import retrieval; retrieval._get_reranker()"
+
 EXPOSE 8000
 
 CMD ["uvicorn", "api:app", "--app-dir", "src", "--host", "0.0.0.0", "--port", "8000"]

@@ -22,11 +22,12 @@ FAKE_HITS = [
 ]
 
 
-def _final_message(text: str) -> SimpleNamespace:
-    """Mimic the fields of an anthropic Message that our code reads."""
+def _final_message(text: str, stop_reason: str = "end_turn", leading_blocks=()) -> SimpleNamespace:
+    """Mimic the fields of an anthropic Message that our code reads. leading_blocks go before the
+    text block, e.g. a thinking block."""
     return SimpleNamespace(
-        content=[SimpleNamespace(type="text", text=text)],
-        stop_reason="end_turn",
+        content=[*leading_blocks, SimpleNamespace(type="text", text=text)],
+        stop_reason=stop_reason,
         usage=SimpleNamespace(input_tokens=100, output_tokens=len(text.split())),
     )
 
@@ -34,9 +35,10 @@ def _final_message(text: str) -> SimpleNamespace:
 class FakeStream:
     """Stands in for the context manager returned by client.messages.stream()."""
 
-    def __init__(self, chunks: list[str], error: Exception | None):
+    def __init__(self, chunks: list[str], error: Exception | None, final):
         self._chunks = chunks
         self._error = error
+        self._final = final
 
     def __enter__(self):
         return self
@@ -52,7 +54,7 @@ class FakeStream:
             raise self._error  # fail partway through, like a dropped connection
 
     def get_final_message(self):
-        return _final_message("".join(self._chunks))
+        return self._final
 
 
 class FakeMessages:
@@ -60,16 +62,22 @@ class FakeMessages:
         self.chunks = chunks
         self.error: Exception | None = None
         self.calls: list[dict] = []  # every request's kwargs, so tests can inspect what was sent
+        # Tests can change how the response ends, or put other blocks before the text.
+        self.stop_reason = "end_turn"
+        self.leading_blocks: list = []
+
+    def _final(self):
+        return _final_message("".join(self.chunks), self.stop_reason, self.leading_blocks)
 
     def create(self, **kwargs):
         self.calls.append(kwargs)
         if self.error:
             raise self.error
-        return _final_message("".join(self.chunks))
+        return self._final()
 
     def stream(self, **kwargs):
         self.calls.append(kwargs)
-        return FakeStream(self.chunks, self.error)
+        return FakeStream(self.chunks, self.error, self._final())
 
 
 class FakeClient:

@@ -30,7 +30,8 @@ def _load_bm25_index(embedding_model: str):
     if embedding_model not in _bm25_cache:
         collection = _get_collection(embedding_model)
         result = collection.get(include=["documents", "metadatas"])
-        bm25 = BM25Okapi([_tokenize(doc) for doc in result["documents"]])
+        # BM25 can't be built over zero documents (it divides by the average document length).
+        bm25 = BM25Okapi([_tokenize(doc) for doc in result["documents"]]) if result["documents"] else None
         _bm25_cache[embedding_model] = (bm25, result["ids"], result["documents"], result["metadatas"])
     return _bm25_cache[embedding_model]
 
@@ -52,6 +53,8 @@ def vector_retrieve(question: str, k: int, embedding_model: str = "default") -> 
 
 def bm25_retrieve(question: str, k: int, embedding_model: str = "default") -> list[dict]:
     bm25, ids, documents, metadatas = _load_bm25_index(embedding_model)
+    if bm25 is None:  # empty collection
+        return []
     scores = bm25.get_scores(_tokenize(question))
     ranked = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:k]
     return [
