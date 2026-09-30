@@ -229,3 +229,9 @@ def test_model_without_an_index_returns_clear_422_not_500(http, fake_client, mon
         assert resp.status_code == 422
         assert "No index has been built for embedding_model 'mpnet'" in resp.json()["detail"]
     assert fake_client.messages.calls == []  # never reached Claude
+
+
+def test_docs_list_every_status_the_endpoints_can_return(http):
+    spec = http.get("/openapi.json").json()
+    for path in ("/ask", "/ask/stream"):
+        assert set(spec["paths"][path]["post"]["responses"]) == {"200", "401", "422", "502", "503"}

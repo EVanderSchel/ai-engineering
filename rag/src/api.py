@@ -87,6 +87,22 @@ class Source(BaseModel):
     text: str
 
 
+class ErrorResponse(BaseModel):
+    detail: str
+
+
+# Errors the endpoints raise themselves, listed so the /docs page shows every possible outcome.
+# FastAPI documents 200 and request-validation 422s automatically, but not these.
+ERROR_RESPONSES = {
+    401: {"model": ErrorResponse, "description": "Missing or wrong X-API-Key (only when RAG_API_KEY is set)"},
+    422: {"description": "Invalid request, unknown embedding_model, no index built for that model, "
+                         "or Claude declined to answer"},
+    502: {"model": ErrorResponse, "description": "The Claude API call failed"},
+    503: {"model": ErrorResponse, "description": "No Anthropic key configured, or the search index is "
+                                                 "unreachable (see the Retry-After header)"},
+}
+
+
 class AskResponse(BaseModel):
     answer: str
     sources: list[Source]
@@ -220,7 +236,7 @@ def _error_name(e: Exception) -> str:
     return f"HTTP {e.status_code}" if isinstance(e, HTTPException) else type(e).__name__
 
 
-@app.post("/ask", response_model=AskResponse, dependencies=[Depends(require_api_key)])
+@app.post("/ask", response_model=AskResponse, responses=ERROR_RESPONSES, dependencies=[Depends(require_api_key)])
 def ask(req: AskRequest, response: Response):
     if client is None:
         raise HTTPException(503, "ANTHROPIC_API_KEY is not set")
@@ -267,7 +283,15 @@ def ask(req: AskRequest, response: Response):
         root.end()
 
 
-@app.post("/ask/stream", dependencies=[Depends(require_api_key)])
+@app.post(
+    "/ask/stream",
+    responses={
+        200: {"description": "Server-Sent Events: sources, then token events, then done (or error)",
+              "content": {"text/event-stream": {}}},
+        **ERROR_RESPONSES,
+    },
+    dependencies=[Depends(require_api_key)],
+)
 def ask_stream(req: AskRequest):
     if client is None:
         raise HTTPException(503, "ANTHROPIC_API_KEY is not set")

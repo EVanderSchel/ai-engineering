@@ -50,3 +50,24 @@ def test_invalid_citation_does_not_count_as_cited():
 
 def test_metrics_without_unanswerable_cases_are_none_not_zero():
     assert summarize([case()])["correct_refusal_rate"] is None
+
+
+def trap_case(misled, declined=False):
+    return {**case(answerable=False, declined=declined), "trap": True, "misled": misled}
+
+
+def test_traps_have_their_own_metric_and_stay_out_of_refusal_rate():
+    results = [
+        case(answerable=False, declined=True),   # plain unanswerable, declined correctly
+        trap_case(misled=False, declined=True),  # said the context doesn't answer it
+        trap_case(misled=True),                  # presented the look-alike fact as the answer
+    ]
+    m = summarize(results)
+
+    assert m["trap_resistance"] == 0.5
+    assert m["correct_refusal_rate"] == 1.0  # only the plain unanswerable case counts here
+    assert (m["n_unanswerable"], m["n_traps"]) == (1, 2)
+
+
+def test_runs_without_traps_report_none_for_trap_resistance():
+    assert summarize([case()])["trap_resistance"] is None
