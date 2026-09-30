@@ -23,7 +23,7 @@ Hands-on projects built while upskilling toward an AI Engineer role. Each folder
 
 ## How changes land
 
-`main` is protected: every change goes through a pull request, and merging requires each project's checks to pass (`rag-test`, `rag-eval-gate`, `ci-cd-workflow-lint`, `ci-cd-workflow-test`, `ci-cd-workflow-build`, plus the `-changes` jobs). Deployments to production environments additionally wait for manual approval.
+`main` is protected: every change goes through a pull request, and merging requires each project's checks to pass (`rag-test`, `rag-eval-gate`, `rag-image`, `ci-cd-workflow-lint`, `ci-cd-workflow-test`, `ci-cd-workflow-build`, plus the `-changes` jobs). `rag-image` builds the Docker image and smoke-tests it (offline search, startup, auth), and `rag-publish` repeats that test on the exact image before pushing it. Deployments to production environments additionally wait for manual approval.
 
 ## Roadmap
 
