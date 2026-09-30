@@ -27,6 +27,7 @@ import json
 import os
 import pathlib
 import re
+import time
 
 import prompts
 import telemetry
@@ -126,13 +127,17 @@ def summarize(results: list[dict]) -> dict:
         "trap_resistance": rate(traps, lambda r: not r["misled"]),
         "avg_output_tokens": round(sum(r["output_tokens"] for r in results) / len(results), 1),
         "generation_cost_usd": round(sum(r["cost_usd"] for r in results), 6),
+        # Median, not mean: one slow API call shouldn't dominate the comparison.
+        "median_generation_ms": round(sorted(r.get("generation_ms", 0) for r in results)[len(results) // 2]),
         "n": len(results),
         "n_unanswerable": len(unanswerable),
         "n_traps": len(traps),
     }
 
 
-def run_eval(cases: list[dict], k: int, prompt: prompts.Prompt, **retrieve_kwargs) -> dict | None:
+def run_eval(
+    cases: list[dict], k: int, prompt: prompts.Prompt, answer_model: str = ANSWER_MODEL, **retrieve_kwargs
+) -> dict | None:
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         print("ANTHROPIC_API_KEY is not set - generation eval needs it to both generate and judge answers.")
@@ -141,14 +146,16 @@ def run_eval(cases: list[dict], k: int, prompt: prompts.Prompt, **retrieve_kwarg
     import anthropic
 
     client = anthropic.Anthropic(api_key=api_key)
-    print(f"Prompt {prompt.id} (sha256 {prompt.sha256[:12]}), {len(cases)} cases\n")
+    print(f"Prompt {prompt.id} (sha256 {prompt.sha256[:12]}), answer model {answer_model}, {len(cases)} cases\n")
 
     results = []
     for case in cases:
         question = case["question"]
         answerable = case.get("answerable", True)
         hits = retrieve(question, k=k, **retrieve_kwargs)
-        message = generate(client, question, hits, prompt)
+        start = time.perf_counter()
+        message = generate(client, question, hits, prompt, model=answer_model)
+        generation_ms = (time.perf_counter() - start) * 1000
         answer = answer_text(message)
         verdict = judge_answer(client, question, hits, answer, case.get("trap"))
         result = {
@@ -160,7 +167,8 @@ def run_eval(cases: list[dict], k: int, prompt: prompts.Prompt, **retrieve_kwarg
             "declined": bool(verdict["declined"]),
             **check_citations(answer, hits),
             "output_tokens": message.usage.output_tokens,
-            "cost_usd": telemetry.cost_usd(ANSWER_MODEL, message.usage.input_tokens, message.usage.output_tokens) or 0,
+            "cost_usd": telemetry.cost_usd(answer_model, message.usage.input_tokens, message.usage.output_tokens) or 0,
+            "generation_ms": generation_ms,
         }
         results.append(result)
 
@@ -199,16 +207,19 @@ def run_eval(cases: list[dict], k: int, prompt: prompts.Prompt, **retrieve_kwarg
     print(f"Trap resistance:       {pct(metrics['trap_resistance'])}")
     print(f"Avg output tokens:     {metrics['avg_output_tokens']:.0f}")
     print(f"Generation cost:       ${metrics['generation_cost_usd']:.4f}")
+    print(f"Median generation:     {metrics['median_generation_ms']} ms")
     return metrics
 
 
-def record(result: dict, prompt: prompts.Prompt, eval_paths: list[pathlib.Path], settings: dict) -> None:
+def record(
+    result: dict, prompt: prompts.Prompt, eval_paths: list[pathlib.Path], settings: dict, answer_model: str = ANSWER_MODEL
+) -> None:
     """Append one run to the history file, tagged with exactly what produced it."""
     entry = {
         "date": datetime.date.today().isoformat(),
         "prompt": prompt.id,
         "prompt_sha256": prompt.sha256[:12],
-        "model": ANSWER_MODEL,
+        "model": answer_model,
         "judge_model": JUDGE_MODEL,
         "judge": JUDGE_VERSION,
         "eval_file": " + ".join(p.resolve().relative_to(ROOT).as_posix() for p in eval_paths),
@@ -230,19 +241,20 @@ def print_history() -> None:
         value = row.get(key)
         return "-" if value is None else f"{value:.0%}"
 
-    columns = ["date", "prompt", "judge", "n", "faithful", "relevant", "cited", "false ref", "correct ref", "trap ok",
-               "out tok", "cost $"]
-    widths = [10, 10, 8, 3, 8, 8, 6, 9, 11, 7, 7, 7]
-    print(" ".join(c.ljust(w) if i < 3 else c.rjust(w) for i, (c, w) in enumerate(zip(columns, widths))))
+    columns = ["date", "prompt", "model", "judge", "n", "faithful", "relevant", "cited", "false ref", "correct ref",
+               "trap ok", "out tok", "cost $", "p50 ms"]
+    widths = [10, 10, 16, 8, 3, 8, 8, 6, 9, 11, 7, 7, 7, 6]
+    text_columns = 4
+    print(" ".join(c.ljust(w) if i < text_columns else c.rjust(w) for i, (c, w) in enumerate(zip(columns, widths))))
     print("-" * (sum(widths) + len(widths) - 1))
     for r in rows:
         cells = [
-            r["date"], r["prompt"], r.get("judge", "judge/v1"), str(r["n"]),
+            r["date"], r["prompt"], r.get("model", "claude-sonnet-5"), r.get("judge", "judge/v1"), str(r["n"]),
             pct(r, "faithfulness"), pct(r, "relevance"), pct(r, "citation_rate"),
             pct(r, "false_refusal_rate"), pct(r, "correct_refusal_rate"), pct(r, "trap_resistance"),
-            f"{r['avg_output_tokens']:.0f}", f"{r['generation_cost_usd']:.4f}",
+            f"{r['avg_output_tokens']:.0f}", f"{r['generation_cost_usd']:.4f}", str(r.get("median_generation_ms", "-")),
         ]
-        print(" ".join(c.ljust(w) if i < 3 else c.rjust(w) for i, (c, w) in enumerate(zip(cells, widths))))
+        print(" ".join(c.ljust(w) if i < text_columns else c.rjust(w) for i, (c, w) in enumerate(zip(cells, widths))))
         print(f"{'':11}eval: {r['eval_file']}")
 
 
@@ -266,6 +278,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--prompt-version", default=None, help="Answer prompt version to test, e.g. v2 (default: the manifest's active one)"
     )
+    parser.add_argument(
+        "--answer-model", default=ANSWER_MODEL, help=f"Model that generates the answers (default: {ANSWER_MODEL})"
+    )
     parser.add_argument("--no-record", action="store_true", help="Don't append this run to the history file")
     parser.add_argument("--history", action="store_true", help="Print all recorded runs and exit")
     args = parser.parse_args()
@@ -288,6 +303,7 @@ if __name__ == "__main__":
         cases,
         args.k,
         prompt,
+        answer_model=args.answer_model,
         embedding_model=args.embedding_model,
         hybrid=args.hybrid,
         use_reranker=args.rerank,
@@ -295,4 +311,4 @@ if __name__ == "__main__":
     )
     # Partial runs (--limit) aren't comparable with full ones, so they're never recorded.
     if result and not args.no_record and not args.limit:
-        record(result, prompt, args.eval_file, settings)
+        record(result, prompt, args.eval_file, settings, args.answer_model)

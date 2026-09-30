@@ -41,10 +41,11 @@ def synthesize_answer(question: str, hits: list[dict], client=None, prompt=None)
     return answer_text(generate(client, question, hits, prompt))
 
 
-def generate(client, question: str, hits: list[dict], prompt=None):
-    """Return the full Message (answer text plus stop_reason and token usage)."""
+def generate(client, question: str, hits: list[dict], prompt=None, model: str | None = None):
+    """Return the full Message (answer text plus stop_reason and token usage). model overrides
+    ANSWER_MODEL, for comparing models in evals."""
     return client.messages.create(
-        model=ANSWER_MODEL,
+        model=model or ANSWER_MODEL,
         max_tokens=ANSWER_MAX_TOKENS,
         messages=build_messages(question, hits, prompt),
     )

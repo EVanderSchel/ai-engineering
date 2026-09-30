@@ -6,6 +6,7 @@ from rank_bm25 import BM25Okapi
 
 from embeddings import collection_name, get_embedding_function
 import vector_store
+from model_names import RERANKER_MODEL
 
 _bm25_cache: dict[str, tuple] = {}
 _reranker = None
@@ -93,7 +94,7 @@ def _get_reranker():
     if _reranker is None:
         from sentence_transformers import CrossEncoder
 
-        _reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+        _reranker = CrossEncoder(RERANKER_MODEL)
     return _reranker
 
 

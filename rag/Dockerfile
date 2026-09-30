@@ -18,34 +18,37 @@ COPY --from=builder /opt/venv /opt/venv
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONUNBUFFERED=1
 
-# The commit this image was built from, reported by /health so a deploy can confirm which version is live.
-ARG GIT_SHA=dev
-ENV RAG_VERSION=$GIT_SHA
-
 WORKDIR /app
 
-# Embedding and reranker models download into ~/.cache on first use; docker-compose mounts a
-# volume there so they survive container restarts. The directory must exist and belong to
-# appuser so the volume inherits that ownership.
+# Embedding and reranker models download into ~/.cache; docker-compose mounts a volume there so they
+# survive container restarts. The directory must exist and belong to appuser so the volume inherits
+# that ownership.
 RUN useradd --create-home appuser \
  && mkdir -p /home/appuser/.cache /app/chroma_db \
  && chown appuser /home/appuser/.cache /app/chroma_db
+
+USER appuser
+
+# Steps are ordered from least to most often changed, because Docker re-runs every step after the
+# first one whose inputs changed. Models first: this step only depends on two small files that rarely
+# change, so it stays cached across ordinary code changes. It downloads the embedding model and the
+# reranker (~90 MB), so containers never fetch them from the internet at runtime.
+COPY src/model_names.py src/download_models.py ./src/
+RUN python src/download_models.py
 
 COPY src/ ./src/
 COPY data/ ./data/
 COPY prompts/ ./prompts/
 
-USER appuser
-
 # Build the search index into the image, so a deployed container needs no database server: the
-# corpus is small and static, and changing it means rebuilding the image anyway. This also
-# downloads the embedding model into the image. docker-compose ignores this built-in index,
-# because it sets CHROMA_HOST and uses its Chroma server instead.
+# corpus is small and static, and changing it means rebuilding the image anyway. docker-compose
+# ignores this built-in index, because it sets CHROMA_HOST and uses its Chroma server instead.
 RUN python src/ingest.py --docs-dir data/current_events
 
-# Download the reranker (~90 MB) now too. Otherwise every cold start's first rerank request downloads
-# it from Hugging Face: slow, and it fails whenever Hugging Face is unreachable or rate-limits us.
-RUN python -c "import sys; sys.path.insert(0, 'src'); import retrieval; retrieval._get_reranker()"
+# The commit this image was built from, reported by /health so a deploy can confirm which version is
+# live. Last on purpose: it changes on every commit, and everything after it would be rebuilt too.
+ARG GIT_SHA=dev
+ENV RAG_VERSION=$GIT_SHA
 
 EXPOSE 8000
 
