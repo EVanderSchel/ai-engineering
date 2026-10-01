@@ -1,0 +1,10 @@
+{
+  "active": "v1",
+  "versions": {
+    "v1": {
+      "sha256": "d12a70b1627472a34fbfd8953f040343f9b57d4f900b481e7f079864e0949d77",
+      "created": "2026-10-01",
+      "notes": "Baseline: transcribe page 1 (header + Part I); blank lines listed in blank_lines, 0 is 0, parentheses are negative, filer name not DBA/preparer, EIN without dash."
+    }
+  }
+}

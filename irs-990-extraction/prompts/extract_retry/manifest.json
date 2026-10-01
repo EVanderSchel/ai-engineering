@@ -1,0 +1,10 @@
+{
+  "active": "v1",
+  "versions": {
+    "v1": {
+      "sha256": "3772ced01982218c0df9570938ae55e3aa1a8dd4e3d723d69e4b03d1d4b47778",
+      "created": "2026-10-01",
+      "notes": "Baseline retry message: lists the broken rules and asks for a full corrected transcription, changing only misread values."
+    }
+  }
+}

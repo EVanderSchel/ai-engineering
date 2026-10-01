@@ -1,0 +1,5 @@
+Your transcription breaks these rules, which a correct reading of this page always satisfies:
+
+{problems}
+
+Look at the page again, find the misread values, and return the complete corrected transcription. Change only what you misread: if a total really is printed as shown, keep it and fix the line that was misread instead.

@@ -6,6 +6,8 @@ requires-python = ">=3.14,<3.15"
 # Direct dependencies; exact versions with checksums live in uv.lock. Install with `uv sync`.
 # Extraction dependencies (anthropic, pydantic, pymupdf, ...) are added by the steps that need them.
 dependencies = [
+    "anthropic>=1.11.0",
+    "pydantic>=2.13.5",
     "pymupdf>=1.28.2",
     "remotezip>=0.12.6",
     "requests>=2.34.2",
