@@ -28,15 +28,16 @@ jobs:
       CHROMA_PATH: /tmp/rag-eval-chroma # a throwaway index, built below
 
     steps:
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # After checkout: steps run in rag/ (the job's default directory), which doesn't exist before it.
       - name: Check the API key secret is set
         run: |
           if [ -z "$ANTHROPIC_API_KEY" ]; then
             echo "::error::Add a repository secret named RAG_EVAL_ANTHROPIC_API_KEY (Settings -> Secrets and variables -> Actions)."
             exit 1
           fi
-
-      - name: Check out code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
         id: setup-python
