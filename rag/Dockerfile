@@ -1,18 +1,25 @@
-# --- Stage 1: install dependencies into a virtualenv ---
-FROM python:3.10-slim AS builder
+# --- Stage 1: install the locked dependencies into a virtualenv ---
+FROM python:3.14-slim AS builder
 
-RUN python -m venv /opt/venv
-ENV PATH=/opt/venv/bin:$PATH
+# uv installs exactly what uv.lock specifies, verifying every package's checksum. Pinned to a version
+# so the build doesn't change when uv releases.
+COPY --from=ghcr.io/astral-sh/uv:0.12.21 /uv /bin/uv
 
-COPY requirements.txt .
-# CPU-only torch first: the default PyPI build bundles CUDA libraries (several GB) this image never uses.
-# torch comes from PyTorch's CPU index; its dependencies still come from PyPI.
-RUN pip install --no-cache-dir --upgrade pip \
- && pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple \
- && pip install --no-cache-dir -r requirements.txt
+# UV_PROJECT_ENVIRONMENT: install into /opt/venv, which stage 2 copies.
+# UV_PYTHON_DOWNLOADS=never: use this image's Python, never download another.
+# UV_COMPILE_BYTECODE=1: pre-compile .py files now, so the container doesn't on every cold start.
+# UV_LINK_MODE=copy: real file copies (the default hard links don't survive the stage-to-stage copy).
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv     UV_PYTHON_DOWNLOADS=never     UV_COMPILE_BYTECODE=1     UV_LINK_MODE=copy
+
+WORKDIR /build
+COPY pyproject.toml uv.lock ./
+# --frozen: install uv.lock as-is and fail if it's out of date, rather than re-resolving.
+# --no-dev: leave out test and audit tools.
+RUN uv sync --frozen --no-dev
 
 # --- Stage 2: runtime image with only the finished virtualenv and the app ---
-FROM python:3.10-slim
+# Same Python image as stage 1: the virtualenv points at this exact interpreter.
+FROM python:3.14-slim
 
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH=/opt/venv/bin:$PATH \

@@ -1,0 +1,12 @@
+# Known vulnerabilities that were reviewed and judged not to apply to this project.
+# security/audit.sh (CI check rag-audit) fails on any vulnerability NOT listed here.
+# Format: ID, then why it's accepted. Revisit when a fixed version exists, and remove the entry once
+# the fix is adopted. Last reviewed: 2026-09-30.
+#
+# All four are in the Chroma *server's* HTTP API. The deployed app never runs a Chroma server: it
+# queries an index built into its image. Locally, docker-compose runs one but binds it to 127.0.0.1.
+# No fixed chromadb version exists yet (1.5.9 is the latest release).
+PYSEC-2026-311   chromadb: unauthenticated code execution via the server's collections endpoint
+PYSEC-2026-3814  chromadb: authenticated code execution via the server's collection endpoint
+PYSEC-2026-3815  chromadb: RBAC provider ignores which tenant/database a permission applies to
+PYSEC-2026-3813  chromadb: authenticated users can access other tenants' collections

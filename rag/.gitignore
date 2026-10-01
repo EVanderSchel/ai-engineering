@@ -5,3 +5,4 @@ __pycache__/
 chroma_db/
 .env
 .pytest_cache/
+venv*/
