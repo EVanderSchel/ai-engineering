@@ -26,8 +26,8 @@ IRS data is public domain. Thanks to ProPublica for the Nonprofit Explorer API; 
 
 | Step | What |
 |---|---|
-| 0 | Project scaffolding: uv, ruff, pytest, CI with required checks *(this step)* |
-| 1 | Gold set: pick filings from the IRS index, download their XML and page images, build answer-key JSON |
+| 0 | Project scaffolding: uv, ruff, pytest, CI with required checks *(done)* |
+| 1 | Gold set: pick filings from the IRS index, download their XML and page images, build answer-key JSON *(done)* |
 | 2 | Schema and baseline: Pydantic model of Part I, Claude structured outputs from page images, validation and retry |
 | 3 | Eval harness: per-field accuracy with normalization, results history by prompt version and model |
 | 4 | Vision input choices: page selection, resolution, PDF vs. image input, cost per document |
@@ -36,6 +36,20 @@ IRS data is public domain. Thanks to ProPublica for the Nonprofit Explorer API; 
 | 7 | Batch processing: Message Batches API, concurrency, idempotent reprocessing |
 | 8 | Model comparison: Sonnet vs. Haiku on accuracy, cost, and latency, over repeated runs |
 | 9 | Optional: an `/extract` API reusing the rag project's production setup |
+
+## Gold set
+
+60 real Form 990 filings from the IRS's 2024 index, 20 per size band by current-year total revenue (small < $500k, medium $500k-$5M, large >= $5M), split 7 **dev** / 13 **test** per band. Dev is for developing prompts; **test is held out** and only used for final scores, so improvements can't be tuned to the questions that grade them.
+
+| File | What |
+|---|---|
+| `data/gold/<object_id>.json` | Answer key: the 43 fields in `src/fields.py` (filer identity + Part I), read from the e-file XML |
+| `data/gold/manifest.csv` | One row per filing: EIN, name, tax period, band, split, DLN, IRS PDF filename |
+| `data/gold/skipped.csv` | Filings tried but left out, and why (15, all with no published PDF yet) |
+
+Rebuild (or fetch the PDFs on a new machine) with `python src/build_gold.py`; the fixed seed picks the same filings, and files already in `data/raw/` aren't downloaded again. Requests are spaced about a second apart per host.
+
+**What's in it:** tax years ending 2021-2024 (mostly 2023), 16-79 pages per return, Part I always on page 1. A blank line on the form is `null` in the answer key, not `0`: blanks are common (volunteers in 19 of 60, some prior-year lines in up to 36), and so are negative values (current-year revenue less expenses in 19 of 60). Missions run up to 760 characters. Spot checks of three filings (tax years 2021, 2023, 2025) against their page images matched on every field.
 
 ## Setup
 
