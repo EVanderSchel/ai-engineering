@@ -1,0 +1,3 @@
+# Known vulnerabilities that were reviewed and judged not to apply to this project.
+# security/audit.sh (CI check irs-990-extraction-audit) fails on any vulnerability NOT listed here.
+# Format: ID, then why it's accepted. Remove an entry once a fixed version is adopted.

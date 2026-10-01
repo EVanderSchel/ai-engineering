@@ -1,0 +1,145 @@
+name: irs-990-extraction CI
+
+# Pull requests always start this workflow, and the `changes` job decides whether irs-990-extraction/ was
+# touched. If not, the other jobs are skipped, and GitHub counts a skipped job as passing, so their
+# checks can be required on main without blocking pull requests for other projects. (Same pattern as
+# rag-ci.yml.)
+on:
+  push:
+    branches: [main]
+    paths:
+      - "irs-990-extraction/**"
+      - ".github/workflows/irs-990-extraction-ci.yml"
+  pull_request:
+    branches: [main]
+
+# The GITHUB_TOKEN gets read-only access; no job here needs more.
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: irs-990-extraction-changes
+    runs-on: ubuntu-latest
+    outputs:
+      project: ${{ steps.filter.outputs.project }}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2 # for a pull request, HEAD is a merge commit; HEAD^1 is the tip of main
+
+      - name: Detect changes to irs-990-extraction/
+        id: filter
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            # Push to main: the paths filter above already decided this workflow is relevant.
+            echo "project=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only HEAD^1 HEAD)
+          echo "Files changed by this pull request:"
+          echo "$changed"
+          if grep -qE '^(irs-990-extraction/|\.github/workflows/irs-990-extraction-ci\.yml$)' <<< "$changed"; then
+            echo "project=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "project=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  lint:
+    name: irs-990-extraction-lint
+    needs: changes
+    if: needs.changes.outputs.project == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: irs-990-extraction
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.21"
+
+      - name: Check lint rules
+        run: uv run --frozen --only-group lint ruff check .
+
+      - name: Check formatting
+        run: uv run --frozen --only-group lint ruff format --check .
+
+  test:
+    name: irs-990-extraction-test
+    needs: changes
+    if: needs.changes.outputs.project == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: irs-990-extraction
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.21"
+
+      # Reuse the installed environment while uv.lock is unchanged. The key includes the exact Python
+      # version because a virtualenv only works with the interpreter that created it.
+      - name: Restore Python environment
+        id: venv-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: irs-990-extraction/.venv
+          key: irs-990-venv-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('irs-990-extraction/uv.lock') }}
+
+      # Exactly what uv.lock specifies, checksums verified. --frozen fails rather than re-resolving if
+      # uv.lock is out of date.
+      - name: Install dependencies (only when uv.lock changed)
+        if: steps.venv-cache.outputs.cache-hit != 'true'
+        env:
+          UV_PYTHON_DOWNLOADS: never
+        run: uv sync --frozen --python "${{ steps.setup-python.outputs.python-path }}"
+
+      - name: Use the environment
+        run: echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+
+      - name: Check uv.lock matches pyproject.toml
+        run: uv lock --check
+
+      - name: Run tests
+        run: python -m pytest -v
+
+  # Every locked production dependency is checked for known vulnerabilities. Fails on any that isn't
+  # listed, with a reason, in irs-990-extraction/security/accepted-vulnerabilities.txt.
+  audit:
+    name: irs-990-extraction-audit
+    needs: changes
+    if: needs.changes.outputs.project == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: irs-990-extraction
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.21"
+
+      - name: Audit dependencies
+        run: bash security/audit.sh
