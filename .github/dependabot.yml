@@ -16,6 +16,14 @@ updates:
       rag-python:
         update-types: [minor, patch]
 
+  - package-ecosystem: uv
+    directory: /irs-990-extraction
+    schedule:
+      interval: weekly
+    groups:
+      irs-990-extraction-python:
+        update-types: [minor, patch]
+
   - package-ecosystem: pip
     directory: /ci-cd-workflow
     schedule:

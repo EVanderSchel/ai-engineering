@@ -1,0 +1,29 @@
+[project]
+name = "irs-990-extraction"
+version = "0.1.0"
+description = "Structured, validated data extracted from IRS Form 990 filings (images only) with Claude, evaluated against the IRS's own e-file XML"
+requires-python = ">=3.14,<3.15"
+# Direct dependencies; exact versions with checksums live in uv.lock. Install with `uv sync`.
+# Extraction dependencies (anthropic, pydantic, pymupdf, ...) are added by the steps that need them.
+dependencies = []
+
+[dependency-groups]
+lint = [
+    "ruff>=0.16",
+]
+dev = [
+    "pytest>=9.0",
+    { include-group = "lint" },
+]
+
+[tool.uv]
+# An application, not a library: install its dependencies, don't build or install it as a package.
+package = false
+
+[tool.ruff]
+line-length = 120
+target-version = "py314"
+
+[tool.ruff.lint]
+# Same rules as rag: E/W style, F real bugs, I import order, B likely bugs, UP modern syntax.
+select = ["E", "W", "F", "I", "B", "UP"]
