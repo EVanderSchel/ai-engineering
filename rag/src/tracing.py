@@ -54,9 +54,7 @@ def start_trace(request_id: str, name: str, input, metadata: dict):
     so a log line can be looked up in Langfuse directly."""
     if _client is None:
         return _NoOp()
-    root = _client.start_observation(
-        trace_context={"trace_id": request_id}, name=name, input=input, metadata=metadata
-    )
+    root = _client.start_observation(trace_context={"trace_id": request_id}, name=name, input=input, metadata=metadata)
     root.set_trace_io(input=input)
     return root
 

@@ -1,0 +1,44 @@
+# Dependabot version updates: weekly PRs that move dependencies, GitHub Actions and Docker base images
+# to newer versions. (Security fixes arrive separately, as soon as they're published.) Each PR runs the
+# usual required checks, so an update that breaks tests, evals or the container smoke test can't merge.
+#
+# Minor and patch updates are grouped into one PR per ecosystem to keep the noise down; major versions
+# get their own PRs, because they're the ones that can break things.
+version: 2
+updates:
+  # rag: pyproject.toml + uv.lock. chromadb is pinned exactly (it must match the Chroma server image in
+  # rag/docker-compose.yml), so it only changes when both are updated together by hand.
+  - package-ecosystem: uv
+    directory: /rag
+    schedule:
+      interval: weekly
+    groups:
+      rag-python:
+        update-types: [minor, patch]
+
+  - package-ecosystem: pip
+    directory: /ci-cd-workflow
+    schedule:
+      interval: weekly
+    groups:
+      ci-cd-workflow-python:
+        update-types: [minor, patch]
+
+  # Workflows pin every action to a commit, with the version in a comment; Dependabot updates both.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        update-types: [minor, patch]
+
+  # Base images are pinned by digest; Dependabot also proposes new digests when an image is rebuilt
+  # (for example, with OS security patches) under the same tag.
+  - package-ecosystem: docker
+    directories: [/rag, /ci-cd-workflow]
+    schedule:
+      interval: weekly
+    groups:
+      docker-images:
+        update-types: [minor, patch]

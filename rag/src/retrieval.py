@@ -4,8 +4,8 @@ import re
 
 from rank_bm25 import BM25Okapi
 
-from embeddings import collection_name, get_embedding_function
 import vector_store
+from embeddings import collection_name, get_embedding_function
 from model_names import RERANKER_MODEL
 
 _bm25_cache: dict[str, tuple] = {}
@@ -47,7 +47,7 @@ def vector_retrieve(question: str, k: int, embedding_model: str = "default") -> 
     return [
         {"id": doc_id, "text": doc, "source": meta["source"], "distance": distance}
         for doc_id, doc, meta, distance in zip(
-            results["ids"][0], results["documents"][0], results["metadatas"][0], results["distances"][0]
+            results["ids"][0], results["documents"][0], results["metadatas"][0], results["distances"][0], strict=True
         )
     ]
 
@@ -58,10 +58,7 @@ def bm25_retrieve(question: str, k: int, embedding_model: str = "default") -> li
         return []
     scores = bm25.get_scores(_tokenize(question))
     ranked = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:k]
-    return [
-        {"id": ids[i], "text": documents[i], "source": metadatas[i]["source"], "score": scores[i]}
-        for i in ranked
-    ]
+    return [{"id": ids[i], "text": documents[i], "source": metadatas[i]["source"], "score": scores[i]} for i in ranked]
 
 
 def hybrid_retrieve(
@@ -109,7 +106,7 @@ def rerank(question: str, hits: list[dict], k: int) -> list[dict]:
         return hits
     model = _get_reranker()
     scores = model.predict([(question, hit["text"]) for hit in hits])
-    ranked = sorted(zip(hits, scores), key=lambda pair: pair[1], reverse=True)[:k]
+    ranked = sorted(zip(hits, scores, strict=True), key=lambda pair: pair[1], reverse=True)[:k]
     return [dict(hit, rerank_score=float(score)) for hit, score in ranked]
 
 

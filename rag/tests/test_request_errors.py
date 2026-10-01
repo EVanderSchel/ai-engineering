@@ -20,10 +20,12 @@ def logged_records(caplog) -> list[dict]:
 
 # --- 1. Answer text, length limit, refusals -----------------------------------------------------
 
+
 def test_answer_text_skips_non_text_blocks():
     thinking = SimpleNamespace(type="thinking", thinking="")
-    message = SimpleNamespace(content=[thinking, SimpleNamespace(type="text", text="Hello "),
-                                       SimpleNamespace(type="text", text="world")])
+    message = SimpleNamespace(
+        content=[thinking, SimpleNamespace(type="text", text="Hello "), SimpleNamespace(type="text", text="world")]
+    )
     assert answer_text(message) == "Hello world"
 
 
@@ -70,6 +72,7 @@ def test_stream_refusal_is_reported_in_done_event_and_log(http, fake_client, fak
 
 # --- 2. Search index unavailable or empty --------------------------------------------------------
 
+
 def test_chroma_unreachable_is_503_with_retry_after(http, fake_client, monkeypatch):
     def unreachable(question, **kwargs):
         raise vector_store.VectorStoreUnavailable("Can't reach the Chroma server at chroma:8000")
@@ -112,12 +115,14 @@ def test_keyword_search_on_an_empty_index_returns_nothing(monkeypatch):
 
 # --- 3. Claude call timeout ----------------------------------------------------------------------
 
+
 def test_claude_client_has_a_short_timeout(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
     assert api.make_client().timeout == api.CLAUDE_TIMEOUT_SECONDS == 60.0
 
 
 # --- 4. Every request is logged exactly once ------------------------------------------------------
+
 
 def test_unexpected_error_is_logged_once_as_error(fake_client, monkeypatch, caplog):
     caplog.set_level(logging.INFO, logger="rag.requests")

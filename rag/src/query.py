@@ -62,8 +62,7 @@ def stream_answer(client, question: str, hits: list[dict], prompt=None):
         max_tokens=ANSWER_MAX_TOKENS,
         messages=build_messages(question, hits, prompt),
     ) as stream:
-        for text in stream.text_stream:
-            yield text
+        yield from stream.text_stream
         yield stream.get_final_message()
 
 

@@ -14,10 +14,16 @@ import pytest
 from fastapi.testclient import TestClient
 
 import api
+import rate_limit
 
 # Scores are numpy floats on purpose: that's what BM25 returns, and JSON can't encode them.
 FAKE_HITS = [
-    {"id": "doc_a::chunk0", "text": "The tanker Trend was struck on September 18.", "source": "doc_a.txt", "score": np.float64(0.9)},
+    {
+        "id": "doc_a::chunk0",
+        "text": "The tanker Trend was struck on September 18.",
+        "source": "doc_a.txt",
+        "score": np.float64(0.9),
+    },
     {"id": "doc_b::chunk3", "text": "Shipping insurance rates rose.", "source": "doc_b.txt", "score": np.float64(0.4)},
 ]
 
@@ -48,8 +54,7 @@ class FakeStream:
 
     @property
     def text_stream(self):
-        for chunk in self._chunks:
-            yield chunk
+        yield from self._chunks
         if self._error:
             raise self._error  # fail partway through, like a dropped connection
 
@@ -86,6 +91,14 @@ class FakeClient:
 
 
 @pytest.fixture(autouse=True)
+def fresh_rate_limits():
+    """Each test starts with no requests counted, so tests can't hit each other's limits."""
+    rate_limit.reset()
+    yield
+    rate_limit.reset()
+
+
+@pytest.fixture(autouse=True)
 def no_api_key(monkeypatch):
     """Tests run with auth off unless they set RAG_API_KEY themselves, even if the shell has one."""
     monkeypatch.delenv("RAG_API_KEY", raising=False)
@@ -117,7 +130,7 @@ class FakeObservation:
     def __init__(self, name: str, **kwargs):
         self.name = name
         self.fields = dict(kwargs)
-        self.children: list["FakeObservation"] = []
+        self.children: list[FakeObservation] = []
         self.end_calls = 0
 
     def start_observation(self, *, name: str, **kwargs):

@@ -211,8 +211,34 @@ def run_eval(
     return metrics
 
 
+def check_thresholds(metrics: dict, minimums: dict[str, float], maximums: dict[str, float]) -> list[str]:
+    """Return a description of every metric outside its allowed range (empty list: all good).
+    A metric that doesn't apply to this run (None) counts as a failure, so a threshold is never
+    silently skipped."""
+    failures = []
+    for name, floor in minimums.items():
+        value = metrics.get(name)
+        if value is None or value < floor:
+            failures.append(f"{name} = {value} (minimum {floor})")
+    for name, ceiling in maximums.items():
+        value = metrics.get(name)
+        if value is None or value > ceiling:
+            failures.append(f"{name} = {value} (maximum {ceiling})")
+    return failures
+
+
+def parse_thresholds(items: list[str]) -> dict[str, float]:
+    """Turn ["faithfulness=0.95", ...] into {"faithfulness": 0.95, ...}."""
+    pairs = (item.split("=", 1) for item in items)
+    return {name.strip(): float(value) for name, value in pairs}
+
+
 def record(
-    result: dict, prompt: prompts.Prompt, eval_paths: list[pathlib.Path], settings: dict, answer_model: str = ANSWER_MODEL
+    result: dict,
+    prompt: prompts.Prompt,
+    eval_paths: list[pathlib.Path],
+    settings: dict,
+    answer_model: str = ANSWER_MODEL,
 ) -> None:
     """Append one run to the history file, tagged with exactly what produced it."""
     entry = {
@@ -241,20 +267,53 @@ def print_history() -> None:
         value = row.get(key)
         return "-" if value is None else f"{value:.0%}"
 
-    columns = ["date", "prompt", "model", "judge", "n", "faithful", "relevant", "cited", "false ref", "correct ref",
-               "trap ok", "out tok", "cost $", "p50 ms"]
+    columns = [
+        "date",
+        "prompt",
+        "model",
+        "judge",
+        "n",
+        "faithful",
+        "relevant",
+        "cited",
+        "false ref",
+        "correct ref",
+        "trap ok",
+        "out tok",
+        "cost $",
+        "p50 ms",
+    ]
     widths = [10, 10, 16, 8, 3, 8, 8, 6, 9, 11, 7, 7, 7, 6]
     text_columns = 4
-    print(" ".join(c.ljust(w) if i < text_columns else c.rjust(w) for i, (c, w) in enumerate(zip(columns, widths))))
+    print(
+        " ".join(
+            c.ljust(w) if i < text_columns else c.rjust(w) for i, (c, w) in enumerate(zip(columns, widths, strict=True))
+        )
+    )
     print("-" * (sum(widths) + len(widths) - 1))
     for r in rows:
         cells = [
-            r["date"], r["prompt"], r.get("model", "claude-sonnet-5"), r.get("judge", "judge/v1"), str(r["n"]),
-            pct(r, "faithfulness"), pct(r, "relevance"), pct(r, "citation_rate"),
-            pct(r, "false_refusal_rate"), pct(r, "correct_refusal_rate"), pct(r, "trap_resistance"),
-            f"{r['avg_output_tokens']:.0f}", f"{r['generation_cost_usd']:.4f}", str(r.get("median_generation_ms", "-")),
+            r["date"],
+            r["prompt"],
+            r.get("model", "claude-sonnet-5"),
+            r.get("judge", "judge/v1"),
+            str(r["n"]),
+            pct(r, "faithfulness"),
+            pct(r, "relevance"),
+            pct(r, "citation_rate"),
+            pct(r, "false_refusal_rate"),
+            pct(r, "correct_refusal_rate"),
+            pct(r, "trap_resistance"),
+            f"{r['avg_output_tokens']:.0f}",
+            f"{r['generation_cost_usd']:.4f}",
+            str(r.get("median_generation_ms", "-")),
         ]
-        print(" ".join(c.ljust(w) if i < text_columns else c.rjust(w) for i, (c, w) in enumerate(zip(cells, widths))))
+        print(
+            " ".join(
+                c.ljust(w) if i < text_columns else c.rjust(w)
+                for i, (c, w) in enumerate(zip(cells, widths, strict=True))
+            )
+        )
         print(f"{'':11}eval: {r['eval_file']}")
 
 
@@ -274,15 +333,33 @@ if __name__ == "__main__":
     parser.add_argument(
         "--rerank-candidates", type=int, default=10, help="How many candidates to rerank (only with --rerank)"
     )
-    parser.add_argument("--limit", type=int, default=None, help="Only run the first N cases (each case costs 2 API calls)")
     parser.add_argument(
-        "--prompt-version", default=None, help="Answer prompt version to test, e.g. v2 (default: the manifest's active one)"
+        "--limit", type=int, default=None, help="Only run the first N cases (each case costs 2 API calls)"
+    )
+    parser.add_argument(
+        "--prompt-version",
+        default=None,
+        help="Answer prompt version to test, e.g. v2 (default: the manifest's active one)",
     )
     parser.add_argument(
         "--answer-model", default=ANSWER_MODEL, help=f"Model that generates the answers (default: {ANSWER_MODEL})"
     )
     parser.add_argument("--no-record", action="store_true", help="Don't append this run to the history file")
     parser.add_argument("--history", action="store_true", help="Print all recorded runs and exit")
+    parser.add_argument(
+        "--min",
+        action="append",
+        default=[],
+        metavar="METRIC=VALUE",
+        help="Fail (exit 1) if METRIC is below VALUE, e.g. --min faithfulness=0.95. Repeatable.",
+    )
+    parser.add_argument(
+        "--max",
+        action="append",
+        default=[],
+        metavar="METRIC=VALUE",
+        help="Fail (exit 1) if METRIC is above VALUE, e.g. --max false_refusal_rate=0.1. Repeatable.",
+    )
     args = parser.parse_args()
 
     if args.history:
@@ -312,3 +389,17 @@ if __name__ == "__main__":
     # Partial runs (--limit) aren't comparable with full ones, so they're never recorded.
     if result and not args.no_record and not args.limit:
         record(result, prompt, args.eval_file, settings, args.answer_model)
+
+    if result and (args.min or args.max):
+        failures = check_thresholds(result, parse_thresholds(args.min), parse_thresholds(args.max))
+        summary_lines = [f"Prompt {prompt.id}, model {args.answer_model}, {result['n']} cases"]
+        summary_lines += [f"- {k}: {v}" for k, v in result.items()]
+        summary_lines.append("Thresholds: " + ("all met" if not failures else "FAILED: " + "; ".join(failures)))
+        # On GitHub Actions, also show the results on the workflow run's summary page.
+        summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+        if summary_path:
+            with open(summary_path, "a", encoding="utf-8") as f:
+                f.write("## Generation eval\n\n" + "\n".join(summary_lines) + "\n")
+        print("\n" + summary_lines[-1])
+        if failures:
+            raise SystemExit(1)

@@ -23,7 +23,7 @@ Hands-on projects built while upskilling toward an AI Engineer role. Each folder
 
 ## How changes land
 
-`main` is protected: every change goes through a pull request, and merging requires each project's checks to pass (`rag-test`, `rag-eval-gate`, `rag-image`, `rag-audit`, `ci-cd-workflow-lint`, `ci-cd-workflow-test`, `ci-cd-workflow-build`, plus the `-changes` jobs). `rag-audit` checks every locked dependency for known vulnerabilities. `rag-image` builds the Docker image and smoke-tests it (offline search, startup, auth), and `rag-publish` repeats that test on the exact image before pushing it. Deployments to production environments additionally wait for manual approval.
+`main` is protected: every change goes through a pull request, and merging requires each project's checks to pass (`rag-test`, `rag-eval-gate`, `rag-lint`, `rag-image`, `rag-audit`, `ci-cd-workflow-lint`, `ci-cd-workflow-test`, `ci-cd-workflow-build`, plus the `-changes` jobs). `rag-lint` runs ruff. `rag-audit` checks every locked dependency for known vulnerabilities. `rag-image` builds the Docker image and smoke-tests it (offline search, startup, auth), and `rag-publish` repeats that test on the exact image before pushing it. Deployments to production environments additionally wait for manual approval.
 
 ## Roadmap
 
@@ -31,3 +31,7 @@ Hands-on projects built while upskilling toward an AI Engineer role. Each folder
 2. **Document extraction**: structured, validated JSON from insurance-style PDFs, with confidence scores, a human-review queue, and field-level accuracy evals.
 3. **Tool-using agent**: an agent loop built by hand and then with a framework, tools exposed over MCP, trajectory evals, and prompt-injection testing.
 4. **Fine-tune vs. prompt**: LoRA fine-tuning of a small open model, compared with a prompted frontier model and a classic baseline on accuracy, latency, and cost.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

@@ -20,15 +20,16 @@ import secrets
 import time
 import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import anthropic
 import chromadb.errors
 import httpx
-from fastapi import Depends, FastAPI, Header, HTTPException, Response
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+import rate_limit
 import telemetry
 import tracing
 import vector_store
@@ -95,11 +96,16 @@ class ErrorResponse(BaseModel):
 # FastAPI documents 200 and request-validation 422s automatically, but not these.
 ERROR_RESPONSES = {
     401: {"model": ErrorResponse, "description": "Missing or wrong X-API-Key (only when RAG_API_KEY is set)"},
-    422: {"description": "Invalid request, unknown embedding_model, no index built for that model, "
-                         "or Claude declined to answer"},
+    429: {"model": ErrorResponse, "description": "Too many requests from this caller (see the Retry-After header)"},
+    422: {
+        "description": "Invalid request, unknown embedding_model, no index built for that model, "
+        "or Claude declined to answer"
+    },
     502: {"model": ErrorResponse, "description": "The Claude API call failed"},
-    503: {"model": ErrorResponse, "description": "No Anthropic key configured, or the search index is "
-                                                 "unreachable (see the Retry-After header)"},
+    503: {
+        "model": ErrorResponse,
+        "description": "No Anthropic key configured, or the search index is unreachable (see the Retry-After header)",
+    },
 }
 
 
@@ -121,18 +127,19 @@ def _retrieve(req: AskRequest) -> list[dict]:
             hybrid=req.hybrid,
             use_reranker=req.rerank,
         )
-    except (vector_store.VectorStoreUnavailable, httpx.TransportError):
+    except (vector_store.VectorStoreUnavailable, httpx.TransportError) as e:
         # The Chroma server is down or unreachable: temporary, so tell the caller to retry.
-        raise HTTPException(503, "The search index is temporarily unavailable. Try again shortly.",
-                            headers={"Retry-After": "10"})
-    except chromadb.errors.NotFoundError:
+        raise HTTPException(
+            503, "The search index is temporarily unavailable. Try again shortly.", headers={"Retry-After": "10"}
+        ) from e
+    except chromadb.errors.NotFoundError as e:
         # A valid model name, but nobody has built its index on this server (each embedding model
         # needs its own). That's the caller's choice to fix, not a server fault, so not a 500.
         raise HTTPException(
             422,
             f"No index has been built for embedding_model '{req.embedding_model}' on this server. "
             f"Use another model, or run: python src/ingest.py --embedding-model {req.embedding_model}",
-        )
+        ) from e
 
 
 def _sources(hits: list[dict]) -> list[Source]:
@@ -156,6 +163,24 @@ def require_api_key(x_api_key: str | None = Header(default=None)) -> None:
     # response time can't be used to guess the key one character at a time.
     if x_api_key is None or not secrets.compare_digest(x_api_key.encode(), expected.encode()):
         raise HTTPException(401, "Missing or invalid API key", headers={"WWW-Authenticate": "X-API-Key"})
+
+
+def enforce_rate_limit(request: Request, x_api_key: str | None = Header(default=None)) -> None:
+    """Reject callers over their per-minute limit (see rate_limit.py). Runs after the key check, so
+    it counts real callers, and before any search or Claude call, so a rejected request costs nothing."""
+    # Behind Azure's ingress the caller's address arrives in X-Forwarded-For (first entry); locally
+    # it's the direct connection. It's only used when no API key is configured.
+    forwarded = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    client_ip = forwarded or (request.client.host if request.client else None)
+    retry_after = rate_limit.check(rate_limit.caller_id(x_api_key, client_ip))
+    if retry_after is not None:
+        raise HTTPException(
+            429, "Too many requests. Try again shortly.", headers={"Retry-After": str(max(1, round(retry_after)))}
+        )
+
+
+# Order matters: authenticate first, then count the request against the caller's limit.
+ASK_DEPENDENCIES = [Depends(require_api_key), Depends(enforce_rate_limit)]
 
 
 @app.get("/health")
@@ -236,7 +261,7 @@ def _error_name(e: Exception) -> str:
     return f"HTTP {e.status_code}" if isinstance(e, HTTPException) else type(e).__name__
 
 
-@app.post("/ask", response_model=AskResponse, responses=ERROR_RESPONSES, dependencies=[Depends(require_api_key)])
+@app.post("/ask", response_model=AskResponse, responses=ERROR_RESPONSES, dependencies=ASK_DEPENDENCIES)
 def ask(req: AskRequest, response: Response):
     if client is None:
         raise HTTPException(503, "ANTHROPIC_API_KEY is not set")
@@ -259,7 +284,7 @@ def ask(req: AskRequest, response: Response):
             gen.end()
             record.update(status="error", error=type(e).__name__)
             # 502 Bad Gateway: our server is fine, the service it depends on failed.
-            raise HTTPException(502, f"Generation failed: {type(e).__name__}")
+            raise HTTPException(502, f"Generation failed: {type(e).__name__}") from e
 
         answer = _finish_generation(gen, root, record, message)
         if message.stop_reason == "refusal":
@@ -286,11 +311,13 @@ def ask(req: AskRequest, response: Response):
 @app.post(
     "/ask/stream",
     responses={
-        200: {"description": "Server-Sent Events: sources, then token events, then done (or error)",
-              "content": {"text/event-stream": {}}},
+        200: {
+            "description": "Server-Sent Events: sources, then token events, then done (or error)",
+            "content": {"text/event-stream": {}},
+        },
         **ERROR_RESPONSES,
     },
-    dependencies=[Depends(require_api_key)],
+    dependencies=ASK_DEPENDENCIES,
 )
 def ask_stream(req: AskRequest):
     if client is None:
@@ -327,7 +354,7 @@ def ask_stream(req: AskRequest):
                         # Time to first token: how long the user stares at nothing before text appears.
                         record["ttft_ms"] = telemetry.elapsed_ms(start)
                         # Langfuse derives its own time-to-first-token from this timestamp.
-                        gen.update(completion_start_time=datetime.now(timezone.utc))
+                        gen.update(completion_start_time=datetime.now(UTC))
                     yield _sse("token", item)
                 else:
                     record["generation_ms"] = telemetry.elapsed_ms(generation_start)
@@ -339,17 +366,34 @@ def ask_stream(req: AskRequest):
                         status="refused" if item.stop_reason == "refusal" else "ok",
                         total_ms=telemetry.elapsed_ms(start),
                     )
-                    done = {k: record.get(k) for k in (
-                        "stop_reason", "input_tokens", "output_tokens", "cost_usd",
-                        "retrieval_ms", "ttft_ms", "total_ms",
-                    )}
+                    done = {
+                        k: record.get(k)
+                        for k in (
+                            "stop_reason",
+                            "input_tokens",
+                            "output_tokens",
+                            "cost_usd",
+                            "retrieval_ms",
+                            "ttft_ms",
+                            "total_ms",
+                        )
+                    }
                     yield _sse("done", done)
         except anthropic.APIError as e:
             record.update(status="error", error=type(e).__name__)
             _fail(gen, type(e).__name__)
             _fail(root, f"Generation failed: {type(e).__name__}")
-            # Too late for an HTTP error status, so report the failure as an event instead.
-            yield _sse("error", {"type": type(e).__name__, "message": str(e)})
+            # Too late for an HTTP error status, so report the failure as an event instead. Only the
+            # error's type and our request ID go to the client: the exception text can hold internal
+            # details. The full error is in our logs and trace under the same request ID.
+            yield _sse(
+                "error",
+                {
+                    "type": type(e).__name__,
+                    "message": f"Answer generation failed. Request ID: {record['request_id']}",
+                    "request_id": record["request_id"],
+                },
+            )
         finally:
             if record["status"] == "cancelled":
                 root.update(level="WARNING", status_message="client disconnected mid-answer")
@@ -359,6 +403,4 @@ def ask_stream(req: AskRequest):
             record.setdefault("total_ms", telemetry.elapsed_ms(start))
             telemetry.log_request(record)
 
-    return StreamingResponse(
-        events(), media_type="text/event-stream", headers={"X-Request-ID": record["request_id"]}
-    )
+    return StreamingResponse(events(), media_type="text/event-stream", headers={"X-Request-ID": record["request_id"]})
