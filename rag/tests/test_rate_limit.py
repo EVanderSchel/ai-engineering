@@ -27,10 +27,17 @@ def test_zero_disables_the_limit(monkeypatch):
     assert all(rate_limit.check("a", now=0) is None for _ in range(100))
 
 
-def test_caller_id_hashes_keys_and_falls_back_to_ip():
-    assert rate_limit.caller_id("secret-key", "1.2.3.4").startswith("key:")
-    assert "secret-key" not in rate_limit.caller_id("secret-key", "1.2.3.4")
-    assert rate_limit.caller_id(None, "1.2.3.4") == "ip:1.2.3.4"
+def test_caller_id_is_the_key_when_authenticated_otherwise_the_ip():
+    assert rate_limit.caller_id(True, "1.2.3.4") == "api-key"
+    assert rate_limit.caller_id(False, "1.2.3.4") == "ip:1.2.3.4"
+
+
+def test_without_auth_made_up_keys_cannot_dodge_the_limit(http, fake_client, fake_retrieve, monkeypatch):
+    """With RAG_API_KEY unset the header isn't checked, so a new value per request must not reset the count."""
+    monkeypatch.setenv("RAG_RATE_LIMIT_PER_MINUTE", "1")
+    first = http.post("/ask", json={"question": "q"}, headers={"X-API-Key": "made-up-1"})
+    second = http.post("/ask", json={"question": "q"}, headers={"X-API-Key": "made-up-2"})
+    assert (first.status_code, second.status_code) == (200, 429)
 
 
 def test_api_returns_429_with_retry_after_and_never_reaches_claude(http, fake_client, fake_retrieve, monkeypatch):

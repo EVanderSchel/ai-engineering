@@ -1,15 +1,19 @@
 """Per-caller request limits for the /ask endpoints: a leaked or misused key can't run up unlimited cost.
 
-Each caller (its API key, or its IP address when no key is configured) gets RAG_RATE_LIMIT_PER_MINUTE
-requests per rolling minute (default 30; 0 turns the limit off). Over the limit, the request is
-rejected with 429 and a Retry-After header before any search or Claude call happens.
+Each caller gets RAG_RATE_LIMIT_PER_MINUTE requests per rolling minute (default 30; 0 turns the limit
+off). Over the limit, the request is rejected with 429 and a Retry-After header before any search or
+Claude call happens.
+
+Who counts as a caller: when RAG_API_KEY is set there is exactly one valid key, and every request has
+already been checked against it, so all authenticated requests share that key's limit. When it isn't
+set (local development), the X-API-Key header isn't checked, so it can't identify anyone (a client
+could send a new made-up value each time to dodge the limit); callers are counted by IP address.
 
 Counts are kept in this process's memory. That's correct while the app runs as a single replica
 (max-replicas 1); with several replicas each would count separately, and a shared store such as
 Redis would be needed instead.
 """
 
-import hashlib
 import os
 import threading
 import time
@@ -25,10 +29,10 @@ def limit_per_minute() -> int:
     return int(os.environ.get("RAG_RATE_LIMIT_PER_MINUTE", "30"))
 
 
-def caller_id(api_key: str | None, client_ip: str | None) -> str:
-    """Who to count requests against. Keys are hashed so the raw key is never held as a dict key."""
-    if api_key:
-        return "key:" + hashlib.sha256(api_key.encode()).hexdigest()[:16]
+def caller_id(authenticated: bool, client_ip: str | None) -> str:
+    """Who to count requests against (see the module docstring)."""
+    if authenticated:
+        return "api-key"
     return f"ip:{client_ip or 'unknown'}"
 
 

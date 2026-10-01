@@ -165,14 +165,16 @@ def require_api_key(x_api_key: str | None = Header(default=None)) -> None:
         raise HTTPException(401, "Missing or invalid API key", headers={"WWW-Authenticate": "X-API-Key"})
 
 
-def enforce_rate_limit(request: Request, x_api_key: str | None = Header(default=None)) -> None:
+def enforce_rate_limit(request: Request) -> None:
     """Reject callers over their per-minute limit (see rate_limit.py). Runs after the key check, so
     it counts real callers, and before any search or Claude call, so a rejected request costs nothing."""
     # Behind Azure's ingress the caller's address arrives in X-Forwarded-For (first entry); locally
-    # it's the direct connection. It's only used when no API key is configured.
+    # it's the direct connection. It's only used when no API key is configured. When one is,
+    # require_api_key has already run, so this request carries the one valid key.
     forwarded = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
     client_ip = forwarded or (request.client.host if request.client else None)
-    retry_after = rate_limit.check(rate_limit.caller_id(x_api_key, client_ip))
+    authenticated = bool(os.environ.get("RAG_API_KEY"))
+    retry_after = rate_limit.check(rate_limit.caller_id(authenticated, client_ip))
     if retry_after is not None:
         raise HTTPException(
             429, "Too many requests. Try again shortly.", headers={"Retry-After": str(max(1, round(retry_after)))}

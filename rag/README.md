@@ -104,7 +104,7 @@ Every request, including failed ones, writes exactly one JSON log line with its 
 Configuration for anything reachable from the internet:
 
 - `RAG_API_KEY`: when set, `/ask` and `/ask/stream` require it in an `X-API-Key` header (401 otherwise). `/health` stays open and reports `auth_required`. Leave unset for local development.
-- `RAG_RATE_LIMIT_PER_MINUTE` (default `30`, `0` disables): requests per rolling minute per API key (or per IP without a key); over the limit, `/ask` returns 429 with `Retry-After`, before any search or Claude call. Counted in memory, which is correct for a single replica.
+- `RAG_RATE_LIMIT_PER_MINUTE` (default `30`, `0` disables): requests per rolling minute shared by everyone using the API key (or per IP address when no key is configured); over the limit, `/ask` returns 429 with `Retry-After`, before any search or Claude call. Counted in memory, which is correct for a single replica.
 - `RAG_WARM_UP` (default `true`): load the embedding model and indexes at startup, so the first request isn't slow. `RAG_WARM_UP_RERANKER=true` also preloads the reranker.
 
 The Docker image builds the `data/current_events` search index into itself at build time, so a single container runs with no Chroma server. docker-compose sets `CHROMA_HOST` and uses its Chroma server instead.
