@@ -1,0 +1,38 @@
+[project]
+name = "rag"
+version = "1.0.0"
+description = "Retrieval-augmented generation service: hybrid search, reranking, Claude answers, evals, Azure deploy"
+requires-python = ">=3.14,<3.15"
+# Direct dependencies and the version ranges we accept. Exact versions (with checksums) for every
+# package, direct or indirect, live in uv.lock; install with `uv sync`. See "Dependencies" in README.md.
+dependencies = [
+    "chromadb==1.5.9", # must match the chroma server image in docker-compose.yml
+    "anthropic>=0.40",
+    "sentence-transformers>=3.0",
+    "rank_bm25>=0.2",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "langfuse>=4.15",
+    "python-dotenv>=1.0",
+    "torch>=2.10",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.uv]
+# An application, not a library: install its dependencies, don't build or install it as a package.
+package = false
+
+# torch comes from PyTorch's CPU-only index (the PyPI build bundles several GB of CUDA libraries this
+# project never uses). "explicit" means this index is used ONLY for packages that name it below, so
+# every other package still comes from PyPI.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }]

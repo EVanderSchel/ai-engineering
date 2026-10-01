@@ -1,11 +1,13 @@
 services:
   chroma:
-    # Must match the chromadb client version pinned in requirements.txt.
+    # Must match the chromadb version pinned in pyproject.toml.
     image: chromadb/chroma:1.5.9
     volumes:
       - chroma-data:/data
     ports:
-      - "8001:8000" # optional: lets you reach Chroma from the host for debugging
+      # Reachable from this machine only (127.0.0.1), for debugging. Never expose it wider: the Chroma
+      # server has a known unauthenticated code-execution vulnerability (PYSEC-2026-311, no fix yet).
+      - "127.0.0.1:8001:8000"
     healthcheck:
       # The image has no curl, so use bash's built-in /dev/tcp to call the heartbeat endpoint.
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8000 && printf 'GET /api/v2/heartbeat HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q heartbeat <&3"]
@@ -16,7 +18,8 @@ services:
   api:
     build: .
     ports:
-      - "8000:8000"
+      # This machine only: locally the API has no key, so anyone who can reach it spends your credits.
+      - "127.0.0.1:8000:8000"
     env_file:
       # Langfuse keys. Optional: without the file the API runs with tracing off.
       - path: .env

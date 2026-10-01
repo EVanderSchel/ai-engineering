@@ -16,11 +16,24 @@ A minimal, from-scratch Retrieval-Augmented Generation pipeline for learning how
 
 ## Setup
 
+Needs Python 3.14 and [uv](https://docs.astral.sh/uv/) (`pip install uv`):
+
 ```
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
+uv sync
+.venv\Scripts\activate
 ```
+
+`uv sync` creates `.venv` and installs exactly the versions in `uv.lock`, verifying each package's checksum (see [Dependencies](#dependencies)).
+
+## Dependencies
+
+`pyproject.toml` lists the direct dependencies and the version ranges accepted; `uv.lock` pins every package, direct and indirect, to an exact version with checksums, for both Linux (CI, Docker) and Windows. CI, the Docker image, and local environments all install from the lock, so what's tested is what ships.
+
+- **Add or change a dependency:** edit `pyproject.toml`, run `uv lock`, commit both files. CI runs `uv lock --check` and fails if they disagree.
+- **Update to newer versions:** `uv lock --upgrade` (or `--upgrade-package <name>`), then run the tests and evals.
+- **torch** comes only from PyTorch's CPU index (configured in `pyproject.toml`); every other package comes from PyPI. That index doesn't publish checksums, so torch is pinned by exact version and source but not checksum-verified.
+
+**Vulnerability audit:** `bash security/audit.sh` checks every locked production package for known vulnerabilities and fails on any not listed, with a reason, in `security/accepted-vulnerabilities.txt`. CI runs it on every pull request (`rag-audit`).
 
 ## Usage
 
@@ -166,9 +179,10 @@ The fix: Chroma's `DefaultEmbeddingFunction` reloads its ONNX model on every cal
 ## Tests
 
 ```
-pip install -r requirements-dev.txt
 python -m pytest
 ```
+
+(`uv sync` already installed pytest, from the `dev` dependency group.)
 
 The API tests replace Claude and retrieval with fakes (`tests/conftest.py`), so they need no API key or Chroma index, cost nothing, and run in well under a second.
 

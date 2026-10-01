@@ -61,29 +61,37 @@ jobs:
         id: setup-python
         uses: actions/setup-python@v7
         with:
-          python-version: "3.10"
+          python-version: "3.14"
 
-      # Reuse the whole installed environment (torch included) while the requirements files are
-      # unchanged: installing it took ~60 s per job, restoring it takes a few seconds. The key includes
-      # the exact Python version because a virtualenv only works with the interpreter that created it.
-      # Both check jobs use the same key, so one saved environment serves both.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0 (this action publishes no moving v10 tag)
+        with:
+          version: "0.12.21"
+
+      # Reuse the whole installed environment (torch included) while uv.lock is unchanged: installing
+      # it takes about a minute, restoring it a few seconds. The key includes the exact Python version
+      # because a virtualenv only works with the interpreter that created it. Both check jobs use the
+      # same key, so one saved environment serves both.
       - name: Restore Python environment
         id: venv-cache
         uses: actions/cache@v6
         with:
           path: rag/.venv
-          key: rag-venv-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('rag/requirements.txt', 'rag/requirements-dev.txt') }}
+          key: rag-venv-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('rag/uv.lock') }}
 
-      # CPU-only torch first; the default PyPI build pulls several GB of CUDA libraries.
-      - name: Install dependencies (only when requirements changed)
+      # Exactly what uv.lock specifies, checksums verified, including the dev group (pytest,
+      # pip-audit). --frozen fails rather than re-resolving if uv.lock is out of date.
+      - name: Install dependencies (only when uv.lock changed)
         if: steps.venv-cache.outputs.cache-hit != 'true'
-        run: |
-          python -m venv .venv
-          .venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
-          .venv/bin/pip install -r requirements-dev.txt
+        env:
+          UV_PYTHON_DOWNLOADS: never
+        run: uv sync --frozen --python "${{ steps.setup-python.outputs.python-path }}"
 
       - name: Use the environment
         run: echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+
+      - name: Check uv.lock matches pyproject.toml
+        run: uv lock --check
 
       - name: Run tests
         run: python -m pytest -v
@@ -105,26 +113,31 @@ jobs:
         id: setup-python
         uses: actions/setup-python@v7
         with:
-          python-version: "3.10"
+          python-version: "3.14"
 
-      # Reuse the whole installed environment (torch included) while the requirements files are
-      # unchanged: installing it took ~60 s per job, restoring it takes a few seconds. The key includes
-      # the exact Python version because a virtualenv only works with the interpreter that created it.
-      # Both check jobs use the same key, so one saved environment serves both.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0 (this action publishes no moving v10 tag)
+        with:
+          version: "0.12.21"
+
+      # Reuse the whole installed environment (torch included) while uv.lock is unchanged: installing
+      # it takes about a minute, restoring it a few seconds. The key includes the exact Python version
+      # because a virtualenv only works with the interpreter that created it. Both check jobs use the
+      # same key, so one saved environment serves both.
       - name: Restore Python environment
         id: venv-cache
         uses: actions/cache@v6
         with:
           path: rag/.venv
-          key: rag-venv-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('rag/requirements.txt', 'rag/requirements-dev.txt') }}
+          key: rag-venv-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('rag/uv.lock') }}
 
-      # CPU-only torch first; the default PyPI build pulls several GB of CUDA libraries.
-      - name: Install dependencies (only when requirements changed)
+      # Exactly what uv.lock specifies, checksums verified, including the dev group (pytest,
+      # pip-audit). --frozen fails rather than re-resolving if uv.lock is out of date.
+      - name: Install dependencies (only when uv.lock changed)
         if: steps.venv-cache.outputs.cache-hit != 'true'
-        run: |
-          python -m venv .venv
-          .venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
-          .venv/bin/pip install -r requirements-dev.txt
+        env:
+          UV_PYTHON_DOWNLOADS: never
+        run: uv sync --frozen --python "${{ steps.setup-python.outputs.python-path }}"
 
       - name: Use the environment
         run: echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
@@ -142,6 +155,29 @@ jobs:
       # The score table also appears on the workflow run's summary page.
       - name: Run retrieval eval gate
         run: python src/eval_gate.py
+
+  # Required check: every locked production dependency is checked for known vulnerabilities. Fails on
+  # any that isn't listed, with a reason, in rag/security/accepted-vulnerabilities.txt.
+  audit:
+    name: rag-audit
+    needs: changes
+    if: needs.changes.outputs.rag == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rag
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0 (this action publishes no moving v10 tag)
+        with:
+          version: "0.12.21"
+
+      - name: Audit dependencies
+        run: bash security/audit.sh
 
   # Required check on pull requests: build the image and smoke-test it, so a broken Dockerfile or a
   # file missing from the image is caught before merging, not in production. Not pushed anywhere.
