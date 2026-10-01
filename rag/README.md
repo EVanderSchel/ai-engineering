@@ -94,6 +94,7 @@ Interactive docs are at http://localhost:8000/docs (use http://127.0.0.1:8000/do
 | Status | Meaning |
 |---|---|
 | 401 | Missing or wrong `X-API-Key` (only when `RAG_API_KEY` is set) |
+| 429 | Too many requests from this caller (`Retry-After` says when to retry) |
 | 422 | Invalid request, unknown `embedding_model`, no index built for that model, or Claude declined to answer |
 | 502 | The Claude API call failed (after the SDK's 2 retries; each attempt times out after 60 s) |
 | 503 | No Anthropic key configured, or the Chroma server is unreachable (`Retry-After: 10`) |
@@ -103,6 +104,7 @@ Every request, including failed ones, writes exactly one JSON log line with its 
 Configuration for anything reachable from the internet:
 
 - `RAG_API_KEY`: when set, `/ask` and `/ask/stream` require it in an `X-API-Key` header (401 otherwise). `/health` stays open and reports `auth_required`. Leave unset for local development.
+- `RAG_RATE_LIMIT_PER_MINUTE` (default `30`, `0` disables): requests per rolling minute shared by everyone using the API key (or per IP address when no key is configured); over the limit, `/ask` returns 429 with `Retry-After`, before any search or Claude call. Counted in memory, which is correct for a single replica.
 - `RAG_WARM_UP` (default `true`): load the embedding model and indexes at startup, so the first request isn't slow. `RAG_WARM_UP_RERANKER=true` also preloads the reranker.
 
 The Docker image builds the `data/current_events` search index into itself at build time, so a single container runs with no Chroma server. docker-compose sets `CHROMA_HOST` and uses its Chroma server instead.
@@ -153,6 +155,10 @@ To try a prompt change:
 
 To compare answer models instead of prompts, add `--answer-model claude-haiku-4-5` (default: the model in `src/query.py`). The history records the model and the median generation latency (`p50 ms`) of each run. `RAG_PROMPT_ANSWER=v2` overrides the active version for a single process.
 
+## Scheduled generation eval
+
+`.github/workflows/rag-generation-eval.yml` runs the full 25-case generation eval (real Claude calls, about $0.07) every Monday and on demand (Actions -> "rag generation eval" -> Run workflow). It fails if any metric falls below its minimum (`--min` / `--max` on `eval_generation.py`), which allow one miss per category: identical runs vary, and only two or more misses signal a real decline. Needs the repository secret `RAG_EVAL_ANTHROPIC_API_KEY`.
+
 ## Eval regression gate
 
 `src/eval_gate.py` runs the retrieval eval for every combination in `data/eval_baseline.json` (both corpora × vector / hybrid / rerank) and exits with an error if any Hit@1, Hit@k, or MRR score falls below its recorded baseline. Each corpus is ingested into a throwaway Chroma folder, so it never touches `chroma_db/`.
@@ -175,6 +181,10 @@ GitHub Actions (`.github/workflows/rag-ci.yml`) runs the tests and this gate on 
 | rerank | 457 ms | 233 ms |
 
 The fix: Chroma's `DefaultEmbeddingFunction` reloads its ONNX model on every call, and Chroma bypasses any embedding function you pass for collections using that default. Retrieval now embeds the question itself with a model loaded once per process (`embeddings.CachedDefaultEmbeddingFunction`) and queries Chroma by vector; Chroma clients are also reused. Vectors are identical, so eval scores are unchanged. The first request after startup is still slow (~0.9 s) because models load lazily.
+
+## Code style
+
+`ruff check .` and `ruff format .` (installed by `uv sync`; rules in `pyproject.toml`). CI's `rag-lint` check fails on any lint finding or unformatted file.
 
 ## Tests
 

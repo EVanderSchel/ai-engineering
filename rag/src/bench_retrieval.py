@@ -46,7 +46,8 @@ def main() -> None:
                 start = time.perf_counter()
                 retrieve(q, **options)
                 timings.append((time.perf_counter() - start) * 1000)
-        print(f"{name:<8} {percentile(timings, 50):>8.1f} {percentile(timings, 95):>8.1f} {statistics.mean(timings):>8.1f}")
+        p50, p95, mean = percentile(timings, 50), percentile(timings, 95), statistics.mean(timings)
+        print(f"{name:<8} {p50:>8.1f} {p95:>8.1f} {mean:>8.1f}")
 
 
 if __name__ == "__main__":

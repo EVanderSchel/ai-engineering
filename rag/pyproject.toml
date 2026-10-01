@@ -18,8 +18,12 @@ dependencies = [
 ]
 
 [dependency-groups]
+lint = [
+    "ruff>=0.6",
+]
 dev = [
     "pytest>=8.0",
+    { include-group = "lint" },
 ]
 
 [tool.uv]
@@ -36,3 +40,18 @@ explicit = true
 
 [tool.uv.sources]
 torch = [{ index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }]
+
+[tool.ruff]
+line-length = 120
+target-version = "py314"
+
+[tool.ruff.lint]
+# E/W: style errors, F: real bugs (undefined names, unused imports), I: import order,
+# B: likely bugs (bugbear), UP: modern syntax for the target Python version.
+select = ["E", "W", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.isort]
+# Modules in src/ are imported by bare name (pytest's pythonpath = src), so tell isort they're ours.
+known-first-party = ["api", "chunking", "embeddings", "eval", "eval_gate", "eval_generation", "ingest", "model_names",
+                     "prompts", "query", "retrieval", "telemetry", "tracing", "vector_store", "download_models",
+                     "bench_retrieval"]

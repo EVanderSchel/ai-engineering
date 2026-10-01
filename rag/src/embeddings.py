@@ -39,13 +39,9 @@ MODELS = {
     "default": CachedDefaultEmbeddingFunction,
     # Larger sentence-transformers model, 768 dims, generally more accurate
     # but slower and downloads its own weights on first use.
-    "mpnet": lambda: embedding_functions.SentenceTransformerEmbeddingFunction(
-        model_name="all-mpnet-base-v2"
-    ),
+    "mpnet": lambda: embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-mpnet-base-v2"),
     # Small, fast sentence-transformers model tuned for retrieval, 384 dims.
-    "bge-small": lambda: embedding_functions.SentenceTransformerEmbeddingFunction(
-        model_name="BAAI/bge-small-en-v1.5"
-    ),
+    "bge-small": lambda: embedding_functions.SentenceTransformerEmbeddingFunction(model_name="BAAI/bge-small-en-v1.5"),
 }
 
 

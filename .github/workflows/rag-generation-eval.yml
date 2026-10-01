@@ -1,0 +1,92 @@
+name: rag generation eval
+
+# Answer quality, measured with real Claude calls: each run answers 25 questions and has a judge model
+# grade them (about $0.07 per run). Too costly to run on every pull request, so it runs weekly and on
+# demand (Actions -> "rag generation eval" -> Run workflow), and fails if quality drops below the
+# minimums below. Retrieval quality is checked on every pull request separately (rag-eval-gate).
+#
+# Needs a repository secret RAG_EVAL_ANTHROPIC_API_KEY: an Anthropic key used only for this, with a
+# spending limit.
+on:
+  schedule:
+    - cron: "0 13 * * 1" # Mondays 13:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generation-eval:
+    name: rag-generation-eval
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rag
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.RAG_EVAL_ANTHROPIC_API_KEY }}
+      LANGFUSE_TRACING_ENABLED: "false" # keep eval traffic out of the Langfuse traces
+      CHROMA_PATH: /tmp/rag-eval-chroma # a throwaway index, built below
+
+    steps:
+      - name: Check the API key secret is set
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::Add a repository secret named RAG_EVAL_ANTHROPIC_API_KEY (Settings -> Secrets and variables -> Actions)."
+            exit 1
+          fi
+
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.21"
+
+      # Same cache key as the rag CI checks, so this usually reuses their saved environment.
+      - name: Restore Python environment
+        id: venv-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: rag/.venv
+          key: rag-venv-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('rag/uv.lock') }}
+
+      - name: Install dependencies (only when uv.lock changed)
+        if: steps.venv-cache.outputs.cache-hit != 'true'
+        env:
+          UV_PYTHON_DOWNLOADS: never
+        run: uv sync --frozen --python "${{ steps.setup-python.outputs.python-path }}"
+
+      - name: Use the environment
+        run: echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+
+      - name: Cache models
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/chroma
+            ~/.cache/huggingface
+          key: rag-models-v1
+
+      - name: Build the search index (both corpora)
+        run: |
+          python src/ingest.py
+          python src/ingest.py --docs-dir data/current_events
+
+      # The active prompt and the production answer model. Answers vary run to run: on 2026-10-01 two
+      # identical runs scored relevance 92% and 100% (one answer judged off-topic in the first). With
+      # 13 answerable and 6 + 6 refusal/trap cases, one miss costs 8-17 points, so every minimum allows
+      # one miss per category and fails on two or more, which points to a real decline, not noise.
+      - name: Run the generation eval
+        run: |
+          python src/eval_generation.py --no-record \
+            --eval-file data/eval_set_current_events.json data/eval_set_unanswerable.json data/eval_set_traps.json \
+            --min faithfulness=0.9 --min relevance=0.9 --min citation_rate=0.9 \
+            --min correct_refusal_rate=0.8 --min trap_resistance=0.8 \
+            --max false_refusal_rate=0.1

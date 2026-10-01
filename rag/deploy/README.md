@@ -27,6 +27,9 @@ The scripts are Windows PowerShell. If your execution policy blocks them, run ea
 2. `.\azure-setup.ps1`: resource group, Key Vault, managed identity, Container Apps environment. Safe to re-run.
 3. `.\azure-secrets.ps1` (run it yourself; it asks for the Anthropic key with hidden input, or use `-FromClipboard`).
 4. `.\azure-create-app.ps1`: creates the Container App from the image for the current `origin/main`.
+5. `.\azure-github-oidc.ps1`: lets GitHub Actions deploy (see "Automatic deploys" below).
+6. `.\azure-health-probes.ps1`: HTTP startup/readiness/liveness checks on `/health`, so a hung replica gets restarted.
+7. `.\azure-alerts.ps1`: email alerts on any 5xx error and on repeated restarts (more than 2 in 15 minutes).
 
 Names live in `azure-config.ps1`.
 

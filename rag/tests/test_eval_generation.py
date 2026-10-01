@@ -21,25 +21,31 @@ def test_no_brackets_means_no_citation():
 
 def case(answerable=True, faithful=True, relevant=True, declined=False, cited=True, invalid=()):
     return {
-        "answerable": answerable, "faithful": faithful, "relevant": relevant, "declined": declined,
-        "cited": cited, "invalid_citations": list(invalid), "output_tokens": 50, "cost_usd": 0.001,
+        "answerable": answerable,
+        "faithful": faithful,
+        "relevant": relevant,
+        "declined": declined,
+        "cited": cited,
+        "invalid_citations": list(invalid),
+        "output_tokens": 50,
+        "cost_usd": 0.001,
     }
 
 
 def test_summary_splits_metrics_by_case_type():
     results = [
-        case(),                                  # answered, cited
-        case(cited=False),                       # answered, no citation
-        case(declined=True, cited=False),        # wrongly declined an answerable question
-        case(answerable=False, declined=True),   # correctly declined
+        case(),  # answered, cited
+        case(cited=False),  # answered, no citation
+        case(declined=True, cited=False),  # wrongly declined an answerable question
+        case(answerable=False, declined=True),  # correctly declined
         case(answerable=False, faithful=False),  # made up an answer to an unanswerable question
     ]
     m = summarize(results)
 
-    assert m["faithfulness"] == 0.8               # 4 of all 5
-    assert m["false_refusal_rate"] == 0.3333      # 1 of 3 answerable
-    assert m["citation_rate"] == 0.5              # 1 of the 2 answerable cases it actually answered
-    assert m["correct_refusal_rate"] == 0.5       # 1 of 2 unanswerable
+    assert m["faithfulness"] == 0.8  # 4 of all 5
+    assert m["false_refusal_rate"] == 0.3333  # 1 of 3 answerable
+    assert m["citation_rate"] == 0.5  # 1 of the 2 answerable cases it actually answered
+    assert m["correct_refusal_rate"] == 0.5  # 1 of 2 unanswerable
     assert (m["n"], m["n_unanswerable"]) == (5, 2)
     assert m["generation_cost_usd"] == 0.005
 
@@ -58,9 +64,9 @@ def trap_case(misled, declined=False):
 
 def test_traps_have_their_own_metric_and_stay_out_of_refusal_rate():
     results = [
-        case(answerable=False, declined=True),   # plain unanswerable, declined correctly
+        case(answerable=False, declined=True),  # plain unanswerable, declined correctly
         trap_case(misled=False, declined=True),  # said the context doesn't answer it
-        trap_case(misled=True),                  # presented the look-alike fact as the answer
+        trap_case(misled=True),  # presented the look-alike fact as the answer
     ]
     m = summarize(results)
 
@@ -71,3 +77,20 @@ def test_traps_have_their_own_metric_and_stay_out_of_refusal_rate():
 
 def test_runs_without_traps_report_none_for_trap_resistance():
     assert summarize([case()])["trap_resistance"] is None
+
+
+def test_thresholds_report_every_metric_out_of_range():
+    from eval_generation import check_thresholds, parse_thresholds
+
+    metrics = {"faithfulness": 0.9, "false_refusal_rate": 0.2, "trap_resistance": None, "relevance": 1.0}
+    failures = check_thresholds(
+        metrics,
+        parse_thresholds(["faithfulness=0.95", "relevance=0.95", "trap_resistance=0.8"]),
+        parse_thresholds(["false_refusal_rate=0.1"]),
+    )
+    assert failures == [
+        "faithfulness = 0.9 (minimum 0.95)",
+        "trap_resistance = None (minimum 0.8)",  # a metric with no cases never passes silently
+        "false_refusal_rate = 0.2 (maximum 0.1)",
+    ]
+    assert check_thresholds({"faithfulness": 1.0}, {"faithfulness": 0.95}, {}) == []

@@ -18,7 +18,12 @@ def parse_sse(body: str) -> list[tuple[str, object]]:
 
 def test_health_reports_generation_disabled_without_key(http, monkeypatch):
     monkeypatch.setattr(api, "client", None)
-    assert http.get("/health").json() == {"status": "ok", "generation_enabled": False, "auth_required": False, "version": "dev"}
+    assert http.get("/health").json() == {
+        "status": "ok",
+        "generation_enabled": False,
+        "auth_required": False,
+        "version": "dev",
+    }
 
 
 def test_ask_returns_answer_and_sources(http, fake_client, fake_retrieve):
@@ -98,6 +103,9 @@ def test_stream_reports_midstream_failure_as_error_event(http, fake_client, fake
     events = parse_sse(resp.text)
     assert [name for name, _ in events] == ["sources", "token", "token", "token", "error"]
     assert events[-1][1]["type"] == "APIConnectionError"
+    # The client gets the request ID to quote, not the raw exception text.
+    assert events[-1][1]["request_id"] == resp.headers["X-Request-ID"]
+    assert "Connection error" not in events[-1][1]["message"]
 
 
 def logged_records(caplog) -> list[dict]:
@@ -234,4 +242,4 @@ def test_model_without_an_index_returns_clear_422_not_500(http, fake_client, mon
 def test_docs_list_every_status_the_endpoints_can_return(http):
     spec = http.get("/openapi.json").json()
     for path in ("/ask", "/ask/stream"):
-        assert set(spec["paths"][path]["post"]["responses"]) == {"200", "401", "422", "502", "503"}
+        assert set(spec["paths"][path]["post"]["responses"]) == {"200", "401", "422", "429", "502", "503"}

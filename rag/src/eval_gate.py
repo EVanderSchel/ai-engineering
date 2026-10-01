@@ -99,7 +99,10 @@ def main() -> int:
     if regressed:
         verdict = "Retrieval quality regressed: at least one score is below the baseline."
     elif improved:
-        verdict = "No regressions, and some scores improved. Run `python src/eval_gate.py --update` and commit the new baseline to lock them in."
+        verdict = (
+            "No regressions, and some scores improved. "
+            "Run `python src/eval_gate.py --update` and commit the new baseline to lock them in."
+        )
     else:
         verdict = "No regressions: every score matches the baseline."
     report = "\n".join(["## Retrieval eval gate", "", *lines, "", verdict])

@@ -3,16 +3,14 @@
 import argparse
 import pathlib
 
-from chunking import chunk_text
-from embeddings import collection_name, get_embedding_function, MODELS
 import vector_store
+from chunking import chunk_text
+from embeddings import MODELS, collection_name, get_embedding_function
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 
-def build_collection(
-    docs_dir: pathlib.Path, chunk_size: int, overlap: int, embedding_model: str, reset: bool = False
-):
+def build_collection(docs_dir: pathlib.Path, chunk_size: int, overlap: int, embedding_model: str, reset: bool = False):
     """Load a folder's documents into the model's collection, replacing earlier chunks from the same
     files and keeping everything else, so several folders can be ingested side by side."""
     client = vector_store.get_client()
