@@ -28,7 +28,7 @@ IRS data is public domain. Thanks to ProPublica for the Nonprofit Explorer API; 
 |---|---|
 | 0 | Project scaffolding: uv, ruff, pytest, CI with required checks *(done)* |
 | 1 | Gold set: pick filings from the IRS index, download their XML and page images, build answer-key JSON *(done)* |
-| 2 | Schema and baseline: Pydantic model of Part I, Claude structured outputs from page images, validation and retry |
+| 2 | Schema and baseline: Pydantic model of Part I, Claude structured outputs from page images, validation and retry *(done)* |
 | 3 | Eval harness: per-field accuracy with normalization, results history by prompt version and model |
 | 4 | Vision input choices: page selection, resolution, PDF vs. image input, cost per document |
 | 5 | Harder documents: multi-page sections (Part VII), scanned paper returns |
@@ -43,13 +43,34 @@ IRS data is public domain. Thanks to ProPublica for the Nonprofit Explorer API; 
 
 | File | What |
 |---|---|
-| `data/gold/<object_id>.json` | Answer key: the 43 fields in `src/fields.py` (filer identity + Part I), read from the e-file XML |
+| `data/gold/<object_id>.json` | Answer key: the 42 fields in `src/fields.py` (filer identity + Part I), read from the e-file XML |
 | `data/gold/manifest.csv` | One row per filing: EIN, name, tax period, band, split, DLN, IRS PDF filename |
 | `data/gold/skipped.csv` | Filings tried but left out, and why (15, all with no published PDF yet) |
 
 Rebuild (or fetch the PDFs on a new machine) with `python src/build_gold.py`; the fixed seed picks the same filings, and files already in `data/raw/` aren't downloaded again. Requests are spaced about a second apart per host.
 
 **What's in it:** tax years ending 2021-2024 (mostly 2023), 16-79 pages per return, Part I always on page 1. A blank line on the form is `null` in the answer key, not `0`: blanks are common (volunteers in 19 of 60, some prior-year lines in up to 36), and so are negative values (current-year revenue less expenses in 19 of 60). Missions run up to 760 characters. Spot checks of three filings (tax years 2021, 2023, 2025) against their page images matched on every field.
+
+## Baseline extraction (step 2)
+
+`python src/extract.py --split dev --limit 3` renders page 1 of each filing's PDF to a PNG (longer side 1568 px) and asks Claude (`claude-sonnet-5`) to transcribe it:
+
+- **Schema** (`src/schema.py`): a Pydantic model generated from `src/fields.py`. Structured outputs force the reply to match it: every field present with the right type. Blank lines are listed in `blank_lines` and become `null`; the API rejects schemas with more than 16 nullable ("int or null") fields, so nullable fields aren't used.
+- **Checks** (`src/checks.py`): Part I's own arithmetic (line 12 = lines 8-11, line 18 = lines 13-17, line 19 = 12 - 18, line 22 = 20 - 21), a 9-digit EIN, and a tax year that begins before it ends. Every rule holds on all 60 answer keys, so a failure means a misreading.
+- **Retry**: if a check fails, Claude is shown the broken rules in the same conversation and asked once more.
+- **Prompts** (`prompts/<name>/<version>.txt`): versioned and immutable, as in the rag project; each result records the prompt version and fingerprint.
+- **Cost**: priced from the API's token usage. Results go to `data/runs/<run>/` (gitignored for now).
+
+First run, all 21 dev filings: **$0.025 per filing** (about 7,000 input and 1,050 output tokens), 5-14 s each, no check failures or retries. 866 of 882 fields (98.2%) matched the answer keys exactly; 14 filings were perfect. Every mismatch was checked against the page image:
+
+| Mismatches | Cause | Whose error |
+|---|---|---|
+| 11 in 4 filings | Blank vs. 0: a 0 written into a blank cell next to a 0 (10), or the reverse (1). The arithmetic checks can't catch this, since blank counts as 0 | Claude |
+| 3 | EIN digits scrambled right after the dash (41-1657792 read as 416657792): likely from removing the dash while transcribing | Claude |
+| 1 | "SCHOOLINC" printed, "SCHOOL INC" returned: a correction, not a transcription | Claude (harmless) |
+| 1 | Name printed on two lines; the answer key has only the first (`BusinessNameLine1Txt`). 11 of the 60 answer keys are truncated this way | Answer key |
+
+Twenty-one filings is still a small sample: step 3 adds the eval harness and fixes the two-line names.
 
 ## Setup
 
