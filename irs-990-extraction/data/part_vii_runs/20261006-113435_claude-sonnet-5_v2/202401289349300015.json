@@ -1,0 +1,97 @@
+{
+  "object_id": "202401289349300015",
+  "seconds": 5.1,
+  "cost_usd": 0.0164434,
+  "answer": {
+    "rows": [
+      {
+        "name": "BRADLEY CHAMBERS",
+        "title": "PRESIDENT/DIRECTOR",
+        "hours": 1.0,
+        "hours_related": 39.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 1630034,
+        "other_pay": 57000
+      },
+      {
+        "name": "ART SIVASLIAN",
+        "title": "DIRECTOR",
+        "hours": 1.0,
+        "hours_related": 39.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 703067,
+        "other_pay": 23936
+      },
+      {
+        "name": "OLIVER M JOHNSON II",
+        "title": "SECRETARY",
+        "hours": 1.0,
+        "hours_related": 39.0,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 1863212,
+        "other_pay": 41692
+      },
+      {
+        "name": "DEANA STOUT",
+        "title": "TREASURER",
+        "hours": 1.0,
+        "hours_related": 39.0,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 535082,
+        "other_pay": 51916
+      }
+    ],
+    "totals": {
+      "total_pay": 0,
+      "total_pay_related": 4731395,
+      "total_other_pay": 174544,
+      "people_over_100k": 0
+    }
+  },
+  "problems": [],
+  "pages": [
+    7,
+    8
+  ],
+  "model": "claude-sonnet-5",
+  "prompt": "extract_part_vii/v2",
+  "prompt_sha256": "c7e612fbcc19323ab704569d2842cc3a1d45050454dd0253a0523b1076b6bcfd",
+  "usage": {
+    "input_tokens": 5416,
+    "output_tokens": 513,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 2407
+  },
+  "attempts": [
+    {
+      "stop_reason": "end_turn",
+      "rows": 4,
+      "problems": [],
+      "seconds": 4.9
+    }
+  ]
+}

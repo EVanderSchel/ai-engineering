@@ -29,7 +29,8 @@ import pymupdf
 import checks
 import evaluate
 import prompts
-from paths import DATA_DIR, GOLD_DIR, RAW_DIR
+import scans
+from paths import DATA_DIR, GOLD_DIR
 from schema import Form990PartI, as_answer
 
 MODEL = "claude-sonnet-5"
@@ -147,6 +148,7 @@ class Extraction:
     prompt_sha256: str
     input: str = INPUT  # how page 1 was sent, e.g. "image-1568" or "pdf"
     cache: bool = False  # whether the system prompt was marked for prompt caching
+    scan: str | None = None  # the simulated scan level read (scans.py), or None for the IRS's own PDF
     usage: Usage = field(default_factory=Usage)
     attempts: list[Attempt] = field(default_factory=list)
 
@@ -234,6 +236,7 @@ def main() -> None:
         default=True,
         help="cache the prompt and schema across requests (default on; --no-cache to compare)",
     )
+    parser.add_argument("--scan", choices=sorted(scans.LEVELS), help="read a simulated scan (make it with scans.py)")
     parser.add_argument("--final", action="store_true", help="required for --split test: see the README")
     args = parser.parse_args()
     if args.split == "test" and not args.final:
@@ -248,6 +251,7 @@ def main() -> None:
 
     version = prompts.load("extract").version
     run_id = f"{datetime.datetime.now():%Y%m%d-%H%M%S}_{args.model}_{version}_{args.input}" + ("_cache" * args.cache)
+    run_id += f"_scan-{args.scan}" if args.scan else ""
     run_dir = RUNS_DIR / run_id
     run_dir.mkdir(parents=True)
     client = anthropic.Anthropic()
@@ -260,14 +264,13 @@ def main() -> None:
 
     for done, row in enumerate(rows):
         object_id = row["object_id"]
-        pdf = RAW_DIR / "pdf" / f"{object_id}.pdf"
-        if not pdf.exists():
-            raise SystemExit(f"{pdf} is missing: run `python src/build_gold.py` to download the gold-set PDFs")
+        pdf = scans.source_pdf(object_id, args.scan)
 
         started = time.monotonic()
         block = page_block(pdf, args.input)
         try:
             result = extract(client, block, input_kind=args.input, cache=args.cache, model=args.model)
+            result.scan = args.scan
         except (anthropic.APIStatusError, anthropic.APIConnectionError) as e:
             # The SDK has already retried rate limits, server errors, and dropped connections. What's
             # left (no credit, a bad key, a rejected request) would fail for every filing: stop, and

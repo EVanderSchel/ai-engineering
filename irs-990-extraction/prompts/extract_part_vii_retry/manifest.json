@@ -1,0 +1,10 @@
+{
+  "active": "v1",
+  "versions": {
+    "v1": {
+      "sha256": "81dd505c74b0b30f54258cdd38baedcbb3970bc80abfc1953c470e6f01190b19",
+      "created": "2026-10-06",
+      "notes": "Baseline Part VII retry: lists the column totals that don't add up, points at skipped rows at page breaks and misread amounts, asks for a full corrected transcription."
+    }
+  }
+}

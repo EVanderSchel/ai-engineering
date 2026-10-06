@@ -1,0 +1,112 @@
+{
+  "object_id": "202403309349301365",
+  "seconds": 5.6,
+  "cost_usd": 0.0172314,
+  "answer": {
+    "rows": [
+      {
+        "name": "KIM BOCKENSTEDT",
+        "title": "EXECUTIVE DIRECTOR",
+        "hours": 35.0,
+        "hours_related": null,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": true,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 62000,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "MICHAEL MAURO",
+        "title": "TREASURER",
+        "hours": 2.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "EMILY KOEKKOEK",
+        "title": "SECRETARY",
+        "hours": 2.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "AMANDA ENO",
+        "title": "PRESIDENT",
+        "hours": 2.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "MOLLIE HAWES",
+        "title": "PRES-ELECT",
+        "hours": 2.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      }
+    ],
+    "totals": {
+      "total_pay": 62000,
+      "total_pay_related": null,
+      "total_other_pay": null,
+      "people_over_100k": null
+    }
+  },
+  "problems": [],
+  "pages": [
+    7,
+    8
+  ],
+  "model": "claude-sonnet-5",
+  "prompt": "extract_part_vii/v2",
+  "prompt_sha256": "c7e612fbcc19323ab704569d2842cc3a1d45050454dd0253a0523b1076b6bcfd",
+  "usage": {
+    "input_tokens": 5360,
+    "output_tokens": 603,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 2407
+  },
+  "attempts": [
+    {
+      "stop_reason": "end_turn",
+      "rows": 5,
+      "problems": [],
+      "seconds": 5.4
+    }
+  ]
+}

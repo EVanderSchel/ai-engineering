@@ -146,6 +146,70 @@ The correct pages for the 21 dev returns are in `data/gold/part_vii_pages.csv`: 
 
 First run (`data/page_runs/`): **21 of 21 returns exactly right**, no pages missed and none extra, both Schedule R decoys left out. $0.015 per return (7,442 input tokens, 15 output: Claude didn't need to think), 2.2 s each. One run on 21 returns, so a small sample; the scanned returns of step 5b will test it harder.
 
+**Stage 2, reading the rows** (`src/part_vii.py`, prompt `extract_part_vii/v1`). The Part VII pages go to Claude at 1568 px, in order and labeled with their page numbers, with the prompt and schema cached. The answer is every row (13 columns each) plus the line 1d totals and the line 2 count. The request is streamed, because an 88-row list is a long answer. Hours are nullable (a blank line for related organizations is not 0.00); every row shares one definition, so the schema has 6 nullable fields, under the API's limit of 16.
+
+*Checks:* each pay column must add up to its line 1d total within $1 per row (one answer key is $1 off by rounding), and no more rows can show over $100,000 in column (D) than line 2 counts. Both hold on all 60 answer keys. A list that doesn't add up gets one retry with the gap.
+
+*Scoring* (`src/score_part_vii.py`, history in `results/part_vii_history.csv`): rows are first matched to the answer key by name (ignoring case, spaces, and punctuation; a name at least 80% alike still counts as that person). Unmatched answer-key rows are *missed people*, unmatched extracted rows *invented people*. Matched rows and the totals are then scored field by field with the Part I rules and error types (punctuation in a name still counts).
+
+First run on the 21 dev returns (pages from the labels, so stage 2 is measured on its own):
+
+| | |
+|---|---|
+| People | **320 of 320 found**, none invented |
+| Fields of matched rows | 99.5% correct: every name, title, hour, and amount right |
+| Totals | 81 of 84 correct |
+| Returns entirely right | 18 of 21 |
+| Cost and time | $0.038 per return, 16 s (Prep for Prep, 88 rows on 11 pages: $0.20, 91 s); no retries |
+
+Every error was checked against the page image and every one is Claude's. They have one thing in common: Claude inferred instead of transcribing.
+- **Checkboxes moved one column to the left**, on every row of two returns (20 errors). On one, every X is under "Individual trustee or director" and Claude marked "Officer" for a CFO and a President; on the other, X's under "Key employee" and "Highest compensated employee" became "Officer" and "Key employee" for a General Manager and Senior Directors. The columns are narrow with sideways labels, and Claude's answers match what the titles suggest.
+- **Blank totals read as 0** (3 errors): line 1d is blank on one return, and Claude wrote the 0 that the rows add up to.
+
+The checks can't catch either: a checkbox doesn't change any total, and 0 adds up the same as blank.
+
+A second, identical run separated habits from bad luck: again 320 of 320 people and none invented, 99.8% of fields correct. The Valley Crest checkboxes (8 errors) and the blank totals (3) came back exactly the same, so those are habits; Gencure dropped from 12 errors to 2 (only Geoffrey Kindt's), so that one is partly luck.
+
+**Prompt v2 didn't help.** `extract_part_vii/v2` named column (C)'s six boxes in order, told Claude to place each X by the column it's printed in and never from the title, and said a blank total stays null even when the rows show 0. Two runs of each prompt:
+
+| Errors | v1 run 1 | v1 run 2 | v2 run 1 | v2 run 2 |
+|---|---|---|---|---|
+| Valley Crest checkboxes | 8 | 8 | 8 | 0 |
+| Gencure checkboxes | 12 | 2 | 12 | 12 |
+| Blank totals read as 0 | 3 | 3 | 4 (on a different return) | 0 |
+| **Total** | 23 | 13 | 24 | 12 |
+
+The same 36 errors over two runs either way; they moved between returns instead of going away. Where an X sits in a narrow column is a question of *seeing*, and instructions don't improve eyesight. v1 stays active (v2 is kept in the registry, unchanged, as the record of the attempt). Levers that act on perception, such as a zoomed crop of column (C), or treating checkbox fields as low-confidence and routing them to human review (step 6), are what's left to try.
+
+## Simulated scans (step 5b)
+
+Paper Form 990s predate mandatory e-filing, so they have no e-file XML and no answer keys. `src/scans.py` makes scanned copies of the gold-set returns instead: every page re-rendered at a lower resolution, with faded ink on gray paper, a tilted sheet, blur, dust specks, and JPEG compression, and saved as an image PDF like the IRS's own. The words and numbers are unchanged, so the answer keys still apply. The damage is seeded per return and level, so reruns get exactly the same pages. Every stage takes `--scan light|medium|heavy`, and runs and history rows record it.
+
+| Level | Like | dpi | Tilt | Legibility at the size Claude sees |
+|---|---|---|---|---|
+| light | a decent office scan | 200 | 0.5° | fully legible |
+| medium | a poor scan | 150 | 1.5° | readable; small print soft |
+| heavy | a bad fax | 100 | 3° | names barely legible |
+
+This tests image quality only: real paper returns also have handwriting, typewriter fonts, stamps, and other layouts. It's a test fixture, not a production step.
+
+**Results** (one run per stage and level, 21 dev returns; image tokens depend only on size, so scans cost the same to send, but not to answer):
+
+| Stage | Clean | Light | Medium | Heavy |
+|---|---|---|---|---|
+| Part I, fields correct | 98.6-99.7% | 98.5% | 96.6% | 73.2% (90.1% on the 17 filings that got an answer) |
+| Part I, cost per filing | $0.0175 | $0.017 | $0.028 | $0.099 |
+| Page finder, returns exactly right | 21/21 | 21/21 | 21/21 | 21/21 |
+| Part VII, people missed / invented | 0 / 0 | 0 / 0 | 0 / 0 | 25 / 25 (of 320) |
+| Part VII, fields of matched rows | 99.5-99.8% | 100% | 100% | 94.9% |
+| Part VII, cost per return | $0.038 | $0.038 | $0.038 | $0.121 |
+
+- **Light scans are as good as clean pages**, and medium costs about two points on Part I (new misread digits) and nothing on Part VII. Heavy is where it breaks.
+- **The page finder never noticed.** Page headers are large print, and 21 of 21 returns were exactly right at every level.
+- **Unreadable pages fail expensively, not gracefully.** On 4 of the 21 heavy Part I filings Claude used its whole 16,000-token output budget thinking and returned nothing ($0.16 each); the rest cost 5 times as much as clean pages. A production system needs a cap on that, and a way to flag unreadable input instead of retrying it.
+- **Wrong answers on heavy scans look confident.** Part VII's 25 "missed" and 25 "invented" people are mostly the same people with misread names (KIM BOCKENSTEDT as KIM ROCKENSTEIN, too different to match), and pay amounts were misread 63 times. Nothing in the answer says the page was hard to read, which is what step 6 (confidence and human review) is for.
+- Curiously, the Part VII checkbox errors of the clean runs didn't appear on light or medium scans. One run each, so this may be chance; not investigated.
+
 ## Setup
 
 Needs Python 3.14 and [uv](https://docs.astral.sh/uv/) (`pip install uv`):

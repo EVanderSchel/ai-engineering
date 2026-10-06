@@ -1,0 +1,15 @@
+{
+  "active": "v1",
+  "versions": {
+    "v1": {
+      "sha256": "62191ed55ac7484392227a21816af82b403dd54c1803848576742aed273a3e64",
+      "created": "2026-10-06",
+      "notes": "Baseline Part VII Section A transcription: every row in printed order across form and continuation pages, name without row number, hours above/below the dotted line (blank is null), checkboxes, columns D-F, line 1d totals and line 2 as printed, Section B excluded."
+    },
+    "v2": {
+      "sha256": "c7e612fbcc19323ab704569d2842cc3a1d45050454dd0253a0523b1076b6bcfd",
+      "created": "2026-10-06",
+      "notes": "v1 plus: column (C)'s six checkboxes named in order, each X placed by the column it is printed in, never from the title; a blank total line is null even when the rows show 0. Targets two systematic dev errors (director X read as officer; blank line 1d read as 0)."
+    }
+  }
+}

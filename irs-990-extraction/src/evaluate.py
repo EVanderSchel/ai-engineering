@@ -41,6 +41,7 @@ HISTORY_COLUMNS = [
     "prompt_sha256",
     "input",
     "cache",
+    "scan",
     "filings",
     "field_accuracy",
     "filings_all_correct",
@@ -65,7 +66,11 @@ def normalize(name: str, value):
 
 def outcome(name: str, expected, got) -> str:
     """ "correct", or the error type."""
-    expected, got = normalize(name, expected), normalize(name, got)
+    return classify(normalize(name, expected), normalize(name, got))
+
+
+def classify(expected, got) -> str:
+    """ "correct", or the error type, for two already-normalized values."""
     if expected == got:
         return "correct"
     if expected is None:
@@ -138,6 +143,7 @@ def score_run(run_dir) -> dict:
         "prompt_sha256": first["prompt_sha256"],
         "input": first.get("input", "image-1568"),  # runs before step 4 all sent 1568 px images
         "cache": first.get("cache", False),
+        "scan": first.get("scan") or "none",  # a simulated scan level (step 5b), or the IRS PDF
         "filings": len(records),
         "field_accuracy": round(1 - len(errors) / n_fields, 4),
         "filings_all_correct": filings_all_correct,
@@ -169,7 +175,8 @@ def record(score: dict) -> None:
 def report(score: dict) -> str:
     lines = [
         f"Run {score['run']}: {score['filings']} {score['split']} filings, "
-        f"{score['model']}, {score['prompt']}, input {score['input']}{', cached' if score['cache'] else ''}",
+        f"{score['model']}, {score['prompt']}, input {score['input']}{', cached' if score['cache'] else ''}, "
+        f"scan {score['scan']}",
         f"  Field accuracy {score['field_accuracy']:.1%}; all 42 fields right on "
         f"{score['filings_all_correct']} of {score['filings']} filings",
         "  Errors: " + ", ".join(f"{t} {score[t]}" for t in ERROR_TYPES),

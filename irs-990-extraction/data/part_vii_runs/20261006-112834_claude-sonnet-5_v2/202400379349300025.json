@@ -1,0 +1,97 @@
+{
+  "object_id": "202400379349300025",
+  "seconds": 4.8,
+  "cost_usd": 0.0160334,
+  "answer": {
+    "rows": [
+      {
+        "name": "BODE CAMANN",
+        "title": "TREASURER",
+        "hours": null,
+        "hours_related": null,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "ERIC MOSKAL",
+        "title": "PRESIDENT",
+        "hours": null,
+        "hours_related": null,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "OWEN MYERS",
+        "title": "VICE PRESIDE",
+        "hours": null,
+        "hours_related": null,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "LUCAS PAQUET",
+        "title": "HOUSING MANA",
+        "hours": null,
+        "hours_related": null,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      }
+    ],
+    "totals": {
+      "total_pay": null,
+      "total_pay_related": null,
+      "total_other_pay": null,
+      "people_over_100k": null
+    }
+  },
+  "problems": [],
+  "pages": [
+    7,
+    8
+  ],
+  "model": "claude-sonnet-5",
+  "prompt": "extract_part_vii/v2",
+  "prompt_sha256": "c7e612fbcc19323ab704569d2842cc3a1d45050454dd0253a0523b1076b6bcfd",
+  "usage": {
+    "input_tokens": 5416,
+    "output_tokens": 472,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 2407
+  },
+  "attempts": [
+    {
+      "stop_reason": "end_turn",
+      "rows": 4,
+      "problems": [],
+      "seconds": 4.6
+    }
+  ]
+}

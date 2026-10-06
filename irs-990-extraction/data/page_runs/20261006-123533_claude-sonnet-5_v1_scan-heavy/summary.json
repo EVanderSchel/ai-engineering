@@ -1,0 +1,15 @@
+{
+  "run": "20261006-123533_claude-sonnet-5_v1_scan-heavy",
+  "scan": "heavy",
+  "returns": 21,
+  "exact": 21,
+  "missed_pages": 0,
+  "extra_pages": 0,
+  "cost_usd": 0.315616,
+  "usage": {
+    "input_tokens": 156283,
+    "output_tokens": 305,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0
+  }
+}
