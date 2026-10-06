@@ -1,0 +1,26 @@
+{
+  "object_id": "202432649349300408",
+  "expected": [
+    7,
+    8
+  ],
+  "missed": [],
+  "extra": [],
+  "cost_usd": 0.01685,
+  "pages": [
+    7,
+    8
+  ],
+  "model": "claude-sonnet-5",
+  "prompt": "find_pages/v1",
+  "prompt_sha256": "d48c90a2863c9a22fb2d7259f45bc6b70844ca0470ae79edf5963449e871b457",
+  "scan": "heavy",
+  "stop_reason": "end_turn",
+  "seconds": 2.7,
+  "usage": {
+    "input_tokens": 8360,
+    "output_tokens": 13,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0
+  }
+}

@@ -26,8 +26,9 @@ from pydantic import BaseModel, ConfigDict
 from pydantic import Field as PydanticField
 
 import prompts
+import scans
 from extract import MODEL, PRICES, Usage, _base64
-from paths import DATA_DIR, GOLD_DIR, RAW_DIR
+from paths import DATA_DIR, GOLD_DIR
 
 LABELS = GOLD_DIR / "part_vii_pages.csv"
 RUNS_DIR = DATA_DIR / "page_runs"
@@ -104,6 +105,7 @@ class Found:
     model: str
     prompt: str
     prompt_sha256: str
+    scan: str | None = None  # simulated scan level, or None for the IRS PDF
     stop_reason: str = ""
     seconds: float = 0.0
     usage: Usage = field(default_factory=Usage)
@@ -143,6 +145,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--limit", type=int, help="only the first N labeled returns")
     parser.add_argument("--model", default=MODEL, choices=sorted(PRICES))
+    parser.add_argument("--scan", choices=sorted(scans.LEVELS), help="read a simulated scan (make it with scans.py)")
     parser.add_argument("--count-tokens", action="store_true", help="estimate the cost without running (free)")
     args = parser.parse_args()
 
@@ -153,7 +156,7 @@ def main() -> None:
     if args.count_tokens:
         counts = []
         for object_id in object_ids:
-            request = _request(RAW_DIR / "pdf" / f"{object_id}.pdf")
+            request = _request(scans.source_pdf(object_id, args.scan))
             tokens = client.messages.count_tokens(
                 model=args.model,
                 # the same schema parse() sends (the SDK has no public helper for it)
@@ -168,11 +171,13 @@ def main() -> None:
         print(f"\nMean {mean:.0f} input tokens: ${mean * input_price / 1e6:.4f} input per return, plus output")
         return
 
-    run_dir = RUNS_DIR / f"{datetime.datetime.now():%Y%m%d-%H%M%S}_{args.model}_{prompts.load('find_pages').version}"
+    run_id = f"{datetime.datetime.now():%Y%m%d-%H%M%S}_{args.model}_{prompts.load('find_pages').version}"
+    run_dir = RUNS_DIR / (run_id + (f"_scan-{args.scan}" if args.scan else ""))
     run_dir.mkdir(parents=True)
     total, exact, missed, extra = Usage(), 0, 0, 0
     for object_id in object_ids:
-        result = find_pages(client, RAW_DIR / "pdf" / f"{object_id}.pdf", model=args.model)
+        result = find_pages(client, scans.source_pdf(object_id, args.scan), model=args.model)
+        result.scan = args.scan
         total.add(result.usage)
         s = score(result.pages, expected[object_id])
         exact += not s["missed"] and not s["extra"]
@@ -184,7 +189,14 @@ def main() -> None:
         print(f"{object_id}: found {result.pages}, missed {s['missed']}, extra {s['extra']}, ${result.cost_usd:.4f}")
 
     n = len(object_ids)
-    summary = {"run": run_dir.name, "returns": n, "exact": exact, "missed_pages": missed, "extra_pages": extra}
+    summary = {
+        "run": run_dir.name,
+        "scan": args.scan,
+        "returns": n,
+        "exact": exact,
+        "missed_pages": missed,
+        "extra_pages": extra,
+    }
     summary |= {"cost_usd": total.cost(args.model), "usage": asdict(total)}
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(

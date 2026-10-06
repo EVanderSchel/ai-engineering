@@ -181,6 +181,35 @@ A second, identical run separated habits from bad luck: again 320 of 320 people 
 
 The same 36 errors over two runs either way; they moved between returns instead of going away. Where an X sits in a narrow column is a question of *seeing*, and instructions don't improve eyesight. v1 stays active (v2 is kept in the registry, unchanged, as the record of the attempt). Levers that act on perception, such as a zoomed crop of column (C), or treating checkbox fields as low-confidence and routing them to human review (step 6), are what's left to try.
 
+## Simulated scans (step 5b)
+
+Paper Form 990s predate mandatory e-filing, so they have no e-file XML and no answer keys. `src/scans.py` makes scanned copies of the gold-set returns instead: every page re-rendered at a lower resolution, with faded ink on gray paper, a tilted sheet, blur, dust specks, and JPEG compression, and saved as an image PDF like the IRS's own. The words and numbers are unchanged, so the answer keys still apply. The damage is seeded per return and level, so reruns get exactly the same pages. Every stage takes `--scan light|medium|heavy`, and runs and history rows record it.
+
+| Level | Like | dpi | Tilt | Legibility at the size Claude sees |
+|---|---|---|---|---|
+| light | a decent office scan | 200 | 0.5° | fully legible |
+| medium | a poor scan | 150 | 1.5° | readable; small print soft |
+| heavy | a bad fax | 100 | 3° | names barely legible |
+
+This tests image quality only: real paper returns also have handwriting, typewriter fonts, stamps, and other layouts. It's a test fixture, not a production step.
+
+**Results** (one run per stage and level, 21 dev returns; image tokens depend only on size, so scans cost the same to send, but not to answer):
+
+| Stage | Clean | Light | Medium | Heavy |
+|---|---|---|---|---|
+| Part I, fields correct | 98.6-99.7% | 98.5% | 96.6% | 73.2% (90.1% on the 17 filings that got an answer) |
+| Part I, cost per filing | $0.0175 | $0.017 | $0.028 | $0.099 |
+| Page finder, returns exactly right | 21/21 | 21/21 | 21/21 | 21/21 |
+| Part VII, people missed / invented | 0 / 0 | 0 / 0 | 0 / 0 | 25 / 25 (of 320) |
+| Part VII, fields of matched rows | 99.5-99.8% | 100% | 100% | 94.9% |
+| Part VII, cost per return | $0.038 | $0.038 | $0.038 | $0.121 |
+
+- **Light scans are as good as clean pages**, and medium costs about two points on Part I (new misread digits) and nothing on Part VII. Heavy is where it breaks.
+- **The page finder never noticed.** Page headers are large print, and 21 of 21 returns were exactly right at every level.
+- **Unreadable pages fail expensively, not gracefully.** On 4 of the 21 heavy Part I filings Claude used its whole 16,000-token output budget thinking and returned nothing ($0.16 each); the rest cost 5 times as much as clean pages. A production system needs a cap on that, and a way to flag unreadable input instead of retrying it.
+- **Wrong answers on heavy scans look confident.** Part VII's 25 "missed" and 25 "invented" people are mostly the same people with misread names (KIM BOCKENSTEDT as KIM ROCKENSTEIN, too different to match), and pay amounts were misread 63 times. Nothing in the answer says the page was hard to read, which is what step 6 (confidence and human review) is for.
+- Curiously, the Part VII checkbox errors of the clean runs didn't appear on light or medium scans. One run each, so this may be chance; not investigated.
+
 ## Setup
 
 Needs Python 3.14 and [uv](https://docs.astral.sh/uv/) (`pip install uv`):

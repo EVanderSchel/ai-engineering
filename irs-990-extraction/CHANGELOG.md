@@ -28,6 +28,8 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 - Part VII row extraction (`src/part_vii.py`): found pages in, every row and the totals out, checked against line 1d with one retry; list scoring that matches people by name and counts missed and invented people (`src/score_part_vii.py`). First run on dev: 320 of 320 people, 99.5% of their fields, $0.038 per return
 
+- Simulated scans (`src/scans.py`, Pillow): light, medium, and heavy scanned copies of the gold-set returns, and `--scan` on every stage. Light matches clean pages, medium costs about two points on Part I, heavy breaks Part I and Part VII (and runs some requests out of output tokens); the page finder stayed 21/21 at every level
+
 ### Fixed
 
 - Answer keys for organizations whose name is printed on two lines had only the first line (11 of 60); the name now joins `BusinessNameLine1Txt` and `BusinessNameLine2Txt`

@@ -1,0 +1,14 @@
+{
+  "run": "20261006-120647_claude-sonnet-5_v2_image-1568_cache_scan-heavy",
+  "complete": true,
+  "filings": 21,
+  "of": 21,
+  "error": null,
+  "cost_usd": 2.07045,
+  "usage": {
+    "input_tokens": 104909,
+    "output_tokens": 183347,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 135810
+  }
+}

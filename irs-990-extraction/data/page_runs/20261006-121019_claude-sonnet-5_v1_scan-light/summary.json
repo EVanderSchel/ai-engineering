@@ -1,0 +1,15 @@
+{
+  "run": "20261006-121019_claude-sonnet-5_v1_scan-light",
+  "scan": "light",
+  "returns": 21,
+  "exact": 21,
+  "missed_pages": 0,
+  "extra_pages": 0,
+  "cost_usd": 0.315626,
+  "usage": {
+    "input_tokens": 156283,
+    "output_tokens": 306,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0
+  }
+}

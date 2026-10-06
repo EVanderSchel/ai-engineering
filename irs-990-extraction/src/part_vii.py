@@ -29,10 +29,11 @@ from pydantic import Field as PydanticField
 
 import find_pages
 import prompts
+import scans
 import score_part_vii
 from extract import MODEL, PRICES, Usage, _system, page_png
 from fields import PART_VII_COLUMNS, PART_VII_TOTALS
-from paths import DATA_DIR, RAW_DIR
+from paths import DATA_DIR
 
 RUNS_DIR = DATA_DIR / "part_vii_runs"
 MAX_TOKENS = 64000  # an 88-row list is a long answer; streaming keeps a long request from timing out
@@ -135,6 +136,7 @@ class Extraction:
     model: str
     prompt: str
     prompt_sha256: str
+    scan: str | None = None  # simulated scan level, or None for the IRS PDF
     usage: Usage = field(default_factory=Usage)
     attempts: list[Attempt] = field(default_factory=list)
 
@@ -189,6 +191,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--limit", type=int, help="only the first N labeled returns")
     parser.add_argument("--model", default=MODEL, choices=sorted(PRICES))
+    parser.add_argument("--scan", choices=sorted(scans.LEVELS), help="read a simulated scan (make it with scans.py)")
     parser.add_argument("--count-tokens", action="store_true", help="estimate the cost without running (free)")
     args = parser.parse_args()
 
@@ -203,7 +206,7 @@ def main() -> None:
             counts[object_id] = client.messages.count_tokens(
                 model=args.model,
                 system=system.template,
-                messages=[_first_message(RAW_DIR / "pdf" / f"{object_id}.pdf", labeled[object_id])],
+                messages=[_first_message(scans.source_pdf(object_id, args.scan), labeled[object_id])],
                 output_config={"format": {"type": "json_schema", "schema": transform_schema(PartVII)}},
             ).input_tokens
             print(f"{object_id}: {len(labeled[object_id])} pages, {counts[object_id]} input tokens")
@@ -213,6 +216,7 @@ def main() -> None:
         return
 
     run_id = f"{datetime.datetime.now():%Y%m%d-%H%M%S}_{args.model}_{system.version}"
+    run_id += f"_scan-{args.scan}" if args.scan else ""
     run_dir = RUNS_DIR / run_id
     run_dir.mkdir(parents=True)
     total = Usage()
@@ -225,7 +229,9 @@ def main() -> None:
     for done, object_id in enumerate(object_ids):
         started = time.monotonic()
         try:
-            result = extract(client, RAW_DIR / "pdf" / f"{object_id}.pdf", labeled[object_id], model=args.model)
+            pdf = scans.source_pdf(object_id, args.scan)
+            result = extract(client, pdf, labeled[object_id], model=args.model)
+            result.scan = args.scan
         except (anthropic.APIStatusError, anthropic.APIConnectionError) as e:
             save_summary(complete=False, done=done, error=f"{type(e).__name__}: {e}")
             raise SystemExit(f"Stopped after {done} of {len(object_ids)} returns: {e}") from e

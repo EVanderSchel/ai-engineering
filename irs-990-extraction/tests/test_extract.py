@@ -196,7 +196,7 @@ def test_an_api_error_stops_the_run_and_marks_it_incomplete(good, tmp_path, monk
 
     client = Broke(reply(good))
     monkeypatch.setattr(extract.anthropic, "Anthropic", lambda: client)
-    monkeypatch.setattr(extract, "RAW_DIR", raw)
+    monkeypatch.setattr(extract.scans, "RAW_DIR", raw)
     monkeypatch.setattr(extract, "RUNS_DIR", tmp_path / "runs")
     monkeypatch.setattr(extract, "page_block", lambda pdf, kind: BLOCK)
     monkeypatch.setattr("sys.argv", ["extract.py", "--limit", "3"])
