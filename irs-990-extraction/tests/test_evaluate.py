@@ -74,12 +74,17 @@ def test_a_run_is_scored_per_field_and_by_error_type(run_dir):
 
 
 def test_no_answer_counts_every_field_as_missed_or_blank(run_dir):
-    path = next(p for p in run_dir.glob("2*.json"))
-    record = json.loads(path.read_text(encoding="utf-8"))
-    path.write_text(json.dumps(record | {"answer": None}), encoding="utf-8")
+    keys = evaluate.gold()
+    with_a_value = 0
+    for path in run_dir.glob("2*.json"):  # every filing, so the order glob returns them in doesn't matter
+        record = json.loads(path.read_text(encoding="utf-8"))
+        path.write_text(json.dumps(record | {"answer": None}), encoding="utf-8")
+        with_a_value += sum(value is not None for value in keys[record["object_id"]]["fields"].values())
+
     score = evaluate.score_run(run_dir)
     assert score["filings_all_correct"] == 0
-    assert score["missed"] + score["zero_as_blank"] >= 30  # every field that has a value is lost
+    assert score["missed"] + score["zero_as_blank"] == with_a_value  # every field that has a value is lost
+    assert score["blank_as_zero"] + score["invented"] + score["wrong_value"] == 0  # and blanks stay right
 
 
 def test_history_keeps_one_row_per_run(run_dir, tmp_path, monkeypatch):
