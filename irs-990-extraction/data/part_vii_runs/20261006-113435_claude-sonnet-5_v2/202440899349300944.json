@@ -1,0 +1,112 @@
+{
+  "object_id": "202440899349300944",
+  "seconds": 5.7,
+  "cost_usd": 0.0172514,
+  "answer": {
+    "rows": [
+      {
+        "name": "JACQUELINE KIEHN",
+        "title": "EXECUTIVE DIRECTOR",
+        "hours": 40.0,
+        "hours_related": 0.0,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": true,
+        "former": false,
+        "pay": 72536,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "LEE BENNETT",
+        "title": "TREASURER",
+        "hours": 1.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "JENNY SMITH",
+        "title": "CHAIR",
+        "hours": 1.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "DANIEL GARNER",
+        "title": "VICE CHAIR",
+        "hours": 5.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "BEVERLY SARLES",
+        "title": "SECRETARY",
+        "hours": 1.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      }
+    ],
+    "totals": {
+      "total_pay": 72536,
+      "total_pay_related": 0,
+      "total_other_pay": 0,
+      "people_over_100k": 0
+    }
+  },
+  "problems": [],
+  "pages": [
+    7,
+    8
+  ],
+  "model": "claude-sonnet-5",
+  "prompt": "extract_part_vii/v2",
+  "prompt_sha256": "c7e612fbcc19323ab704569d2842cc3a1d45050454dd0253a0523b1076b6bcfd",
+  "usage": {
+    "input_tokens": 5360,
+    "output_tokens": 605,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 2407
+  },
+  "attempts": [
+    {
+      "stop_reason": "end_turn",
+      "rows": 5,
+      "problems": [],
+      "seconds": 5.5
+    }
+  ]
+}

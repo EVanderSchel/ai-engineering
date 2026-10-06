@@ -1,0 +1,142 @@
+{
+  "object_id": "202442489349300149",
+  "seconds": 6.9,
+  "cost_usd": 0.019137400000000002,
+  "answer": {
+    "rows": [
+      {
+        "name": "BJORN JONES",
+        "title": "PRESIDENT",
+        "hours": 5.0,
+        "hours_related": 0.0,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 788,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "TAMARA FARLEY",
+        "title": "DIRECTOR",
+        "hours": 2.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "ALEX COOK",
+        "title": "DIRECTOR",
+        "hours": 2.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "IAN CHILDS",
+        "title": "DIRECTOR",
+        "hours": 2.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "JEFF THORSBY",
+        "title": "VICE PRESIDENT",
+        "hours": 5.0,
+        "hours_related": 0.0,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "DANIELLE NOBLE",
+        "title": "TREASURER",
+        "hours": 5.0,
+        "hours_related": 0.0,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "NATHAN CONKLE",
+        "title": "SECRETARY",
+        "hours": 2.0,
+        "hours_related": 0.0,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      }
+    ],
+    "totals": {
+      "total_pay": 788,
+      "total_pay_related": 0,
+      "total_other_pay": 0,
+      "people_over_100k": 0
+    }
+  },
+  "problems": [],
+  "pages": [
+    7,
+    8
+  ],
+  "model": "claude-sonnet-5",
+  "prompt": "extract_part_vii/v2",
+  "prompt_sha256": "c7e612fbcc19323ab704569d2842cc3a1d45050454dd0253a0523b1076b6bcfd",
+  "usage": {
+    "input_tokens": 5248,
+    "output_tokens": 816,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 2407
+  },
+  "attempts": [
+    {
+      "stop_reason": "end_turn",
+      "rows": 7,
+      "problems": [],
+      "seconds": 6.7
+    }
+  ]
+}

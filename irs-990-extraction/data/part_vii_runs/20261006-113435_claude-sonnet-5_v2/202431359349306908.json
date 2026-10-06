@@ -1,0 +1,97 @@
+{
+  "object_id": "202431359349306908",
+  "seconds": 5.3,
+  "cost_usd": 0.0169434,
+  "answer": {
+    "rows": [
+      {
+        "name": "ANTHONY D'AGOSTINO",
+        "title": "CHIEF EXECUTIVE OFFICER (THRU 4/23)",
+        "hours": 0.5,
+        "hours_related": 39.5,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 188097,
+        "other_pay": 15016
+      },
+      {
+        "name": "AMANDA LAUMEYER",
+        "title": "CHIEF EXECUTIVE OFFICER (BEG. 4/23)",
+        "hours": 0.5,
+        "hours_related": 1.5,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 104699,
+        "other_pay": 5429
+      },
+      {
+        "name": "JOE ROBINSON",
+        "title": "PRESIDENT",
+        "hours": 0.5,
+        "hours_related": 1.5,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "KEVIN HODGES",
+        "title": "SR DIRECTOR OF FINANCE (BEG. 4/23)",
+        "hours": 2.0,
+        "hours_related": 38.0,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 21895,
+        "other_pay": 88
+      }
+    ],
+    "totals": {
+      "total_pay": 0,
+      "total_pay_related": 314691,
+      "total_other_pay": 20533,
+      "people_over_100k": 0
+    }
+  },
+  "problems": [],
+  "pages": [
+    7,
+    8
+  ],
+  "model": "claude-sonnet-5",
+  "prompt": "extract_part_vii/v2",
+  "prompt_sha256": "c7e612fbcc19323ab704569d2842cc3a1d45050454dd0253a0523b1076b6bcfd",
+  "usage": {
+    "input_tokens": 5416,
+    "output_tokens": 563,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 2407
+  },
+  "attempts": [
+    {
+      "stop_reason": "end_turn",
+      "rows": 4,
+      "problems": [],
+      "seconds": 5.1
+    }
+  ]
+}

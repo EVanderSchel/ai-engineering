@@ -170,6 +170,17 @@ The checks can't catch either: a checkbox doesn't change any total, and 0 adds u
 
 A second, identical run separated habits from bad luck: again 320 of 320 people and none invented, 99.8% of fields correct. The Valley Crest checkboxes (8 errors) and the blank totals (3) came back exactly the same, so those are habits; Gencure dropped from 12 errors to 2 (only Geoffrey Kindt's), so that one is partly luck.
 
+**Prompt v2 didn't help.** `extract_part_vii/v2` named column (C)'s six boxes in order, told Claude to place each X by the column it's printed in and never from the title, and said a blank total stays null even when the rows show 0. Two runs of each prompt:
+
+| Errors | v1 run 1 | v1 run 2 | v2 run 1 | v2 run 2 |
+|---|---|---|---|---|
+| Valley Crest checkboxes | 8 | 8 | 8 | 0 |
+| Gencure checkboxes | 12 | 2 | 12 | 12 |
+| Blank totals read as 0 | 3 | 3 | 4 (on a different return) | 0 |
+| **Total** | 23 | 13 | 24 | 12 |
+
+The same 36 errors over two runs either way; they moved between returns instead of going away. Where an X sits in a narrow column is a question of *seeing*, and instructions don't improve eyesight. v1 stays active (v2 is kept in the registry, unchanged, as the record of the attempt). Levers that act on perception, such as a zoomed crop of column (C), or treating checkbox fields as low-confidence and routing them to human review (step 6), are what's left to try.
+
 ## Setup
 
 Needs Python 3.14 and [uv](https://docs.astral.sh/uv/) (`pip install uv`):
