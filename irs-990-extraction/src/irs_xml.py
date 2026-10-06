@@ -16,10 +16,16 @@ def _path(tag_path: str) -> str:
     return "/".join(f"e:{part}" for part in tag_path.split("/"))
 
 
+def _text(element: ET.Element | None) -> str | None:
+    """An element's text, including its children's (joined with spaces), or None if it's absent."""
+    if element is None:
+        return None
+    return " ".join(part.strip() for part in element.itertext() if part.strip())
+
+
 def _convert(field: Field, text: str | None):
     if text is None:
         return None  # element absent: the line was left blank on the form
-    text = text.strip()
     if field.kind == "int":
         return int(text)
     return text  # str, and dates as "YYYY-MM-DD"
@@ -35,7 +41,7 @@ def answer_key(xml_bytes: bytes) -> dict:
 
     values = {}
     for field in HEADER_FIELDS:
-        values[field.name] = _convert(field, header.findtext(_path(field.xml_tag), namespaces=NS))
+        values[field.name] = _convert(field, _text(header.find(_path(field.xml_tag), NS)))
     for field in PART_I_FIELDS:
-        values[field.name] = _convert(field, form.findtext(_path(field.xml_tag), namespaces=NS))
+        values[field.name] = _convert(field, _text(form.find(_path(field.xml_tag), NS)))
     return values

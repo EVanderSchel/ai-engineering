@@ -37,6 +37,17 @@ def test_blank_lines_are_none_and_explicit_zeros_stay_zero(key):
     assert key["other_revenue_current_year"] == 0  # line 11, Current Year shows 0
 
 
+def test_a_name_on_two_lines_is_joined():
+    # Long names are split over two elements and printed on two lines in box C.
+    xml = (
+        b'<Return xmlns="http://www.irs.gov/efile"><ReturnHeader><Filer><EIN>123456789</EIN><BusinessName>'
+        b"<BusinessNameLine1Txt>ASIAN TASK FORCE AGAINST DOMESTIC</BusinessNameLine1Txt>"
+        b"<BusinessNameLine2Txt>VIOLENCE INC</BusinessNameLine2Txt>"
+        b"</BusinessName></Filer></ReturnHeader><ReturnData><IRS990/></ReturnData></Return>"
+    )
+    assert answer_key(xml)["organization_name"] == "ASIAN TASK FORCE AGAINST DOMESTIC VIOLENCE INC"
+
+
 def test_field_names_are_unique_and_kinds_are_known():
     assert len(set(FIELD_NAMES)) == len(FIELD_NAMES)
     assert {f.kind for f in ALL_FIELDS} <= {"int", "str", "date"}

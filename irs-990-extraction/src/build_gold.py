@@ -3,6 +3,7 @@ and an answer key built from its e-file XML (the correct values).
 
     python src/build_gold.py              # 60 filings: 20 small, 20 medium, 20 large organizations
     python src/build_gold.py --per-band 5 # a quick trial run
+    python src/build_gold.py --refresh-keys  # re-read the answer keys from the downloaded XML
 
 Filings are picked at random (fixed seed, so the same set every time) from returns the IRS processed
 in --year, and spread across three size bands by current-year total revenue, since larger
@@ -14,6 +15,10 @@ Writes, all committed:
     data/gold/manifest.csv       one row per filing: identity, size band, split, PDF filename
     data/gold/skipped.csv        filings tried but left out, and why
 PDFs and XML go to data/raw/ (gitignored) and can be re-downloaded by running this again.
+
+--refresh-keys keeps the same filings and rebuilds only their answer keys (and the names in the
+manifest) from the XML already in data/raw/xml/, with no downloads. Use it after changing fields.py or
+irs_xml.py, then review the diff: every change in data/gold/ should be one you meant.
 """
 
 import argparse
@@ -24,7 +29,7 @@ import random
 import sources
 from fields import FIELD_NAMES
 from irs_xml import NotForm990, answer_key
-from paths import GOLD_DIR
+from paths import GOLD_DIR, RAW_DIR
 
 # Current-year total revenue (Part I line 12), in dollars.
 BANDS = [("small", 0, 500_000), ("medium", 500_000, 5_000_000), ("large", 5_000_000, None)]
@@ -138,10 +143,42 @@ def write(accepted: dict[str, list[dict]], skipped: list[dict], year: int) -> No
         print(f"  {band:<6} dev {c['dev']:>2}  test {c['test']:>2}")
 
 
+def refresh_keys() -> None:
+    """Rebuild the answer keys of the filings already in the gold set from their downloaded XML."""
+    manifest_path = GOLD_DIR / "manifest.csv"
+    with manifest_path.open(encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        columns, rows = reader.fieldnames, list(reader)
+
+    changed = 0
+    for row in rows:
+        xml_path = RAW_DIR / "xml" / f"{row['object_id']}.xml"
+        if not xml_path.exists():
+            raise SystemExit(f"{xml_path} is missing: run `python src/build_gold.py` to download it")
+        key = answer_key(xml_path.read_bytes())
+        path = GOLD_DIR / f"{row['object_id']}.json"
+        answer = json.loads(path.read_text(encoding="utf-8"))
+        fields = {name: key[name] for name in FIELD_NAMES}
+        changed += answer["fields"] != fields
+        answer["fields"] = fields
+        path.write_text(json.dumps(answer, indent=2) + "\n", encoding="utf-8", newline="\n")
+        row["organization_name"] = key["organization_name"]
+
+    with manifest_path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=columns)
+        writer.writeheader()
+        writer.writerows(rows)
+    print(f"Refreshed {len(rows)} answer keys from data/raw/xml; {changed} changed")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--year", type=int, default=2024, help="IRS index year (returns processed that year)")
     parser.add_argument("--per-band", type=int, default=20, help="Filings per size band")
     parser.add_argument("--seed", type=int, default=990, help="Random seed: the same seed picks the same filings")
+    parser.add_argument("--refresh-keys", action="store_true", help="Rebuild answer keys from downloaded XML only")
     args = parser.parse_args()
-    build(args.year, args.per_band, args.seed)
+    if args.refresh_keys:
+        refresh_keys()
+    else:
+        build(args.year, args.per_band, args.seed)

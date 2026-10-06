@@ -3,16 +3,16 @@
 How one filing is extracted:
 1. Render page 1 of the IRS page-image PDF to a PNG.
 2. Ask Claude to transcribe it, with structured outputs: the response is forced to match the schema in
-   schema.py (every field present, right type, null for blank lines), and the SDK parses it into a
+   schema.py (every field present, right type, blank lines listed), and the SDK parses it into a
    Pydantic object.
 3. Check the answer against the form's own arithmetic (checks.py). If a rule is broken, Claude misread
    something: show it the broken rules and ask once more, in the same conversation.
 4. Record what it cost: tokens from the API's usage report, priced per model.
 
-Run a few dev filings and print a quick comparison with their answer keys (the real, normalized eval
-is step 3):
+Each run is saved to data/runs/<run>/ and scored with evaluate.py, which adds it to results/history.csv:
 
-    python src/extract.py --split dev --limit 3
+    python src/extract.py                  # every dev filing (21, about $0.50)
+    python src/extract.py --limit 3        # a quick trial
 """
 
 import argparse
@@ -27,6 +27,7 @@ import anthropic
 import pymupdf
 
 import checks
+import evaluate
 import prompts
 from paths import DATA_DIR, GOLD_DIR, RAW_DIR
 from schema import Form990PartI, as_answer
@@ -160,26 +161,15 @@ def extract(client, png: bytes, *, model: str = MODEL, max_attempts: int = MAX_A
 # --- Command line --------------------------------------------------------------------------------
 
 
-def _gold(object_id: str) -> dict:
-    return json.loads((GOLD_DIR / f"{object_id}.json").read_text(encoding="utf-8"))["fields"]
-
-
-def _mismatches(answer: dict | None, expected: dict) -> dict:
-    """Fields whose extracted value isn't exactly the answer key's. Exact comparison on purpose: step 3
-    decides what normalization is fair (case, spacing in the mission). This is only a first look."""
-    if answer is None:
-        return dict.fromkeys(expected, "no answer")
-    return {
-        name: {"expected": expected[name], "got": answer[name]} for name in expected if answer[name] != expected[name]
-    }
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--split", choices=["dev", "test"], default="dev")
-    parser.add_argument("--limit", type=int, default=3, help="how many filings (each one costs a few cents)")
+    parser.add_argument("--limit", type=int, help="only the first N filings of the split (default: all)")
     parser.add_argument("--model", default=MODEL, choices=sorted(PRICES))
+    parser.add_argument("--final", action="store_true", help="required for --split test: see the README")
     args = parser.parse_args()
+    if args.split == "test" and not args.final:
+        parser.error("the test split is held out for final scores; add --final if this is one")
 
     with (GOLD_DIR / "manifest.csv").open(encoding="utf-8", newline="") as f:
         rows = [row for row in csv.DictReader(f) if row["split"] == args.split][: args.limit]
@@ -189,7 +179,6 @@ def main() -> None:
     run_dir.mkdir(parents=True)
     client = anthropic.Anthropic()
     total = Usage()
-    summary = []
 
     for row in rows:
         object_id = row["object_id"]
@@ -201,25 +190,23 @@ def main() -> None:
         result = extract(client, page_png(pdf), model=args.model)
         seconds = round(time.monotonic() - started, 1)
         total.add(result.usage)
-        wrong = _mismatches(result.answer, _gold(object_id))
 
         record = {"object_id": object_id, "band": row["band"], "seconds": seconds, "cost_usd": result.cost_usd}
-        record |= {"wrong": wrong, **asdict(result)}
-        (run_dir / f"{object_id}.json").write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
-        summary.append({k: record[k] for k in ("object_id", "band", "seconds", "cost_usd")} | {"wrong": len(wrong)})
-
+        record |= asdict(result)
+        (run_dir / f"{object_id}.json").write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8", newline="\n")
         print(
-            f"{object_id} ({row['band']}): {len(wrong)} of {len(_gold(object_id))} fields differ, "
-            f"{len(result.attempts)} attempt(s), checks {'passed' if not result.problems else 'FAILED'}, "
-            f"{seconds}s, ${result.cost_usd:.4f}"
+            f"{object_id} ({row['band']}): {len(result.attempts)} attempt(s), "
+            f"checks {'passed' if not result.problems else 'FAILED'}, {seconds}s, ${result.cost_usd:.4f}"
         )
-        for name, diff in wrong.items():
-            print(f"    {name}: {diff}")
 
     cost = total.cost(args.model)
-    totals = {"run": run_id, "filings": len(rows), "cost_usd": cost, "usage": asdict(total), "filings_detail": summary}
-    (run_dir / "summary.json").write_text(json.dumps(totals, indent=2) + "\n", encoding="utf-8")
-    print(f"\n{len(rows)} filings, ${cost:.4f} total, ${cost / max(len(rows), 1):.4f} per filing. Saved to {run_dir}")
+    totals = {"run": run_id, "filings": len(rows), "cost_usd": cost, "usage": asdict(total)}
+    (run_dir / "summary.json").write_text(json.dumps(totals, indent=2) + "\n", encoding="utf-8", newline="\n")
+    print(f"\n{len(rows)} filings, ${cost:.4f} total. Saved to {run_dir}\n")
+
+    score = evaluate.score_run(run_dir)
+    evaluate.record(score)
+    print(evaluate.report(score))
 
 
 if __name__ == "__main__":

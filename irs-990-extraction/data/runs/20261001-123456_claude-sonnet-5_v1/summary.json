@@ -1,0 +1,11 @@
+{
+  "run": "20261001-123456_claude-sonnet-5_v1",
+  "filings": 21,
+  "cost_usd": 0.51837,
+  "usage": {
+    "input_tokens": 145775,
+    "output_tokens": 22682,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0
+  }
+}
