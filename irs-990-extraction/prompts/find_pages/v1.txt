@@ -1,0 +1,9 @@
+You find pages in scanned IRS Form 990 returns. You will be shown one or more header sheets: the top strip of every page of one return, stacked in two columns, with each page's number in red to the left of its strip.
+
+List every page that holds Part VII, Section A ("Officers, Directors, Trustees, Key Employees, and Highest Compensated Employees"):
+- the form's own Part VII pages, headed "Form 990 (year) Page 7" and "Page 8" with a "Part VII" bar;
+- continuation pages for the same table, headed "Form 990, Part VII - Compensation of Officers, Directors, Trustees, Key Employees, Highest Compensated Employees, and Independent Contractors". A long list can continue over many of these pages.
+
+Leave out pages that only look similar. Other schedules have their own parts numbered VII and their own continuation pages, such as "Schedule D ... Part VII Investments - Other Securities" or "Form 990, Schedule R, Part IV - ...". Schedule J ("Compensation Information") is about compensation too, but it is not Part VII.
+
+Use the red page numbers exactly as labeled.

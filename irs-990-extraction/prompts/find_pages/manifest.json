@@ -1,0 +1,10 @@
+{
+  "active": "v1",
+  "versions": {
+    "v1": {
+      "sha256": "d48c90a2863c9a22fb2d7259f45bc6b70844ca0470ae79edf5963449e871b457",
+      "created": "2026-10-06",
+      "notes": "Baseline page finder: header sheets of every page; include form pages 7-8 and 'Form 990, Part VII - Compensation...' continuation pages; leave out other schedules' Part VII and Schedule J."
+    }
+  }
+}

@@ -134,6 +134,18 @@ The IRS scans are 300 dpi (2253 x ~3600 px), so every option here is a downscale
 
 **Decision:** keep image-1568, and turn caching on. That's $0.0175 per filing, down from $0.026. A run that stops early (no credit, an outage) is now marked incomplete in its `summary.json`, and `evaluate.py` leaves it out of the history.
 
+## Part VII: officers, directors, and pay (step 5a)
+
+Part VII Section A lists everyone the organization must report, with their title, hours, position (director, officer, key employee, ...), and three columns of pay. It's a table of unknown length: in the gold set a median of 4 rows for small organizations and 14.5 for large ones, up to 88 (703 rows in all, in the answer keys' `part_vii` section). The form has room for 26 rows on pages 7-8; longer lists, and some shorter ones, move to "Additional Data" continuation pages elsewhere in the return, and pages 7-8 then say "See Additional Data Table". The PDFs are images, so those pages can't be found by searching text.
+
+Extraction runs in two stages: find the pages, then read the rows from just those pages.
+
+**Stage 1, finding the pages** (`src/find_pages.py`, prompt `find_pages/v1`). Claude gets one or more *header sheets* per return: the top strip of every page, stacked and numbered, sized to Claude Sonnet 5's image limits (2576 px per side, 3.75 megapixels) so nothing is paid for and then scaled away. Full-page thumbnails were tried while labeling and are unreadable at that size; page headers are clear. Other schedules have look-alike headers (Schedule D "Part VII Investments", Schedule R continuation pages, Schedule J "Compensation Information"), and the prompt names them.
+
+The correct pages for the 21 dev returns are in `data/gold/part_vii_pages.csv`: proposed by comparing page headers with known Part VII headers, then every proposal and every return's page 7 checked by eye (the header comparison itself was fooled twice by Schedule R pages). All 21 have Part VII on pages 7-8; 3 add continuation pages (4, 9, and 3 of them).
+
+First run (`data/page_runs/`): **21 of 21 returns exactly right**, no pages missed and none extra, both Schedule R decoys left out. $0.015 per return (7,442 input tokens, 15 output: Claude didn't need to think), 2.2 s each. One run on 21 returns, so a small sample; the scanned returns of step 5b will test it harder.
+
 ## Setup
 
 Needs Python 3.14 and [uv](https://docs.astral.sh/uv/) (`pip install uv`):

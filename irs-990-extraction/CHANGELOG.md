@@ -24,6 +24,8 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 - Part VII Section A in the answer keys: 703 rows across the 60 filings (name, title, hours, position checkboxes, three compensation columns) plus the line 1d totals and line 2 count
 
+- Part VII page finder (`src/find_pages.py`): header sheets of every page, Claude names the Part VII pages; hand-checked page labels for the 21 dev returns (`data/gold/part_vii_pages.csv`). First run: 21 of 21 returns exactly right, $0.015 per return
+
 ### Fixed
 
 - Answer keys for organizations whose name is printed on two lines had only the first line (11 of 60); the name now joins `BusinessNameLine1Txt` and `BusinessNameLine2Txt`
