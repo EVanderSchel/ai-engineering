@@ -46,6 +46,8 @@ HISTORY_COLUMNS = [
     "field_accuracy",
     "filings_all_correct",
     *ERROR_TYPES,
+    "unsure_flagged",
+    "unsure_caught",
     "retries",
     "check_failures",
     "cost_per_filing_usd",
@@ -131,6 +133,18 @@ def score_run(run_dir) -> dict:
                 )
         filings_all_correct += wrong == 0
 
+    # Claude's own doubts (runs made with --confidence): which fields it flagged as unsure, and how many
+    # of the real errors are among them. A filing that got no answer is flagged whole: it plainly needs
+    # a person. Runs made without asking have no doubts to score ("" in the history).
+    asked = any(r.get("unsure") is not None for r in records)
+    flagged = set()
+    if asked:
+        for r in records:
+            fields = FIELD_NAMES if not r["answer"] else r.get("unsure") or []
+            flagged |= {(r["object_id"], name) for name in fields}
+    for error in errors:
+        error["flagged"] = (error["object_id"], error["field"]) in flagged
+
     splits = {answer_keys[r["object_id"]]["split"] for r in records}
     totals = Counter(error["error"] for error in errors)
     n_fields = len(records) * len(FIELD_NAMES)
@@ -148,6 +162,8 @@ def score_run(run_dir) -> dict:
         "field_accuracy": round(1 - len(errors) / n_fields, 4),
         "filings_all_correct": filings_all_correct,
         **{error_type: totals[error_type] for error_type in ERROR_TYPES},
+        "unsure_flagged": len(flagged) if asked else "",
+        "unsure_caught": sum(e["flagged"] for e in errors) if asked else "",
         "retries": sum(len(r["attempts"]) - 1 for r in records),
         "check_failures": sum(bool(r["problems"]) for r in records),
         "cost_per_filing_usd": round(sum(r["cost_usd"] for r in records) / len(records), 4),
@@ -183,6 +199,13 @@ def report(score: dict) -> str:
         f"  ${score['cost_per_filing_usd']:.4f} and {score['mean_seconds']}s per filing; "
         f"{score['retries']} retries, {score['check_failures']} filings still failing checks",
     ]
+    if score["unsure_flagged"] != "":
+        n_errors = len(score["errors"])
+        n_fields = score["filings"] * len(FIELD_NAMES)
+        lines.append(
+            f"  Claude's doubts: flagged {score['unsure_flagged']} of {n_fields} fields "
+            f"({score['unsure_flagged'] / n_fields:.1%}); {score['unsure_caught']} of {n_errors} errors were among them"
+        )
     weak = [(name, c) for name, c in score["per_field"].items() if c["correct"] < score["filings"]]
     if weak:
         lines.append("  Fields with errors:")
@@ -190,6 +213,7 @@ def report(score: dict) -> str:
         lines.append("  Each error:")
         lines += [
             f"    {e['object_id']} {e['field']}: {e['error']} (expected {e['expected']!r}, got {e['got']!r})"
+            + (" [flagged unsure]" if e.get("flagged") else "")
             for e in score["errors"]
         ]
     return "\n".join(lines)

@@ -111,3 +111,21 @@ def test_only_finished_runs_count_as_complete(run_dir):
     assert not evaluate.is_complete(run_dir)
     (run_dir / "summary.json").unlink()
     assert not evaluate.is_complete(run_dir)  # it crashed before writing one
+
+
+def test_doubts_are_scored_against_the_real_errors(run_dir):
+    paths = sorted(run_dir.glob("2*.json"))
+    records = [json.loads(p.read_text(encoding="utf-8")) for p in paths]
+    wrong = [r for r in records if r["attempts"] == [{}, {}]][0]  # the fixture's filing with a bad EIN and a blank
+    for path, record in zip(paths, records, strict=True):
+        record["unsure"] = ["ein", "mission"] if record is wrong else []
+        path.write_text(json.dumps(record), encoding="utf-8")
+    score = evaluate.score_run(run_dir)
+    assert score["unsure_flagged"] == 2  # ein (really wrong) and mission (fine)
+    assert score["unsure_caught"] == 1  # the bad EIN was flagged; the blank read as 0 wasn't
+    assert "Claude's doubts: flagged 2 of 84 fields" in evaluate.report(score)
+
+
+def test_runs_without_doubts_leave_the_columns_empty(run_dir):
+    score = evaluate.score_run(run_dir)
+    assert score["unsure_flagged"] == "" and score["unsure_caught"] == ""

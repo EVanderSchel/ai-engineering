@@ -31,7 +31,7 @@ import evaluate
 import prompts
 import scans
 from paths import DATA_DIR, GOLD_DIR
-from schema import Form990PartI, as_answer
+from schema import Form990PartI, Form990PartIWithDoubts, as_answer, unsure
 
 MODEL = "claude-sonnet-5"
 MAX_TOKENS = 16000
@@ -149,6 +149,7 @@ class Extraction:
     input: str = INPUT  # how page 1 was sent, e.g. "image-1568" or "pdf"
     cache: bool = False  # whether the system prompt was marked for prompt caching
     scan: str | None = None  # the simulated scan level read (scans.py), or None for the IRS's own PDF
+    unsure: list[str] | None = None  # fields Claude said it isn't sure of (--confidence), None if not asked
     usage: Usage = field(default_factory=Usage)
     attempts: list[Attempt] = field(default_factory=list)
 
@@ -172,12 +173,17 @@ def extract(
     *,
     input_kind: str = INPUT,
     cache: bool = False,
+    confidence: bool = False,
     model: str = MODEL,
     max_attempts: int = MAX_ATTEMPTS,
 ) -> Extraction:
     """Transcribe page 1 (block, from page_block), checking the result and retrying once with the broken
-    rules if it fails. input_kind names how the page was sent, for the record."""
+    rules if it fails. input_kind names how the page was sent, for the record. With confidence, Claude
+    also lists the fields it isn't sure of; the prompt version has to explain that list."""
     system, retry = prompts.load("extract"), prompts.load("extract_retry")
+    if confidence and "unsure_fields" not in system.template:
+        raise ValueError(f"prompt {system.id} doesn't explain unsure_fields; use a version that does (v3+)")
+    output_format = Form990PartIWithDoubts if confidence else Form990PartI
     result = Extraction(
         answer=None,
         problems=[],
@@ -196,7 +202,7 @@ def extract(
             max_tokens=MAX_TOKENS,
             system=_system(system.template, cache),
             messages=messages,
-            output_format=Form990PartI,
+            output_format=output_format,
         )
         result.usage.add(response.usage)
 
@@ -206,6 +212,8 @@ def extract(
         else:
             result.answer = as_answer(response.parsed_output)
             result.problems = checks.problems(result.answer)
+            if confidence:
+                result.unsure = unsure(response.parsed_output)
         result.attempts.append(
             Attempt(response.stop_reason, result.answer, result.problems, round(time.monotonic() - started, 1))
         )
@@ -237,6 +245,7 @@ def main() -> None:
         help="cache the prompt and schema across requests (default on; --no-cache to compare)",
     )
     parser.add_argument("--scan", choices=sorted(scans.LEVELS), help="read a simulated scan (make it with scans.py)")
+    parser.add_argument("--confidence", action="store_true", help="also ask Claude which fields it isn't sure of")
     parser.add_argument("--final", action="store_true", help="required for --split test: see the README")
     args = parser.parse_args()
     if args.split == "test" and not args.final:
@@ -245,13 +254,15 @@ def main() -> None:
         check_input(args.input)
     except ValueError as e:
         parser.error(str(e))
+    if args.confidence and "unsure_fields" not in prompts.load("extract").template:
+        parser.error(f"--confidence needs a prompt that explains unsure_fields, not {prompts.load('extract').id}")
 
     with (GOLD_DIR / "manifest.csv").open(encoding="utf-8", newline="") as f:
         rows = [row for row in csv.DictReader(f) if row["split"] == args.split][: args.limit]
 
     version = prompts.load("extract").version
     run_id = f"{datetime.datetime.now():%Y%m%d-%H%M%S}_{args.model}_{version}_{args.input}" + ("_cache" * args.cache)
-    run_id += f"_scan-{args.scan}" if args.scan else ""
+    run_id += (f"_scan-{args.scan}" if args.scan else "") + ("_confidence" * args.confidence)
     run_dir = RUNS_DIR / run_id
     run_dir.mkdir(parents=True)
     client = anthropic.Anthropic()
@@ -269,7 +280,9 @@ def main() -> None:
         started = time.monotonic()
         block = page_block(pdf, args.input)
         try:
-            result = extract(client, block, input_kind=args.input, cache=args.cache, model=args.model)
+            result = extract(
+                client, block, input_kind=args.input, cache=args.cache, confidence=args.confidence, model=args.model
+            )
             result.scan = args.scan
         except (anthropic.APIStatusError, anthropic.APIConnectionError) as e:
             # The SDK has already retried rate limits, server errors, and dropped connections. What's

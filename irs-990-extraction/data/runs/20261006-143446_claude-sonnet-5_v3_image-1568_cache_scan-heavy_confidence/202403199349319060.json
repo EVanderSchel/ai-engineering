@@ -1,0 +1,33 @@
+{
+  "object_id": "202403199349319060",
+  "band": "large",
+  "seconds": 156.1,
+  "cost_usd": 0.1652368,
+  "answer": null,
+  "problems": [
+    "Claude stopped without an answer (max_tokens)"
+  ],
+  "model": "claude-sonnet-5",
+  "prompt": "extract/v3",
+  "prompt_sha256": "f744741e1e9812b9ac0d5b33f4d8d38a1f3da81797289270d9e0a65d3b06eba9",
+  "input": "image-1568",
+  "cache": true,
+  "scan": "heavy",
+  "unsure": null,
+  "usage": {
+    "input_tokens": 2036,
+    "output_tokens": 16000,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 5824
+  },
+  "attempts": [
+    {
+      "stop_reason": "max_tokens",
+      "answer": null,
+      "problems": [
+        "Claude stopped without an answer (max_tokens)"
+      ],
+      "seconds": 155.4
+    }
+  ]
+}

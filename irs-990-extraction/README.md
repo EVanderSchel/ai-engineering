@@ -210,6 +210,29 @@ This tests image quality only: real paper returns also have handwriting, typewri
 - **Wrong answers on heavy scans look confident.** Part VII's 25 "missed" and 25 "invented" people are mostly the same people with misread names (KIM BOCKENSTEDT as KIM ROCKENSTEIN, too different to match), and pay amounts were misread 63 times. Nothing in the answer says the page was hard to read, which is what step 6 (confidence and human review) is for.
 - Curiously, the Part VII checkbox errors of the clean runs didn't appear on light or medium scans. One run each, so this may be chance; not investigated.
 
+## Confidence and human review (step 6)
+
+The pipeline returns every field with the same apparent certainty, right or wrong. Step 6 adds signals that say which fields or documents to send to a person, measured as a trade-off: how many errors a signal catches against how much review work it creates.
+
+**Free signals, from runs already made** (Part I and Part VII, dev):
+
+| Signal | Errors caught | Fields flagged | Notes |
+|---|---|---|---|
+| Two identical runs disagree (Part I, clean) | 5 of 5, and 12 of 12 in a second pair | 0.6-2% | doubles the API cost |
+| Two identical runs disagree (Part VII, clean) | 10 of 23 (43%) | 0.2% | misses *systematic* errors, which repeat identically |
+| Claude thought a lot (output tokens) | per document: the quarter of filings with the least output had no errors, the top quarter most of them | | free; median 1,100 tokens on clean pages, 7,400 on heavy scans |
+| Checks failed or retried | filings averaging 19 wrong fields (others 0.8) | | free, but rare (11 of 105 filings) |
+
+**Claude's own doubts** (prompt `extract/v3` = v2 plus an `unsure_fields` list in the schema, `extract.py --confidence`; one run each, prompt v2's accuracy unchanged):
+
+| Pages | Accuracy | Fields Claude flagged | Errors among them (answered filings) | Flags that were errors |
+|---|---|---|---|---|
+| clean | 98.8% | 14 (1.6%) | 1 of 11 (9%) | 7% |
+| medium scan | 97.0% | 49 (5.6%) | 5 of 26 (19%) | 10% |
+| heavy scan | 77.0% | 106, plus 3 filings with no answer | 36 of 84 (43%) | 34% |
+
+Claude's doubts are a weak signal. Blank-vs-0 mistakes, the most common error on clean pages, were flagged 2 times out of 29: Claude is confidently wrong about them. It does better on genuinely illegible text (every value it couldn't read at all on heavy scans was flagged), but most errors still went unflagged. A model's self-reported confidence is not the same as its error rate; measured signals (disagreement, effort, checks) did much better here.
+
 ## Setup
 
 Needs Python 3.14 and [uv](https://docs.astral.sh/uv/) (`pip install uv`):
