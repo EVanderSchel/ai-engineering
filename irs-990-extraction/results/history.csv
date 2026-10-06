@@ -1,3 +1,6 @@
 run,split,model,prompt,prompt_sha256,filings,field_accuracy,filings_all_correct,blank_as_zero,zero_as_blank,missed,invented,wrong_value,retries,check_failures,cost_per_filing_usd,mean_seconds
 20261001-122912_claude-sonnet-5_v1,dev,claude-sonnet-5,extract/v1,d12a70b1627472a34fbfd8953f040343f9b57d4f900b481e7f079864e0949d77,3,1.0,3,0,0,0,0,0,0,0,0.0244,8.7
 20261001-123456_claude-sonnet-5_v1,dev,claude-sonnet-5,extract/v1,d12a70b1627472a34fbfd8953f040343f9b57d4f900b481e7f079864e0949d77,21,0.983,14,9,2,0,0,4,0,0,0.0247,8.5
+20261006-074403_claude-sonnet-5_v1,dev,claude-sonnet-5,extract/v1,d12a70b1627472a34fbfd8953f040343f9b57d4f900b481e7f079864e0949d77,21,0.9898,16,5,0,0,0,4,0,0,0.0258,10.1
+20261006-074408_claude-sonnet-5_v2,dev,claude-sonnet-5,extract/v2,825aafcfd34546129a872140c76e4f67e69933e0b5d9d95ba8e5f5c156a81218,21,0.9943,18,3,2,0,0,0,0,0,0.0267,10.4
+20261006-074802_claude-sonnet-5_v2,dev,claude-sonnet-5,extract/v2,825aafcfd34546129a872140c76e4f67e69933e0b5d9d95ba8e5f5c156a81218,21,1.0,21,0,0,0,0,0,0,0,0.0264,10.2

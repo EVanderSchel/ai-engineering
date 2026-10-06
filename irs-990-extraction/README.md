@@ -29,7 +29,7 @@ IRS data is public domain. Thanks to ProPublica for the Nonprofit Explorer API; 
 | 0 | Project scaffolding: uv, ruff, pytest, CI with required checks *(done)* |
 | 1 | Gold set: pick filings from the IRS index, download their XML and page images, build answer-key JSON *(done)* |
 | 2 | Schema and baseline: Pydantic model of Part I, Claude structured outputs from page images, validation and retry *(done)* |
-| 3 | Eval harness: per-field accuracy with normalization, results history by prompt version and model *(in progress)* |
+| 3 | Eval harness: per-field accuracy with normalization, results history by prompt version and model; prompt v2 *(done)* |
 | 4 | Vision input choices: page selection, resolution, PDF vs. image input, cost per document |
 | 5 | Harder documents: multi-page sections (Part VII), scanned paper returns |
 | 6 | Confidence and human review: per-field confidence, thresholds tuned on the eval set, review queue |
@@ -89,6 +89,15 @@ Twenty-one filings is still a small sample. Step 3 fixed the two-line names and 
 **Answer-key fix.** Long organization names are split over two XML elements (`BusinessNameLine1Txt`, `BusinessNameLine2Txt`) and printed on two lines; the answer keys had only the first, in 11 of 60 filings. `irs_xml.py` now reads the whole name, and `python src/build_gold.py --refresh-keys` rebuilt the keys from the downloaded XML (only those 11 names changed).
 
 **Baseline, rescored** (`extract/v1`, `claude-sonnet-5`, 21 dev filings): **98.3%** of fields correct (867 of 882), all 42 right on 14 filings. Errors: 9 `blank_as_zero`, 2 `zero_as_blank`, 4 `wrong_value` (3 EINs, and one two-line name returned as its first line only).
+
+**Prompt v2 vs. v1.** v2 changes three instructions, one per error found in the baseline: copy the EIN exactly as printed, dash included (the code removes the dash); read each cell on its own, since a blank cell next to a 0 is still blank; and include the second line of a long name (but not a care-of line). Single runs vary: two runs of the identical v1 prompt scored 98.3% and 99.0%. So each prompt ran twice on all 21 dev filings:
+
+| Prompt | Runs | Fields correct | Blank vs. 0 errors | Wrong values | Cost per filing |
+|---|---|---|---|---|---|
+| v1 | 2 | 98.6% (1,740 of 1,764) | 16 | 8 (6 EINs, 2 names) | $0.025 |
+| **v2** | 2 | **99.7%** (1,759 of 1,764) | 5 | **0** | $0.027 |
+
+The EIN fix is clear-cut: v1 scrambled digits next to the dash in both runs, mostly on the same filings, and v2 read all 42 EINs correctly. Blank-vs-0 errors fell from 16 to 5, but they come in clusters (one filing had 3 of v2's 5), so that gain is likely but not yet proven. v2 is now the active prompt. It costs about 5% more per filing.
 
 **The test split is held out:** `extract.py --split test` refuses to run without `--final`, so test filings are only scored once prompt and model choices are made on dev.
 

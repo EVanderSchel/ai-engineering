@@ -72,3 +72,8 @@ def test_missing_and_extra_fields_are_rejected():
         Form990PartI.model_validate({"ein": "581524250", "blank_lines": []})
     with pytest.raises(ValidationError):
         Form990PartI.model_validate(from_answer(gold_answers()[0]).model_dump() | {"surprise": 1})
+
+
+def test_the_ein_dash_is_removed_in_code():
+    extraction = from_answer(gold_answers()[0]).model_copy(update={"ein": "41-1657792"})
+    assert as_answer(extraction)["ein"] == "411657792"
