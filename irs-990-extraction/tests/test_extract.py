@@ -62,7 +62,7 @@ def test_a_correct_first_answer_is_returned_without_a_retry(good):
     assert request["model"] == "claude-sonnet-5" and request["output_format"] is Form990PartI
     assert request["system"] == extract.prompts.load("extract").template
     assert request["messages"][0]["content"][0]["type"] == "image"
-    assert result.prompt == "extract/v1"
+    assert result.prompt == extract.prompts.load("extract").id  # the active version
 
 
 def test_a_failed_check_retries_in_the_same_conversation_with_the_broken_rules(good, misread):

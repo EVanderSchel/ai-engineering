@@ -48,6 +48,9 @@ def as_answer(extraction: BaseModel) -> dict:
     """The extraction in answer-key form: plain JSON values, dates as "YYYY-MM-DD", None for blanks."""
     values = extraction.model_dump(mode="json")
     blank = set(values.pop("blank_lines"))
+    # The EIN is printed "41-1657792". Asking Claude to drop the dash while copying scrambled the digits
+    # next to it (prompt v1), so it's copied as printed and the dash is removed here.
+    values["ein"] = values["ein"].replace("-", "").replace(" ", "")
     return {name: None if name in blank else values[name] for name in FIELD_NAMES}
 
 

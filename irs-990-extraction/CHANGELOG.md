@@ -14,6 +14,10 @@ All notable changes to this project are documented here, following [Keep a Chang
 - `build_gold.py --refresh-keys` rebuilds answer keys from the downloaded XML
 - `extract.py --split test` requires `--final`, keeping the test split held out
 
+### Changed
+
+- Prompt `extract/v2` is active: the EIN is copied as printed and its dash removed in code, each cell is read on its own (blank next to 0 stays blank), and two-line names are read in full. On 2 runs each over the 21 dev filings: 99.7% of fields correct vs. 98.6% for v1, no EIN or name errors (v1: 8)
+
 ### Fixed
 
 - Answer keys for organizations whose name is printed on two lines had only the first line (11 of 60); the name now joins `BusinessNameLine1Txt` and `BusinessNameLine2Txt`
