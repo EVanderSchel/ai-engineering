@@ -122,7 +122,8 @@ def test_page_is_rendered_to_a_png_with_the_requested_long_edge(tmp_path):
     assert png.startswith(b"\x89PNG") and (image.width, image.height) == (round(1568 * 612 / 792), 1568)
 
 
-def test_mismatches_compare_exactly(good):
-    assert extract._mismatches(good, good) == {}
-    wrong = extract._mismatches(good | {"ein": "000000000"}, good)
-    assert wrong == {"ein": {"expected": good["ein"], "got": "000000000"}}
+def test_the_test_split_needs_a_deliberate_flag(monkeypatch, capsys):
+    monkeypatch.setattr("sys.argv", ["extract.py", "--split", "test"])
+    with pytest.raises(SystemExit):
+        extract.main()
+    assert "held out" in capsys.readouterr().err

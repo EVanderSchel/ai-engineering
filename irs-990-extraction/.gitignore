@@ -7,5 +7,3 @@ __pycache__/
 .env
 # Downloaded IRS PDFs and XML: large, and re-downloadable with the scripts in src/.
 data/raw/
-# Extraction runs: per-filing results and cost. Step 3 decides which results history is kept.
-data/runs/

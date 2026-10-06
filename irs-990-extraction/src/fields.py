@@ -21,10 +21,11 @@ class Field:
 
 
 # From ReturnHeader (selected by full path: the first BusinessNameLine1Txt in a file can be the paid
-# preparer's firm, not the filer).
+# preparer's firm, not the filer). A long name is split over BusinessNameLine1Txt and
+# BusinessNameLine2Txt, printed as two lines in box C; reading the whole BusinessName element joins them.
 HEADER_FIELDS = [
     Field("ein", "Filer/EIN", "str", "Box D", "Employer identification number (9 digits)"),
-    Field("organization_name", "Filer/BusinessName/BusinessNameLine1Txt", "str", "Box C", "Name of the organization"),
+    Field("organization_name", "Filer/BusinessName", "str", "Box C", "Name of the organization"),
     Field("tax_period_begin", "TaxPeriodBeginDt", "date", "Line A", "First day of the tax year"),
     Field("tax_period_end", "TaxPeriodEndDt", "date", "Line A", "Last day of the tax year"),
 ]
