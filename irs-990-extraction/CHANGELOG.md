@@ -18,6 +18,10 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 - Prompt `extract/v2` is active: the EIN is copied as printed and its dash removed in code, each cell is read on its own (blank next to 0 stays blank), and two-line names are read in full. On 2 runs each over the 21 dev filings: 99.7% of fields correct vs. 98.6% for v1, no EIN or name errors (v1: 8)
 
+- `extract.py --input image-<pixels>|pdf` chooses how page 1 is sent; runs and the results history record the input and whether caching was on
+- Prompt caching of the prompt and schema, on by default: $0.0175 per filing instead of $0.027 on the dev set
+- A run that hits an API error it can't retry stops and is marked incomplete; `evaluate.py` doesn't score incomplete runs
+
 ### Fixed
 
 - Answer keys for organizations whose name is printed on two lines had only the first line (11 of 60); the name now joins `BusinessNameLine1Txt` and `BusinessNameLine2Txt`

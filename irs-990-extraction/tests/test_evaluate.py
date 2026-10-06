@@ -103,3 +103,11 @@ def test_answer_keys_cover_the_whole_gold_set():
     keys = evaluate.gold()
     assert len(keys) == len(gold_answers()) == 60
     assert sum(key["split"] == "dev" for key in keys.values()) == 21
+
+
+def test_only_finished_runs_count_as_complete(run_dir):
+    assert evaluate.is_complete(run_dir)  # an older summary without "complete" finished
+    (run_dir / "summary.json").write_text(json.dumps({"complete": False}), encoding="utf-8")
+    assert not evaluate.is_complete(run_dir)
+    (run_dir / "summary.json").unlink()
+    assert not evaluate.is_complete(run_dir)  # it crashed before writing one
