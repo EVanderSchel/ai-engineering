@@ -187,15 +187,23 @@ def test_an_api_error_stops_the_run_and_marks_it_incomplete(good, tmp_path, monk
                 raise extract.anthropic.APIConnectionError(message="credit balance is too low", request=None)
             return super().parse(**request)
 
+    # Stand-ins for the downloaded PDFs (data/raw is gitignored, so CI doesn't have them; page_block is
+    # faked, so the files are never read, only checked for).
+    raw = tmp_path / "raw"
+    (raw / "pdf").mkdir(parents=True)
+    for object_id in extract.evaluate.gold():
+        (raw / "pdf" / f"{object_id}.pdf").touch()
+
     client = Broke(reply(good))
     monkeypatch.setattr(extract.anthropic, "Anthropic", lambda: client)
-    monkeypatch.setattr(extract, "RUNS_DIR", tmp_path)
+    monkeypatch.setattr(extract, "RAW_DIR", raw)
+    monkeypatch.setattr(extract, "RUNS_DIR", tmp_path / "runs")
     monkeypatch.setattr(extract, "page_block", lambda pdf, kind: BLOCK)
     monkeypatch.setattr("sys.argv", ["extract.py", "--limit", "3"])
 
     with pytest.raises(SystemExit, match="Stopped after 1 of 3"):
         extract.main()
-    [run] = tmp_path.iterdir()
+    [run] = (tmp_path / "runs").iterdir()
     summary = json.loads((run / "summary.json").read_text(encoding="utf-8"))
     assert summary["complete"] is False and summary["filings"] == 1 and summary["of"] == 3
     assert "credit balance" in summary["error"]
