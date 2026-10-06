@@ -1,0 +1,5 @@
+Your transcription doesn't add up the way the form does:
+
+{problems}
+
+The rows of each column add up to its line 1d total (give or take a dollar for rounding). A gap usually means a row was skipped, often where the table continues onto the next page, or an amount was misread. Look at the pages again and return the complete corrected transcription. If the rows really are printed as you transcribed them, keep them.

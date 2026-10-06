@@ -65,7 +65,11 @@ def normalize(name: str, value):
 
 def outcome(name: str, expected, got) -> str:
     """ "correct", or the error type."""
-    expected, got = normalize(name, expected), normalize(name, got)
+    return classify(normalize(name, expected), normalize(name, got))
+
+
+def classify(expected, got) -> str:
+    """ "correct", or the error type, for two already-normalized values."""
     if expected == got:
         return "correct"
     if expected is None:

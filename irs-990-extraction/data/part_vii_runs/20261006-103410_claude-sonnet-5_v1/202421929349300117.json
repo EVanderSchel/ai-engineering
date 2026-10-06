@@ -1,0 +1,142 @@
+{
+  "object_id": "202421929349300117",
+  "seconds": 6.2,
+  "cost_usd": 0.018906799999999998,
+  "answer": {
+    "rows": [
+      {
+        "name": "ELVA ALLEN",
+        "title": "SECRETARY",
+        "hours": null,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "VENESSA DELOACH",
+        "title": "TREASURER",
+        "hours": null,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "ROBERT DRAINE",
+        "title": "VICE PRES",
+        "hours": null,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "BARBARA FLOYD",
+        "title": "DIRECTOR",
+        "hours": null,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "WILLIAM B DUFFY JR",
+        "title": "PRESIDENT",
+        "hours": null,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "SHERRELL MATTHEWS",
+        "title": "DIRECTOR",
+        "hours": null,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "DAVID MOYER",
+        "title": "DIRECTOR",
+        "hours": null,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      }
+    ],
+    "totals": {
+      "total_pay": null,
+      "total_pay_related": null,
+      "total_other_pay": null,
+      "people_over_100k": null
+    }
+  },
+  "problems": [],
+  "pages": [
+    7,
+    8
+  ],
+  "model": "claude-sonnet-5",
+  "prompt": "extract_part_vii/v1",
+  "prompt_sha256": "62191ed55ac7484392227a21816af82b403dd54c1803848576742aed273a3e64",
+  "usage": {
+    "input_tokens": 5248,
+    "output_tokens": 796,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 2254
+  },
+  "attempts": [
+    {
+      "stop_reason": "end_turn",
+      "rows": 7,
+      "problems": [],
+      "seconds": 6.0
+    }
+  ]
+}

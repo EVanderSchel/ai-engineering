@@ -1,0 +1,3 @@
+run,model,prompt,prompt_sha256,returns,people,missed_people,invented_people,field_accuracy,totals_correct,returns_all_correct,blank_as_zero,zero_as_blank,missed,invented,wrong_value,retries,check_failures,cost_per_return_usd,mean_seconds
+20261006-103410_claude-sonnet-5_v1,claude-sonnet-5,extract_part_vii/v1,62191ed55ac7484392227a21816af82b403dd54c1803848576742aed273a3e64,21,320,0,0,0.9952,81/84,18,3,0,0,0,20,0,0,0.0381,16.4
+20261006-111652_claude-sonnet-5_v1,claude-sonnet-5,extract_part_vii/v1,62191ed55ac7484392227a21816af82b403dd54c1803848576742aed273a3e64,21,320,0,0,0.9976,81/84,18,3,0,0,0,10,0,0,0.0384,17.1

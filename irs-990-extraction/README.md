@@ -146,6 +146,30 @@ The correct pages for the 21 dev returns are in `data/gold/part_vii_pages.csv`: 
 
 First run (`data/page_runs/`): **21 of 21 returns exactly right**, no pages missed and none extra, both Schedule R decoys left out. $0.015 per return (7,442 input tokens, 15 output: Claude didn't need to think), 2.2 s each. One run on 21 returns, so a small sample; the scanned returns of step 5b will test it harder.
 
+**Stage 2, reading the rows** (`src/part_vii.py`, prompt `extract_part_vii/v1`). The Part VII pages go to Claude at 1568 px, in order and labeled with their page numbers, with the prompt and schema cached. The answer is every row (13 columns each) plus the line 1d totals and the line 2 count. The request is streamed, because an 88-row list is a long answer. Hours are nullable (a blank line for related organizations is not 0.00); every row shares one definition, so the schema has 6 nullable fields, under the API's limit of 16.
+
+*Checks:* each pay column must add up to its line 1d total within $1 per row (one answer key is $1 off by rounding), and no more rows can show over $100,000 in column (D) than line 2 counts. Both hold on all 60 answer keys. A list that doesn't add up gets one retry with the gap.
+
+*Scoring* (`src/score_part_vii.py`, history in `results/part_vii_history.csv`): rows are first matched to the answer key by name (ignoring case, spaces, and punctuation; a name at least 80% alike still counts as that person). Unmatched answer-key rows are *missed people*, unmatched extracted rows *invented people*. Matched rows and the totals are then scored field by field with the Part I rules and error types (punctuation in a name still counts).
+
+First run on the 21 dev returns (pages from the labels, so stage 2 is measured on its own):
+
+| | |
+|---|---|
+| People | **320 of 320 found**, none invented |
+| Fields of matched rows | 99.5% correct: every name, title, hour, and amount right |
+| Totals | 81 of 84 correct |
+| Returns entirely right | 18 of 21 |
+| Cost and time | $0.038 per return, 16 s (Prep for Prep, 88 rows on 11 pages: $0.20, 91 s); no retries |
+
+Every error was checked against the page image and every one is Claude's. They have one thing in common: Claude inferred instead of transcribing.
+- **Checkboxes moved one column to the left**, on every row of two returns (20 errors). On one, every X is under "Individual trustee or director" and Claude marked "Officer" for a CFO and a President; on the other, X's under "Key employee" and "Highest compensated employee" became "Officer" and "Key employee" for a General Manager and Senior Directors. The columns are narrow with sideways labels, and Claude's answers match what the titles suggest.
+- **Blank totals read as 0** (3 errors): line 1d is blank on one return, and Claude wrote the 0 that the rows add up to.
+
+The checks can't catch either: a checkbox doesn't change any total, and 0 adds up the same as blank.
+
+A second, identical run separated habits from bad luck: again 320 of 320 people and none invented, 99.8% of fields correct. The Valley Crest checkboxes (8 errors) and the blank totals (3) came back exactly the same, so those are habits; Gencure dropped from 12 errors to 2 (only Geoffrey Kindt's), so that one is partly luck.
+
 ## Setup
 
 Needs Python 3.14 and [uv](https://docs.astral.sh/uv/) (`pip install uv`):
