@@ -22,6 +22,8 @@ All notable changes to this project are documented here, following [Keep a Chang
 - Prompt caching of the prompt and schema, on by default: $0.0175 per filing instead of $0.027 on the dev set
 - A run that hits an API error it can't retry stops and is marked incomplete; `evaluate.py` doesn't score incomplete runs
 
+- Part VII Section A in the answer keys: 703 rows across the 60 filings (name, title, hours, position checkboxes, three compensation columns) plus the line 1d totals and line 2 count
+
 ### Fixed
 
 - Answer keys for organizations whose name is printed on two lines had only the first line (11 of 60); the name now joins `BusinessNameLine1Txt` and `BusinessNameLine2Txt`

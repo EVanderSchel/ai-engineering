@@ -2,7 +2,7 @@
 
 import xml.etree.ElementTree as ET
 
-from fields import HEADER_FIELDS, PART_I_FIELDS, Field
+from fields import HEADER_FIELDS, PART_I_FIELDS, PART_VII_COLUMNS, PART_VII_TOTALS, Field
 
 NS = {"e": "http://www.irs.gov/efile"}
 
@@ -23,11 +23,24 @@ def _text(element: ET.Element | None) -> str | None:
     return " ".join(part.strip() for part in element.itertext() if part.strip())
 
 
+def _find(parent: ET.Element, xml_tag: str) -> ET.Element | None:
+    """The element at xml_tag; "A|B" means A, or B if there's no A."""
+    for alternative in xml_tag.split("|"):
+        element = parent.find(_path(alternative), NS)
+        if element is not None:
+            return element
+    return None
+
+
 def _convert(field: Field, text: str | None):
+    if field.kind == "bool":
+        return text is not None  # a ticked checkbox is "X"; an unticked one is left out of the XML
     if text is None:
         return None  # element absent: the line was left blank on the form
     if field.kind == "int":
         return int(text)
+    if field.kind == "decimal":
+        return float(text)
     return text  # str, and dates as "YYYY-MM-DD"
 
 
@@ -41,7 +54,20 @@ def answer_key(xml_bytes: bytes) -> dict:
 
     values = {}
     for field in HEADER_FIELDS:
-        values[field.name] = _convert(field, _text(header.find(_path(field.xml_tag), NS)))
+        values[field.name] = _convert(field, _text(_find(header, field.xml_tag)))
     for field in PART_I_FIELDS:
-        values[field.name] = _convert(field, _text(form.find(_path(field.xml_tag), NS)))
+        values[field.name] = _convert(field, _text(_find(form, field.xml_tag)))
     return values
+
+
+def part_vii(xml_bytes: bytes) -> dict:
+    """Part VII, Section A: {"rows": one dict per row in form order, "totals": lines 1d and 2}."""
+    form = ET.fromstring(xml_bytes).find("e:ReturnData/e:IRS990", NS)
+    if form is None:
+        raise NotForm990("no ReturnData/IRS990 element: not a Form 990 return")
+    rows = [
+        {field.name: _convert(field, _text(_find(row, field.xml_tag))) for field in PART_VII_COLUMNS}
+        for row in form.findall("e:Form990PartVIISectionAGrp", NS)
+    ]
+    totals = {field.name: _convert(field, _text(_find(form, field.xml_tag))) for field in PART_VII_TOTALS}
+    return {"rows": rows, "totals": totals}

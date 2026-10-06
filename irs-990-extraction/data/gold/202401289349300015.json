@@ -44,5 +44,75 @@
     "total_liabilities_end_of_year": 4635,
     "net_assets_beginning_of_year": 98516,
     "net_assets_end_of_year": 122568
+  },
+  "part_vii": {
+    "rows": [
+      {
+        "name": "BRADLEY CHAMBERS",
+        "title": "PRESIDENT/DIRECTOR",
+        "hours": 1.0,
+        "hours_related": 39.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 1630034,
+        "other_pay": 57000
+      },
+      {
+        "name": "ART SIVASLIAN",
+        "title": "DIRECTOR",
+        "hours": 1.0,
+        "hours_related": 39.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 703067,
+        "other_pay": 23936
+      },
+      {
+        "name": "OLIVER M JOHNSON II",
+        "title": "SECRETARY",
+        "hours": 1.0,
+        "hours_related": 39.0,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 1863212,
+        "other_pay": 41692
+      },
+      {
+        "name": "DEANA STOUT",
+        "title": "TREASURER",
+        "hours": 1.0,
+        "hours_related": 39.0,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 535082,
+        "other_pay": 51916
+      }
+    ],
+    "totals": {
+      "total_pay": 0,
+      "total_pay_related": 4731395,
+      "total_other_pay": 174544,
+      "people_over_100k": 0
+    }
   }
 }

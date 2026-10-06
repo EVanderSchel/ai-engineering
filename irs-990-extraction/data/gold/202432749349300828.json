@@ -44,5 +44,120 @@
     "total_liabilities_end_of_year": 365354,
     "net_assets_beginning_of_year": 2164192,
     "net_assets_end_of_year": 2073273
+  },
+  "part_vii": {
+    "rows": [
+      {
+        "name": "LINA NGUYEN",
+        "title": "PRESIDENT",
+        "hours": 0.0,
+        "hours_related": 1.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "DEBBIE SOUSA",
+        "title": "MEMBER",
+        "hours": 0.0,
+        "hours_related": 1.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "ELLEN MASON",
+        "title": "SECRETARY",
+        "hours": 0.0,
+        "hours_related": 1.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "JOHN GREEN",
+        "title": "MEMBER",
+        "hours": 0.0,
+        "hours_related": 1.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "RAY WASHINGTON",
+        "title": "TREASURER",
+        "hours": 0.0,
+        "hours_related": 1.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "LAN CHE NGUYEN",
+        "title": "MEMBER",
+        "hours": 0.0,
+        "hours_related": 1.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "DAT NGUYEN",
+        "title": "MEMBER",
+        "hours": 0.0,
+        "hours_related": 1.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      }
+    ],
+    "totals": {
+      "total_pay": 0,
+      "total_pay_related": 0,
+      "total_other_pay": 0,
+      "people_over_100k": 0
+    }
   }
 }

@@ -43,7 +43,7 @@ IRS data is public domain. Thanks to ProPublica for the Nonprofit Explorer API; 
 
 | File | What |
 |---|---|
-| `data/gold/<object_id>.json` | Answer key: the 42 fields in `src/fields.py` (filer identity + Part I), read from the e-file XML |
+| `data/gold/<object_id>.json` | Answer key, read from the e-file XML: the 42 fields in `src/fields.py` (filer identity + Part I), and Part VII Section A (`part_vii`: one row per officer, director, key employee, or highly paid employee, with the line 1d totals and the line 2 count) |
 | `data/gold/manifest.csv` | One row per filing: EIN, name, tax period, band, split, DLN, IRS PDF filename |
 | `data/gold/skipped.csv` | Filings tried but left out, and why (15, all with no published PDF yet) |
 
