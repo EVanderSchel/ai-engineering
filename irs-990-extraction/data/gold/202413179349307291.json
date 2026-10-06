@@ -44,5 +44,75 @@
     "total_liabilities_end_of_year": 0,
     "net_assets_beginning_of_year": 131471,
     "net_assets_end_of_year": 91021
+  },
+  "part_vii": {
+    "rows": [
+      {
+        "name": "ADAM MORSTAD",
+        "title": "PRESIDENT",
+        "hours": 1.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "RICHARD TUPTA",
+        "title": "SECRETARY",
+        "hours": 1.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "ROBERT JAMES RISTOW",
+        "title": "TREASURER",
+        "hours": 1.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "MATTHEW ULLSVIK",
+        "title": "VICE PRESIDENT",
+        "hours": 5.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      }
+    ],
+    "totals": {
+      "total_pay": 0,
+      "total_pay_related": 0,
+      "total_other_pay": 0,
+      "people_over_100k": 0
+    }
   }
 }

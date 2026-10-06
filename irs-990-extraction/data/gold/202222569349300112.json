@@ -44,5 +44,75 @@
     "total_liabilities_end_of_year": 90461,
     "net_assets_beginning_of_year": 103366,
     "net_assets_end_of_year": 91338
+  },
+  "part_vii": {
+    "rows": [
+      {
+        "name": "Steve Quarve",
+        "title": "CFO",
+        "hours": 10.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Bill Moe",
+        "title": "President",
+        "hours": 2.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Wayne Brevig",
+        "title": "Vice President",
+        "hours": 2.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Dan Sorum",
+        "title": "Secretary",
+        "hours": 2.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      }
+    ],
+    "totals": {
+      "total_pay": null,
+      "total_pay_related": null,
+      "total_other_pay": null,
+      "people_over_100k": null
+    }
   }
 }

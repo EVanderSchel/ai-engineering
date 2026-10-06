@@ -44,5 +44,45 @@
     "total_liabilities_end_of_year": 0,
     "net_assets_beginning_of_year": 698953,
     "net_assets_end_of_year": 848395
+  },
+  "part_vii": {
+    "rows": [
+      {
+        "name": "Donita Atkins",
+        "title": "Member",
+        "hours": 10.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 18500,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Dhanunjaya Lakkireddy",
+        "title": "President",
+        "hours": 10.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 4000,
+        "pay_related": 0,
+        "other_pay": 0
+      }
+    ],
+    "totals": {
+      "total_pay": 22500,
+      "total_pay_related": null,
+      "total_other_pay": null,
+      "people_over_100k": 0
+    }
   }
 }

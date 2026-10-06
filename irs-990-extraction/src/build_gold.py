@@ -11,7 +11,7 @@ organizations file longer, more varied returns. Within each band, about a third 
 split (for developing prompts) and the rest to "test" (held out, only for final scoring).
 
 Writes, all committed:
-    data/gold/<object_id>.json   answer key for one filing
+    data/gold/<object_id>.json   answer key for one filing: Part I fields and Part VII rows
     data/gold/manifest.csv       one row per filing: identity, size band, split, PDF filename
     data/gold/skipped.csv        filings tried but left out, and why
 PDFs and XML go to data/raw/ (gitignored) and can be re-downloaded by running this again.
@@ -28,7 +28,7 @@ import random
 
 import sources
 from fields import FIELD_NAMES
-from irs_xml import NotForm990, answer_key
+from irs_xml import NotForm990, answer_key, part_vii
 from paths import GOLD_DIR, RAW_DIR
 
 # Current-year total revenue (Part I line 12), in dollars.
@@ -77,7 +77,8 @@ def build(year: int, per_band: int, seed: int) -> None:
                 break
             ident = {"object_id": row["OBJECT_ID"], "ein": row["EIN"], "tax_period": row["TAX_PERIOD"]}
             try:
-                key = answer_key(xml.fetch(row["OBJECT_ID"], row["XML_BATCH_ID"]))
+                xml_bytes = xml.fetch(row["OBJECT_ID"], row["XML_BATCH_ID"])
+                key = answer_key(xml_bytes)
             except (NotForm990, sources.XmlNotFound) as e:
                 skipped.append({**ident, "reason": str(e)})
                 if not fetched_any and len(skipped) >= GIVE_UP_AFTER_FAILURES:
@@ -94,7 +95,9 @@ def build(year: int, per_band: int, seed: int) -> None:
                 skipped.append({**ident, "reason": str(e)})
                 print(f"  skip {ident['ein']} ({band}): {e}")
                 continue
-            accepted[band].append({**ident, "band": band, "pdf_filename": filename, "dln": row["DLN"], "key": key})
+            accepted[band].append(
+                {**ident, "band": band, "pdf_filename": filename, "dln": row["DLN"], "key": key, "xml": xml_bytes}
+            )
             print(f"  {band:<6} {sum(map(len, accepted.values())):>3} filings  {key['organization_name']}")
     finally:
         xml.close()
@@ -105,6 +108,22 @@ def build(year: int, per_band: int, seed: int) -> None:
 
     assign_splits(accepted)
     write(accepted, skipped, year)
+
+
+def answer_file(object_id: str, source: str, xml_bytes: bytes) -> dict:
+    """The contents of data/gold/<object_id>.json: Part I fields and Part VII, from the e-file XML."""
+    key = answer_key(xml_bytes)
+    return {
+        "object_id": object_id,
+        "source": source,
+        "fields": {name: key[name] for name in FIELD_NAMES},
+        "part_vii": part_vii(xml_bytes),
+    }
+
+
+def _save(answer: dict) -> None:
+    path = GOLD_DIR / f"{answer['object_id']}.json"
+    path.write_text(json.dumps(answer, indent=2) + "\n", encoding="utf-8", newline="\n")
 
 
 def write(accepted: dict[str, list[dict]], skipped: list[dict], year: int) -> None:
@@ -122,13 +141,8 @@ def write(accepted: dict[str, list[dict]], skipped: list[dict], year: int) -> No
                         "organization_name": key["organization_name"],
                     }
                 )
-                answer = {
-                    "object_id": filing["object_id"],
-                    "source": f"IRS e-file XML, index {year}",
-                    "fields": {name: key[name] for name in FIELD_NAMES},
-                }
-                path = GOLD_DIR / f"{filing['object_id']}.json"
-                path.write_text(json.dumps(answer, indent=2) + "\n", encoding="utf-8", newline="\n")
+                answer = answer_file(filing["object_id"], f"IRS e-file XML, index {year}", filing["xml"])
+                _save(answer)
     with (GOLD_DIR / "skipped.csv").open("w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=["object_id", "ein", "tax_period", "reason"])
         writer.writeheader()
@@ -155,14 +169,11 @@ def refresh_keys() -> None:
         xml_path = RAW_DIR / "xml" / f"{row['object_id']}.xml"
         if not xml_path.exists():
             raise SystemExit(f"{xml_path} is missing: run `python src/build_gold.py` to download it")
-        key = answer_key(xml_path.read_bytes())
-        path = GOLD_DIR / f"{row['object_id']}.json"
-        answer = json.loads(path.read_text(encoding="utf-8"))
-        fields = {name: key[name] for name in FIELD_NAMES}
-        changed += answer["fields"] != fields
-        answer["fields"] = fields
-        path.write_text(json.dumps(answer, indent=2) + "\n", encoding="utf-8", newline="\n")
-        row["organization_name"] = key["organization_name"]
+        old = json.loads((GOLD_DIR / f"{row['object_id']}.json").read_text(encoding="utf-8"))
+        answer = answer_file(row["object_id"], old["source"], xml_path.read_bytes())
+        changed += answer != old
+        _save(answer)
+        row["organization_name"] = answer["fields"]["organization_name"]
 
     with manifest_path.open("w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=columns)

@@ -44,5 +44,90 @@
     "total_liabilities_end_of_year": 4446,
     "net_assets_beginning_of_year": 700933,
     "net_assets_end_of_year": 768872
+  },
+  "part_vii": {
+    "rows": [
+      {
+        "name": "JOSEPH M PULASKI",
+        "title": "PRESIDENT",
+        "hours": 15.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "SANDRA WHITE",
+        "title": "VICE PRESIDENT",
+        "hours": 10.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "MAURIE KELLY",
+        "title": "SECRETARY",
+        "hours": 20.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "DEBORAH ZIMMERMAN",
+        "title": "TREASURER",
+        "hours": 35.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "ELENA GAIRLOCH",
+        "title": "BOARD MEMBER",
+        "hours": 15.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      }
+    ],
+    "totals": {
+      "total_pay": 0,
+      "total_pay_related": 0,
+      "total_other_pay": 0,
+      "people_over_100k": 0
+    }
   }
 }

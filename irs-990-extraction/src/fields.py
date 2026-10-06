@@ -106,3 +106,73 @@ PART_I_FIELDS = [
 
 ALL_FIELDS = HEADER_FIELDS + PART_I_FIELDS
 FIELD_NAMES = [f.name for f in ALL_FIELDS]
+
+
+# Part VII, Section A: one row per officer, director, trustee, key employee, or highly paid employee
+# (Form990PartVIISectionAGrp). Long lists continue on "Additional Data" pages later in the return.
+# Paths are relative to the row element. A checkbox is True when ticked ("X" in the XML) and False when
+# not; it's never blank. "name" is a person (PersonNm) or, for some rows, an organization (BusinessName).
+PART_VII_COLUMNS = [
+    Field("name", "PersonNm|BusinessName", "str", "Part VII-A column (A)", "Name of the person or organization"),
+    Field("title", "TitleTxt", "str", "Part VII-A column (A)", "Title"),
+    Field("hours", "AverageHoursPerWeekRt", "decimal", "Part VII-A column (B)", "Average hours per week"),
+    Field(
+        "hours_related",
+        "AverageHoursPerWeekRltdOrgRt",
+        "decimal",
+        "Part VII-A column (B), below the line",
+        "Average hours per week for related organizations",
+    ),
+    Field(
+        "director", "IndividualTrusteeOrDirectorInd", "bool", "Part VII-A column (C)", "Individual trustee or director"
+    ),
+    Field("institutional_trustee", "InstitutionalTrusteeInd", "bool", "Part VII-A column (C)", "Institutional trustee"),
+    Field("officer", "OfficerInd", "bool", "Part VII-A column (C)", "Officer"),
+    Field("key_employee", "KeyEmployeeInd", "bool", "Part VII-A column (C)", "Key employee"),
+    Field(
+        "highest_compensated",
+        "HighestCompensatedEmployeeInd",
+        "bool",
+        "Part VII-A column (C)",
+        "Highest compensated employee",
+    ),
+    Field("former", "FormerOfcrDirectorTrusteeInd", "bool", "Part VII-A column (C)", "Former officer or director"),
+    Field(
+        "pay",
+        "ReportableCompFromOrgAmt",
+        "int",
+        "Part VII-A column (D)",
+        "Reportable compensation from the organization",
+    ),
+    Field(
+        "pay_related",
+        "ReportableCompFromRltdOrgAmt",
+        "int",
+        "Part VII-A column (E)",
+        "Reportable compensation from related organizations",
+    ),
+    Field("other_pay", "OtherCompensationAmt", "int", "Part VII-A column (F)", "Estimated other compensation"),
+]
+
+# Part VII, Section A, lines 1d and 2: the totals of the columns above (a completeness check on the rows)
+# and how many people received more than $100,000. Paths are relative to ReturnData/IRS990.
+PART_VII_TOTALS = [
+    Field("total_pay", "TotalReportableCompFromOrgAmt", "int", "Part VII-A line 1d, column (D)", "Total of column (D)"),
+    Field(
+        "total_pay_related",
+        "TotReportableCompRltdOrgAmt",
+        "int",
+        "Part VII-A line 1d, column (E)",
+        "Total of column (E)",
+    ),
+    Field(
+        "total_other_pay", "TotalOtherCompensationAmt", "int", "Part VII-A line 1d, column (F)", "Total of column (F)"
+    ),
+    Field(
+        "people_over_100k",
+        "IndivRcvdGreaterThan100KCnt",
+        "int",
+        "Part VII-A line 2",
+        "Individuals who received more than $100,000 of reportable compensation",
+    ),
+]
