@@ -1,0 +1,14 @@
+{
+  "run": "20261006-081609_claude-sonnet-5_v2_image-1000",
+  "complete": false,
+  "filings": 10,
+  "of": 21,
+  "error": "BadRequestError: Error code: 400 - invalid_request_error: Your credit balance is too low to access the Anthropic API. (Run stopped by hand-written summary: written after the fact, extract.py didn't handle it yet.)",
+  "cost_usd": 0.397602,
+  "usage": {
+    "input_tokens": 82036,
+    "output_tokens": 23353,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0
+  }
+}

@@ -30,7 +30,7 @@ IRS data is public domain. Thanks to ProPublica for the Nonprofit Explorer API; 
 | 1 | Gold set: pick filings from the IRS index, download their XML and page images, build answer-key JSON *(done)* |
 | 2 | Schema and baseline: Pydantic model of Part I, Claude structured outputs from page images, validation and retry *(done)* |
 | 3 | Eval harness: per-field accuracy with normalization, results history by prompt version and model; prompt v2 *(done)* |
-| 4 | Vision input choices: page selection, resolution, PDF vs. image input, cost per document |
+| 4 | Vision input choices: page selection, resolution, PDF vs. image input, cost per document; prompt caching *(done)* |
 | 5 | Harder documents: multi-page sections (Part VII), scanned paper returns |
 | 6 | Confidence and human review: per-field confidence, thresholds tuned on the eval set, review queue |
 | 7 | Batch processing: Message Batches API, concurrency, idempotent reprocessing |
@@ -100,6 +100,39 @@ Twenty-one filings is still a small sample. Step 3 fixed the two-line names and 
 The EIN fix is clear-cut: v1 scrambled digits next to the dash in both runs, mostly on the same filings, and v2 read all 42 EINs correctly. Blank-vs-0 errors fell from 16 to 5, but they come in clusters (one filing had 3 of v2's 5), so that gain is likely but not yet proven. v2 is now the active prompt. It costs about 5% more per filing.
 
 **The test split is held out:** `extract.py --split test` refuses to run without `--final`, so test filings are only scored once prompt and model choices are made on dev.
+
+## Vision inputs and cost (step 4)
+
+`extract.py --input` sends page 1 as `image-<pixels>` (a PNG whose longer side is that many pixels, up to 2576, Claude Sonnet 5's maximum) or `pdf` (the page as a one-page PDF, rendered by the API). Prompt caching is on by default (`--no-cache` turns it off). Both are recorded with every run and in `results/history.csv`.
+
+**What each input costs** (input tokens, counted for free with the token-counting endpoint, mean of the 21 dev filings):
+
+| Input | Page tokens | Request input tokens | Input cost |
+|---|---|---|---|
+| image-1000 | ~820 | 5,870 | $0.0117 |
+| image-1568 | ~1,990 | 7,040 | $0.0141 |
+| image-2000 | ~3,250 | 8,300 | $0.0166 |
+| image-2576 | ~4,730 | 9,770 | $0.0195 |
+| pdf | ~1,600 | 6,650 | $0.0133 |
+| whole return as a PDF | 30,000-71,000 | | $0.06-0.14 |
+
+The IRS scans are 300 dpi (2253 x ~3600 px), so every option here is a downscale. Image tokens grow with pixel area. Most of each request is fixed: the prompt and schema are 5,047 tokens. Sending only page 1 matters most: the whole return costs 5-10x as much, and Part I is always on page 1.
+
+**Accuracy and cost per filing** (prompt v2). The first pass of each option ran out of API credit before the end, and the second passes never started, so each is compared with the two complete v2 runs at image-1568 *on the same filings*:
+
+| Input | Filings | Errors | Same filings in the 2 earlier image-1568 runs | Cost per filing | Same filings, earlier runs |
+|---|---|---|---|---|---|
+| image-1000 | 10 | 32 | 1, 0 | $0.040 | $0.026 |
+| pdf | 18 | 20 | 5, 0 | $0.028 | $0.027 |
+| image-2576 | 20 | 5 | 5, 0 | $0.031 | $0.027 |
+| image-1568, cached | 20 | 12 | 5, 0 | **$0.0175** | $0.027 |
+
+- **Lower resolution is a false economy.** At 1000 px Claude misread digits (127,203 as 127,283; 99,360 as 99,760), and on one filing it shifted three rows (line 17's numbers read as line 18's). That misreading still added up, so the arithmetic checks didn't catch it. It also thought longer and retried more, so it cost **more** per filing, not less. The PDF input (rendered by the API at about 1,600 tokens) had the same row shift.
+- **More resolution didn't help.** image-2576 matched image-1568's errors on the same filings, and cost 15% more.
+- **Prompt caching cut the cost by 35%.** The prompt and schema (5,030 tokens) are written to the cache once, then read at a tenth of the price on every later filing (the cache lasts 5 minutes from the last use). The request's content is unchanged, so caching can't change the answers.
+- **Noise is lumpy.** The cached run sends the same content as the earlier image-1568 runs, yet it had 12 errors to their 5 and 0. One filing had its whole current-year column read as blank (6 errors at once). Errors come in clusters, so error counts from a few runs swing widely, and the blank-vs-0 improvement claimed for prompt v2 is weaker than it looked.
+
+**Decision:** keep image-1568, and turn caching on. That's $0.0175 per filing, down from $0.026. A run that stops early (no credit, an outage) is now marked incomplete in its `summary.json`, and `evaluate.py` leaves it out of the history.
 
 ## Setup
 

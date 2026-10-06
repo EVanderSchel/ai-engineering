@@ -39,6 +39,8 @@ HISTORY_COLUMNS = [
     "model",
     "prompt",
     "prompt_sha256",
+    "input",
+    "cache",
     "filings",
     "field_accuracy",
     "filings_all_correct",
@@ -84,6 +86,15 @@ def gold() -> dict[str, dict]:
     return keys
 
 
+def is_complete(run_dir) -> bool:
+    """Whether a run got through all its filings. A run that stopped early (no credit, an API outage)
+    covers an easier or harder subset, so scoring it alongside full runs would mislead."""
+    summary = run_dir / "summary.json"
+    if not summary.exists():
+        return False  # it crashed before writing one
+    return json.loads(summary.read_text(encoding="utf-8")).get("complete", True)  # older runs: complete
+
+
 def score_run(run_dir) -> dict:
     """Per-field and overall results for one run directory (one JSON record per filing)."""
     answer_keys = gold()
@@ -125,6 +136,8 @@ def score_run(run_dir) -> dict:
         "model": first["model"],
         "prompt": first["prompt"],
         "prompt_sha256": first["prompt_sha256"],
+        "input": first.get("input", "image-1568"),  # runs before step 4 all sent 1568 px images
+        "cache": first.get("cache", False),
         "filings": len(records),
         "field_accuracy": round(1 - len(errors) / n_fields, 4),
         "filings_all_correct": filings_all_correct,
@@ -155,7 +168,8 @@ def record(score: dict) -> None:
 
 def report(score: dict) -> str:
     lines = [
-        f"Run {score['run']}: {score['filings']} {score['split']} filings, {score['model']}, {score['prompt']}",
+        f"Run {score['run']}: {score['filings']} {score['split']} filings, "
+        f"{score['model']}, {score['prompt']}, input {score['input']}{', cached' if score['cache'] else ''}",
         f"  Field accuracy {score['field_accuracy']:.1%}; all 42 fields right on "
         f"{score['filings_all_correct']} of {score['filings']} filings",
         "  Errors: " + ", ".join(f"{t} {score[t]}" for t in ERROR_TYPES),
@@ -183,6 +197,9 @@ def main() -> None:
     if not run_dirs:
         parser.error("give a run directory, or --all")
     for run_dir in run_dirs:
+        if not is_complete(run_dir):
+            print(f"Skipped {run_dir.name}: the run didn't finish (see its summary.json)", end="\n\n")
+            continue
         score = score_run(run_dir)
         record(score)
         print(report(score), end="\n\n")
