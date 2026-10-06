@@ -10,6 +10,11 @@
       "sha256": "825aafcfd34546129a872140c76e4f67e69933e0b5d9d95ba8e5f5c156a81218",
       "created": "2026-10-06",
       "notes": "v1 plus: EIN copied as printed with the dash (removed in code); each cell read on its own, a blank next to a 0 stays blank; long names include their second line but not a care-of line."
+    },
+    "v3": {
+      "sha256": "f744741e1e9812b9ac0d5b33f4d8d38a1f3da81797289270d9e0a65d3b06eba9",
+      "created": "2026-10-07",
+      "notes": "v2 plus unsure_fields (step 6): Claude lists the fields it isn't sure it read correctly, for human review. Used with extract.py --confidence (schema Form990PartIWithDoubts)."
     }
   }
 }

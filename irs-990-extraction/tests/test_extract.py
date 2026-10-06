@@ -208,3 +208,23 @@ def test_an_api_error_stops_the_run_and_marks_it_incomplete(good, tmp_path, monk
     assert summary["complete"] is False and summary["filings"] == 1 and summary["of"] == 3
     assert "credit balance" in summary["error"]
     assert not extract.evaluate.is_complete(run)
+
+
+def test_confidence_needs_a_prompt_that_explains_it(good, monkeypatch):
+    monkeypatch.setenv("IRS990_PROMPT_EXTRACT", "v2")
+    with pytest.raises(ValueError, match="unsure_fields"):
+        extract.extract(FakeClient(reply(good)), BLOCK, confidence=True)
+
+
+def test_confidence_asks_for_doubts_and_records_them(good, monkeypatch):
+    from schema import Form990PartIWithDoubts
+
+    monkeypatch.setenv("IRS990_PROMPT_EXTRACT", "v3")
+    answer = reply(good)
+    answer.parsed_output = Form990PartIWithDoubts(**answer.parsed_output.model_dump(), unsure_fields=["volunteers"])
+    client = FakeClient(answer)
+    result = extract.extract(client, BLOCK, confidence=True)
+    assert client.requests[0]["output_format"] is Form990PartIWithDoubts
+    assert result.unsure == ["volunteers"] and result.answer == good and result.prompt == "extract/v3"
+    plain = extract.extract(FakeClient(reply(good)), BLOCK)
+    assert plain.unsure is None  # not asked, which is different from "asked, and sure of everything"

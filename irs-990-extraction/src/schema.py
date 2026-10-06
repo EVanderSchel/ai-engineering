@@ -44,6 +44,23 @@ Form990PartI = create_model(
 )
 
 
+# Step 6: the same schema plus Claude's own doubts, a list of the fields it isn't sure it read correctly.
+# A separate model, so runs without it keep exactly the schema earlier prompt versions were measured on.
+Form990PartIWithDoubts = create_model(
+    "Form990PartIWithDoubts",
+    __base__=Form990PartI,
+    unsure_fields=(
+        list[FieldName],
+        PydanticField(description="Names of the fields whose value you are not sure you read correctly"),
+    ),
+)
+
+
+def unsure(extraction: BaseModel) -> list[str]:
+    """The fields Claude marked as unsure, or [] for an extraction made without asking."""
+    return sorted(set(getattr(extraction, "unsure_fields", [])))
+
+
 def as_answer(extraction: BaseModel) -> dict:
     """The extraction in answer-key form: plain JSON values, dates as "YYYY-MM-DD", None for blanks."""
     values = extraction.model_dump(mode="json")

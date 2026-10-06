@@ -30,6 +30,8 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 - Simulated scans (`src/scans.py`, Pillow): light, medium, and heavy scanned copies of the gold-set returns, and `--scan` on every stage. Light matches clean pages, medium costs about two points on Part I, heavy breaks Part I and Part VII (and runs some requests out of output tokens); the page finder stayed 21/21 at every level
 
+- Claude's own doubts (`extract.py --confidence`, prompt `extract/v3`, `unsure_fields` in a separate schema) and their scoring against real errors (`unsure_flagged`, `unsure_caught` in the history). They catch 9% of errors on clean pages and 43% on heavy scans: a weak signal compared with run-to-run disagreement
+
 ### Fixed
 
 - Answer keys for organizations whose name is printed on two lines had only the first line (11 of 60); the name now joins `BusinessNameLine1Txt` and `BusinessNameLine2Txt`

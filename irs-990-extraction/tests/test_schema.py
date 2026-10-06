@@ -77,3 +77,16 @@ def test_missing_and_extra_fields_are_rejected():
 def test_the_ein_dash_is_removed_in_code():
     extraction = from_answer(gold_answers()[0]).model_copy(update={"ein": "41-1657792"})
     assert as_answer(extraction)["ein"] == "411657792"
+
+
+def test_the_doubts_schema_adds_one_list_and_no_unions():
+    from schema import Form990PartIWithDoubts, unsure
+
+    schema = transform_schema(Form990PartIWithDoubts)
+    assert list(schema["properties"]) == [*FIELD_NAMES, "blank_lines", "unsure_fields"]
+    assert schema["properties"]["unsure_fields"]["items"]["enum"] == FIELD_NAMES
+    assert _union_count(schema) == 0
+    plain = from_answer(gold_answers()[0])
+    doubtful = Form990PartIWithDoubts(**plain.model_dump(), unsure_fields=["volunteers", "ein", "volunteers"])
+    assert unsure(doubtful) == ["ein", "volunteers"] and unsure(plain) == []
+    assert as_answer(doubtful) == as_answer(plain)  # doubts never leak into the answer
