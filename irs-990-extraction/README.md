@@ -310,6 +310,22 @@ Claude Sonnet 5 (used so far) against Claude Haiku 4.5, half its list price, on 
 
 A Haiku run crashed: with thinking on, it returned invalid JSON, and `parse()` raises in that case, which `extract()` didn't handle (Sonnet never had). It's fixed (an invalid answer is one filing without an answer, not a stopped run), and the run is kept, marked incomplete. This comparison is about reading small print on page images; whether Haiku would do for the rag project's text answers is a different question, for that project's own generation eval.
 
+## HTTP API (step 9)
+
+`src/api.py` serves the extraction over HTTP, with the production habits of the rag project's API:
+
+```
+.venv\Scripts\python.exe -m uvicorn api:app --app-dir src --reload     # then open http://localhost:8000/docs
+```
+
+- `POST /extract`: upload a return (PDF, or a PNG/JPEG of page 1; `page` picks another page). Returns the 42 Part I fields (`null` = blank on the form), the arithmetic problems, and a review recommendation from step 6's single-request signals (no answer, failed checks or a retry, a long think on a hard page), plus model, prompt version, attempts, cost, and time.
+- `GET /health`: liveness, whether a Claude key is configured, whether a caller key is required, and the version.
+- **Callers:** with `IRS990_API_KEY` set, `/extract` needs it in `X-API-Key` (compared in constant time). Each caller gets `IRS990_RATE_LIMIT_PER_MINUTE` requests a minute (default 10), checked before the upload is read or Claude is called, so a rejected request costs nothing.
+- **Uploads** are checked by their first bytes, not their declared type: over 20 MB is 413, anything but a PDF/PNG/JPEG 415, an unreadable file or a missing page 422, all before any Claude call. A Claude failure is 502, no Claude key 503, no answer 422. Every error is listed on `/docs`.
+- **Logs:** one JSON line per request (request ID, status, time, cost), never the document or its values. Claude calls time out after two minutes instead of the SDK's ten.
+
+Tested with a fake client for every response (15 tests). Run locally on a real return (Wilds Christian Association, 45 pages): 200 in 6.9 s for $0.024, all 42 fields matching the answer key.
+
 ## Setup
 
 Needs Python 3.14 and [uv](https://docs.astral.sh/uv/) (`pip install uv`):
