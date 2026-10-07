@@ -1,0 +1,167 @@
+{
+  "object_id": "202423259349301362",
+  "seconds": 9.9,
+  "cost_usd": 0.0350848,
+  "answer": {
+    "rows": [
+      {
+        "name": "RON KOWAL",
+        "title": "VICE PRESIDE",
+        "hours": 8.0,
+        "hours_related": 32.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 225612,
+        "other_pay": 0
+      },
+      {
+        "name": "MARY APOSTOLOU",
+        "title": "DIRECTOR",
+        "hours": 1.0,
+        "hours_related": 1.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "CHARLES BAILEY",
+        "title": "DIRECTOR",
+        "hours": 1.0,
+        "hours_related": 1.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "EDWINA CARRINGTON",
+        "title": "DIRECTOR",
+        "hours": 1.0,
+        "hours_related": 1.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "BARBARA CHEN",
+        "title": "TREASURER",
+        "hours": 2.0,
+        "hours_related": 2.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "TYRA DUNCAN-HALL",
+        "title": "DIRECTOR",
+        "hours": 1.0,
+        "hours_related": 1.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "MICHAEL GERBER",
+        "title": "PRESIDENT/SE",
+        "hours": 2.0,
+        "hours_related": 2.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "CARL RICHIE JR",
+        "title": "DIRECTOR",
+        "hours": 1.0,
+        "hours_related": 1.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      }
+    ],
+    "totals": {
+      "total_pay": null,
+      "total_pay_related": 225612,
+      "total_other_pay": null,
+      "people_over_100k": null
+    }
+  },
+  "problems": [],
+  "pages": [
+    7,
+    8
+  ],
+  "model": "claude-sonnet-5",
+  "prompt": "extract_part_vii/v1",
+  "prompt_sha256": "62191ed55ac7484392227a21816af82b403dd54c1803848576742aed273a3e64",
+  "scan": null,
+  "usage": {
+    "input_tokens": 5248,
+    "output_tokens": 943,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 2254
+  },
+  "attempts": [
+    {
+      "stop_reason": "end_turn",
+      "rows": 8,
+      "problems": [],
+      "seconds": 7.6
+    }
+  ],
+  "pages_from": "finder",
+  "page_finder": {
+    "pages": [
+      7,
+      8
+    ],
+    "prompt": "find_pages/v1",
+    "cost_usd": 0.014708
+  }
+}

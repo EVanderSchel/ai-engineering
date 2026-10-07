@@ -1,0 +1,107 @@
+{
+  "object_id": "202433209349310188",
+  "seconds": 6.9,
+  "cost_usd": 0.027128799999999998,
+  "answer": {
+    "rows": [
+      {
+        "name": "Leah Fitch",
+        "title": "Director",
+        "hours": 1.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Joseph Dull",
+        "title": "Secretary",
+        "hours": 1.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Elizabeth Chiaravalli",
+        "title": "President",
+        "hours": 1.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Zoe Jackson",
+        "title": "Treasurer",
+        "hours": 2.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      }
+    ],
+    "totals": {
+      "total_pay": 0,
+      "total_pay_related": 0,
+      "total_other_pay": 0,
+      "people_over_100k": 0
+    }
+  },
+  "problems": [],
+  "pages": [
+    7,
+    8
+  ],
+  "model": "claude-sonnet-5",
+  "prompt": "extract_part_vii/v1",
+  "prompt_sha256": "62191ed55ac7484392227a21816af82b403dd54c1803848576742aed273a3e64",
+  "scan": null,
+  "usage": {
+    "input_tokens": 5416,
+    "output_tokens": 505,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 2254
+  },
+  "attempts": [
+    {
+      "stop_reason": "end_turn",
+      "rows": 4,
+      "problems": [],
+      "seconds": 4.6
+    }
+  ],
+  "pages_from": "finder",
+  "page_finder": {
+    "pages": [
+      7,
+      8
+    ],
+    "prompt": "find_pages/v1",
+    "cost_usd": 0.010796
+  }
+}

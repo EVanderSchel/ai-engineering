@@ -17,6 +17,7 @@ stage is measured on its own; stage 1 found exactly those pages on its first run
 
 import argparse
 import base64
+import csv
 import datetime
 import json
 import time
@@ -33,7 +34,7 @@ import scans
 import score_part_vii
 from extract import MODEL, PRICES, Usage, _system, page_png
 from fields import PART_VII_COLUMNS, PART_VII_TOTALS
-from paths import DATA_DIR
+from paths import DATA_DIR, GOLD_DIR
 
 RUNS_DIR = DATA_DIR / "part_vii_runs"
 MAX_TOKENS = 64000  # an 88-row list is a long answer; streaming keeps a long request from timing out
@@ -189,14 +190,32 @@ def _history(block) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--limit", type=int, help="only the first N labeled returns")
+    parser.add_argument("--split", choices=["dev", "test"], default="dev")
+    parser.add_argument("--limit", type=int, help="only the first N returns")
     parser.add_argument("--model", default=MODEL, choices=sorted(PRICES))
     parser.add_argument("--scan", choices=sorted(scans.LEVELS), help="read a simulated scan (make it with scans.py)")
+    parser.add_argument(
+        "--find-pages",
+        action="store_true",
+        help="find the pages with stage 1 (find_pages.py) instead of the hand-checked labels: the whole "
+        "pipeline, and the only option for test returns, which have no labels",
+    )
     parser.add_argument("--count-tokens", action="store_true", help="estimate the cost without running (free)")
+    parser.add_argument("--final", action="store_true", help="required for --split test")
     args = parser.parse_args()
+    if args.split == "test" and not args.final:
+        parser.error("the test split is held out for final scores; add --final if this is one")
+    if args.split == "test" and not args.find_pages:
+        parser.error("test returns have no page labels: add --find-pages")
+    if args.count_tokens and args.find_pages:
+        parser.error("--count-tokens needs known pages: use it without --find-pages")
 
     labeled = find_pages.labels()  # dev returns only
-    object_ids = list(labeled)[: args.limit]
+    if args.find_pages:
+        with (GOLD_DIR / "manifest.csv").open(encoding="utf-8", newline="") as f:
+            object_ids = [row["object_id"] for row in csv.DictReader(f) if row["split"] == args.split][: args.limit]
+    else:
+        object_ids = list(labeled)[: args.limit]
     client = anthropic.Anthropic()
     system = prompts.load("extract_part_vii")
 
@@ -217,6 +236,7 @@ def main() -> None:
 
     run_id = f"{datetime.datetime.now():%Y%m%d-%H%M%S}_{args.model}_{system.version}"
     run_id += f"_scan-{args.scan}" if args.scan else ""
+    run_id += ("_found-pages" if args.find_pages else "") + ("_test" if args.split == "test" else "")
     run_dir = RUNS_DIR / run_id
     run_dir.mkdir(parents=True)
     total = Usage()
@@ -228,16 +248,34 @@ def main() -> None:
 
     for done, object_id in enumerate(object_ids):
         started = time.monotonic()
+        found = None
         try:
             pdf = scans.source_pdf(object_id, args.scan)
-            result = extract(client, pdf, labeled[object_id], model=args.model)
+            if args.find_pages:
+                found = find_pages.find_pages(client, pdf, model=args.model)
+                pages = found.pages or []
+            else:
+                pages = labeled[object_id]
+            if pages:
+                result = extract(client, pdf, pages, model=args.model)
+            else:  # stage 1 found nothing: that's a failure of the pipeline, scored as missing every row
+                result = Extraction(
+                    None, ["the page finder found no Part VII pages"], [], args.model, system.id, system.sha256
+                )
             result.scan = args.scan
         except (anthropic.APIStatusError, anthropic.APIConnectionError) as e:
             save_summary(complete=False, done=done, error=f"{type(e).__name__}: {e}")
             raise SystemExit(f"Stopped after {done} of {len(object_ids)} returns: {e}") from e
         seconds = round(time.monotonic() - started, 1)
         total.add(result.usage)
-        record = {"object_id": object_id, "seconds": seconds, "cost_usd": result.cost_usd, **asdict(result)}
+        cost = result.cost_usd
+        if found is not None:  # the page finder's request is part of this return's cost
+            total.add(found.usage)
+            cost += found.cost_usd
+        record = {"object_id": object_id, "seconds": seconds, "cost_usd": cost, **asdict(result)}
+        record["pages_from"] = "finder" if found is not None else "labels"
+        if found is not None:
+            record["page_finder"] = {"pages": found.pages, "prompt": found.prompt, "cost_usd": found.cost_usd}
         (run_dir / f"{object_id}.json").write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8", newline="\n")
         rows = "no answer" if result.answer is None else f"{len(result.answer['rows'])} rows"
         print(

@@ -56,5 +56,13 @@ try {
     Remove-Item $tmp -Force
 }
 
-$after = Invoke-Az rest --method get --url $url | Out-String | ConvertFrom-Json
-Write-Host "Probes now configured: $(($after.properties.template.containers[0].probes | ForEach-Object { $_.type }) -join ', ')"
+# Azure applies the change in the background, so a read straight after the PATCH can still show the old
+# template (empty probes). Check again for up to 30 seconds before reporting.
+$configured = ""
+foreach ($attempt in 1..6) {
+    $after = Invoke-Az rest --method get --url $url | Out-String | ConvertFrom-Json
+    $configured = ($after.properties.template.containers[0].probes | ForEach-Object { $_.type }) -join ", "
+    if ($configured) { break }
+    Start-Sleep -Seconds 5
+}
+Write-Host "Probes now configured: $(if ($configured) { $configured } else { 'none yet (check again in a minute)' })"

@@ -1,0 +1,14 @@
+{
+  "run": "20261007-113110_claude-sonnet-5_v1_found-pages_test",
+  "complete": true,
+  "filings": 39,
+  "of": 39,
+  "error": null,
+  "cost_usd": 1.4761862,
+  "usage": {
+    "input_tokens": 463060,
+    "output_tokens": 52685,
+    "cache_creation_input_tokens": 2254,
+    "cache_read_input_tokens": 87906
+  }
+}

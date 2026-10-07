@@ -44,7 +44,10 @@ All notable changes to this project are documented here, following [Keep a Chang
 - Container: two-stage `Dockerfile` (pinned base images, uv, non-root, version baked in), `.dockerignore` keeping `data/` out, `deploy/smoke_test.sh`, and an `irs-990-extraction-image` CI job that builds and smoke-tests the image on every pull request; Dependabot covers the base images
 - Azure deployment (`deploy/`): Key Vault secrets, OIDC deploys with least privilege (a custom role for the shared Container Apps environment), publish and approval-gated deploy jobs in CI, health probes, and alerts for errors, restarts, and unusual traffic
 
+- Final evaluation on the 39 held-out test filings: Part I 99.2-99.3% (2 batch runs), 95.7% on medium scans; Part VII end to end 383 of 383 people, 99.6% of their fields; review rule 99.9% after reviewing 3.7-11.4% of fields. `part_vii.py --find-pages` runs the page finder and the row reader together, for returns without page labels
+
 ### Fixed
 
+- The health-probe script reported "none" when it read the app back too soon; it now re-checks for up to 30 s
 - An answer that isn't valid JSON (`parse()` raises) is now one filing without an answer, not a crashed run
 - Answer keys for organizations whose name is printed on two lines had only the first line (11 of 60); the name now joins `BusinessNameLine1Txt` and `BusinessNameLine2Txt`

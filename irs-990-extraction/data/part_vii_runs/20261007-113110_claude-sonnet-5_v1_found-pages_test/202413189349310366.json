@@ -1,0 +1,92 @@
+{
+  "object_id": "202413189349310366",
+  "seconds": 6.4,
+  "cost_usd": 0.0272408,
+  "answer": {
+    "rows": [
+      {
+        "name": "WHITNEY RAVELLETTE",
+        "title": "PRESIDENT",
+        "hours": null,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "TARYN THURSTON",
+        "title": "SEC/TREASURE",
+        "hours": null,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "TYLER WALLACE",
+        "title": "VICE PRESIDE",
+        "hours": null,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      }
+    ],
+    "totals": {
+      "total_pay": null,
+      "total_pay_related": null,
+      "total_other_pay": null,
+      "people_over_100k": null
+    }
+  },
+  "problems": [],
+  "pages": [
+    7,
+    8
+  ],
+  "model": "claude-sonnet-5",
+  "prompt": "extract_part_vii/v1",
+  "prompt_sha256": "62191ed55ac7484392227a21816af82b403dd54c1803848576742aed273a3e64",
+  "scan": null,
+  "usage": {
+    "input_tokens": 5472,
+    "output_tokens": 391,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 2254
+  },
+  "attempts": [
+    {
+      "stop_reason": "end_turn",
+      "rows": 3,
+      "problems": [],
+      "seconds": 3.9
+    }
+  ],
+  "pages_from": "finder",
+  "page_finder": {
+    "pages": [
+      7,
+      8
+    ],
+    "prompt": "find_pages/v1",
+    "cost_usd": 0.011936
+  }
+}
