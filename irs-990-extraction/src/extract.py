@@ -227,6 +227,27 @@ def extract(
     raise AssertionError("unreachable")
 
 
+def extract_filing(
+    client,
+    object_id: str,
+    band: str,
+    *,
+    input_kind: str = INPUT,
+    cache: bool = True,
+    scan: str | None = None,
+    confidence: bool = False,
+    model: str = MODEL,
+) -> tuple[dict, Extraction]:
+    """Extract one gold-set filing and build its run record. The SDK's API errors are left to the caller."""
+    started = time.monotonic()
+    block = page_block(scans.source_pdf(object_id, scan), input_kind)
+    result = extract(client, block, input_kind=input_kind, cache=cache, confidence=confidence, model=model)
+    result.scan = scan
+    seconds = round(time.monotonic() - started, 1)
+    record = {"object_id": object_id, "band": band, "seconds": seconds, "cost_usd": result.cost_usd}
+    return record | asdict(result), result
+
+
 # --- Command line --------------------------------------------------------------------------------
 
 
@@ -275,30 +296,28 @@ def main() -> None:
 
     for done, row in enumerate(rows):
         object_id = row["object_id"]
-        pdf = scans.source_pdf(object_id, args.scan)
-
-        started = time.monotonic()
-        block = page_block(pdf, args.input)
         try:
-            result = extract(
-                client, block, input_kind=args.input, cache=args.cache, confidence=args.confidence, model=args.model
+            record, result = extract_filing(
+                client,
+                object_id,
+                row["band"],
+                input_kind=args.input,
+                cache=args.cache,
+                scan=args.scan,
+                confidence=args.confidence,
+                model=args.model,
             )
-            result.scan = args.scan
         except (anthropic.APIStatusError, anthropic.APIConnectionError) as e:
             # The SDK has already retried rate limits, server errors, and dropped connections. What's
             # left (no credit, a bad key, a rejected request) would fail for every filing: stop, and
             # mark the run incomplete so evaluate.py doesn't score a partial run as a full one.
             save_summary(complete=False, done=done, error=f"{type(e).__name__}: {e}")
             raise SystemExit(f"Stopped after {done} of {len(rows)} filings: {e}") from e
-        seconds = round(time.monotonic() - started, 1)
         total.add(result.usage)
-
-        record = {"object_id": object_id, "band": row["band"], "seconds": seconds, "cost_usd": result.cost_usd}
-        record |= asdict(result)
         (run_dir / f"{object_id}.json").write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8", newline="\n")
         print(
             f"{object_id} ({row['band']}): {len(result.attempts)} attempt(s), "
-            f"checks {'passed' if not result.problems else 'FAILED'}, {seconds}s, ${result.cost_usd:.4f}"
+            f"checks {'passed' if not result.problems else 'FAILED'}, {record['seconds']}s, ${result.cost_usd:.4f}"
         )
 
     save_summary(complete=True, done=len(rows))

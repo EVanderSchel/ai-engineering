@@ -38,6 +38,7 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 - Batch extraction (`src/batch.py`): Part I for many filings through the Message Batches API, resumable and idempotent (`--no-wait`, `--resume`), scored like any run. 21 dev filings: 99.0%, $0.0107 per filing (39% less than one at a time; caching is weaker in a batch), 3 min 16 s
 - Sturdier batches: failed or expired requests resent (up to 3 times, never invalid ones), one retry round for answers that break the arithmetic, batches split under the size limit, state saved at every step. `--warm` (filling the cache first) was tried and made caching worse
+- Parallel extraction (`src/parallel.py`): a thread pool of workers running `extract()`, the first filing alone to fill the cache, more SDK retries for rate limits. 21 dev filings in 39 s at $0.0178 each; `extract.extract_filing()` shared by both
 
 ### Fixed
 

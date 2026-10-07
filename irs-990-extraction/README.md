@@ -280,6 +280,17 @@ The batch saved 39%, not 50%: its requests run in parallel, so many start before
 
 **Can the cache be warmed?** `--warm` sends the first filing on its own (standard price) to put the prompt and schema in the cache, then batches the rest straight away. It made things worse: 3,521 cache-write and 1,509 cache-read tokens per batch request (against 1,677 and 3,353 without it), $0.0137 per filing instead of $0.0107. Batch requests apparently don't share the cache that ordinary requests fill, and how much they cache varies between identical batches. Caching inside a batch is out of the caller's hands: plan on about 40% saved, not 50%.
 
+**Parallel requests, for answers now** (`src/parallel.py`). The opposite trade: full price, but several requests in flight at once. A thread pool runs `extract.py`'s own `extract()` in each worker (a request is mostly waiting on the network, so threads do as well as an async rewrite and reuse the tested code); the SDK retries rate limits (429) and overload by itself, following the server's retry-after, with more retries allowed than usual; an error it can't retry away cancels the rest and marks the run incomplete. The first filing goes alone, so its request fills the cache and the others read it, which works here because ordinary requests share a cache, unlike batches.
+
+| 21 dev filings, prompt v2 | One at a time | Batch | Parallel, 8 workers |
+|---|---|---|---|
+| Time | about 3.5 min | 3 min 16 s (up to 24 h) | **39 s** |
+| Cost per filing | $0.0175 | **$0.0107** | $0.0178 |
+| Field accuracy | 98.6-100% | 99.0% | 99.0% |
+| Requests that wrote the cache | 1 | about a third | 1 |
+
+No sign of rate limiting at 8 workers (each filing took its usual 10 s, 16 s at most). The choice is the classic one: batch for a backlog (cheapest), parallel when someone is waiting (fastest), one at a time only for small experiments.
+
 ## Setup
 
 Needs Python 3.14 and [uv](https://docs.astral.sh/uv/) (`pip install uv`):
