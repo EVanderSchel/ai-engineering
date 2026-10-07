@@ -44,7 +44,7 @@ updates:
   # Base images are pinned by digest; Dependabot also proposes new digests when an image is rebuilt
   # (for example, with OS security patches) under the same tag.
   - package-ecosystem: docker
-    directories: [/rag, /ci-cd-workflow]
+    directories: [/rag, /ci-cd-workflow, /irs-990-extraction]
     schedule:
       interval: weekly
     groups:

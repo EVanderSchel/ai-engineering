@@ -1,0 +1,15 @@
+# Only prompts/, src/, and the dependency files go into the image. Above all, never data/: data/raw/ holds
+# hundreds of MB of downloaded returns, and none of data/ is needed to serve requests.
+data/
+results/
+tests/
+security/
+.venv/
+venv*/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.env
+*.md
+deploy/

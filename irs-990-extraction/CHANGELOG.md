@@ -40,6 +40,8 @@ All notable changes to this project are documented here, following [Keep a Chang
 - Sturdier batches: failed or expired requests resent (up to 3 times, never invalid ones), one retry round for answers that break the arithmetic, batches split under the size limit, state saved at every step. `--warm` (filling the cache first) was tried and made caching worse
 - Parallel extraction (`src/parallel.py`): a thread pool of workers running `extract()`, the first filing alone to fill the cache, more SDK retries for rate limits. 21 dev filings in 39 s at $0.0178 each; `extract.extract_filing()` shared by both
 - Model comparison: `--thinking-budget` for models without adaptive thinking, and a thinking_budget column in the history. Claude Haiku 4.5 reached 90.5% on clean pages (Sonnet 5: 99.0%) for $0.0104 per filing; with thinking it was slower, pricier, and no better. Sonnet 5 stays, batched for backlogs
+- HTTP API (`src/api.py`, FastAPI): `POST /extract` (PDF or image upload) returning Part I, the checks, and a review recommendation; `GET /health`; API-key auth, per-caller rate limit, upload checks by content, JSON request logs
+- Container: two-stage `Dockerfile` (pinned base images, uv, non-root, version baked in), `.dockerignore` keeping `data/` out, `deploy/smoke_test.sh`, and an `irs-990-extraction-image` CI job that builds and smoke-tests the image on every pull request; Dependabot covers the base images
 
 ### Fixed
 
