@@ -32,6 +32,10 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 - Claude's own doubts (`extract.py --confidence`, prompt `extract/v3`, `unsure_fields` in a separate schema) and their scoring against real errors (`unsure_flagged`, `unsure_caught` in the history). They catch 9% of errors on clean pages and 43% on heavy scans: a weak signal compared with run-to-run disagreement
 
+- Review rules (`src/review.py`): document signals (no answer, checks, thinking length) and field signals (doubts, a second run's disagreement), scored as errors caught vs. fields reviewed. Checks + thinking > 2,000 tokens + second run: 100% after reviewing 6% of fields on clean pages, 99.8% after 34% on medium scans
+
+- Review queue (`src/review_queue.py`): a local HTML page of flagged fields beside page 1, with a contents list, progress, and a per-field "Looks right" so only checked fields count as reviewed; a corrections download that lists unreviewed fields, `--apply` to write a reviewed run, and `--simulate` for a perfect reviewer
+
 ### Fixed
 
 - Answer keys for organizations whose name is printed on two lines had only the first line (11 of 60); the name now joins `BusinessNameLine1Txt` and `BusinessNameLine2Txt`
