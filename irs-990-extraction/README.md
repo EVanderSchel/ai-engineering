@@ -335,7 +335,28 @@ docker run -p 8000:8000 -e ANTHROPIC_API_KEY -e IRS990_API_KEY=<a long random ke
 
 `deploy/smoke_test.sh <image> [version]` checks a built image without any keys or spend: inside it, a non-root user, both prompts loading with their registered fingerprints, and no `data/`; then the server's `/health` (ok, auth required, extraction off without an Anthropic key, the expected version); then `/extract` answering 401 without the key and 503 with it (the request got past auth into the endpoint). CI runs it on every pull request (`irs-990-extraction-image`), and Dependabot proposes base-image updates.
 
-**Deployment** (`deploy/README.md`): Azure Container Apps, scaled to zero, with the same pipeline as the rag project: every merge to main builds the image, smoke-tests it, pushes it to GitHub Container Registry (`irs-990-extraction-publish`), and, once you approve it, deploys it and waits until `/health` reports the new commit (`irs-990-extraction-deploy`, signing in to Azure with OIDC, no stored password). Both keys live in Key Vault and reach the app as Key Vault references. Because every request spends Anthropic credits, the public API has four limits on cost: the caller key, 10 requests a minute, an Anthropic workspace spend limit, and an alert on more than 100 requests an hour. The subscription allows one Container Apps environment, so the app runs in the rag project's; a custom role lets this project's deploys run apps there without being able to change it. Tried locally on the image, plus one real extraction through the container: 42 of 42 fields right, 8 s, $0.023.
+**Deployment** (`deploy/README.md`): Azure Container Apps, scaled to zero, with the same pipeline as the rag project: every merge to main builds the image, smoke-tests it, pushes it to GitHub Container Registry (`irs-990-extraction-publish`), and, once you approve it, deploys it and waits until `/health` reports the new commit (`irs-990-extraction-deploy`, signing in to Azure with OIDC, no stored password). Both keys live in Key Vault and reach the app as Key Vault references. Because every request spends Anthropic credits, the public API has four limits on cost: the caller key, 10 requests a minute, an Anthropic workspace spend limit, and an alert on more than 100 requests an hour. The subscription allows one Container Apps environment, so the app runs in the rag project's; a custom role lets this project's deploys run apps there without being able to change it.
+
+Live since 2026-10-07 at `https://ca-irs990-api.victoriousflower-462513b7.centralus.azurecontainerapps.io` (`/health` is open; `/extract` needs the key). Checked after the first deploy: `/health` reported the deployed commit, `/extract` without the key answered 401, and with it a real return came back in 10.8 s with all 42 fields matching the answer key, for $0.030. The approval-gated pipeline has since deployed a Dependabot update the same way. Tried locally on the image, plus one real extraction through the container: 42 of 42 fields right, 8 s, $0.023.
+
+## Final results: the held-out test split
+
+Every prompt, threshold, and model choice above was made on the 21 dev filings. The final configuration (Claude Sonnet 5, prompt `extract/v2`, page images at 1568 px, cached prompt, batched) was then scored once on the 39 test filings, which no earlier step had used (`--final`).
+
+| | Test filings (39) | Dev filings (21), for comparison |
+|---|---|---|
+| **Part I** field accuracy, 2 batch runs | **99.2% and 99.3%** (32-33 filings entirely right) | 99.0-99.1% |
+| Part I errors | only blank vs. 0 (12-13 per run); no misread values | the same |
+| Part I on medium scans | 95.7% | 96.6% |
+| **Part VII**, whole pipeline (page finder, then rows) | **383 of 383 people found, none invented**; 99.6% of their fields; 35 of 39 returns entirely right | 320 of 320 (pages from labels); 99.5-99.8% |
+| Part VII errors | checkbox columns (20 of 23, 14 of them on one return); blank totals read as 0 (3) | the same two |
+| Cost | Part I $0.0097 per filing batched; Part VII $0.038 per return including the page finder ($0.013) | |
+| Review rule (checks + thinking > 2,000 + second run) | **83-85% of errors caught**, reviewing 3.7-11.4% of fields: **99.9% after review** | 100% caught, 6% reviewed |
+
+- **The extraction generalizes.** Accuracy on unseen filings matches dev, and the error types are the same ones found in steps 3 and 5.
+- **The review rule doesn't quite.** On dev it caught every error, because it was tuned there; on test it caught 83-85%, which is the honest estimate. The misses are blank-vs-0 errors that both runs make alike.
+- **Part VII's test returns were easy for the page finder:** all 39 fit on pages 7-8, so this run didn't test continuation pages (dev had 3 returns with them, all found).
+- Final evaluation cost: $2.92.
 
 ## Setup
 

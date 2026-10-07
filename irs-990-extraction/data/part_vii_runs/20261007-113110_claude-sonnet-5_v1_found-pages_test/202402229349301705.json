@@ -1,0 +1,62 @@
+{
+  "object_id": "202402229349301705",
+  "seconds": 4.5,
+  "cost_usd": 0.0238328,
+  "answer": {
+    "rows": [
+      {
+        "name": "JEONG A KIM",
+        "title": "PRES",
+        "hours": null,
+        "hours_related": null,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      }
+    ],
+    "totals": {
+      "total_pay": null,
+      "total_pay_related": null,
+      "total_other_pay": null,
+      "people_over_100k": null
+    }
+  },
+  "problems": [],
+  "pages": [
+    7,
+    8
+  ],
+  "model": "claude-sonnet-5",
+  "prompt": "extract_part_vii/v1",
+  "prompt_sha256": "62191ed55ac7484392227a21816af82b403dd54c1803848576742aed273a3e64",
+  "scan": null,
+  "usage": {
+    "input_tokens": 5528,
+    "output_tokens": 153,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 2254
+  },
+  "attempts": [
+    {
+      "stop_reason": "end_turn",
+      "rows": 1,
+      "problems": [],
+      "seconds": 2.4
+    }
+  ],
+  "pages_from": "finder",
+  "page_finder": {
+    "pages": [
+      7,
+      8
+    ],
+    "prompt": "find_pages/v1",
+    "cost_usd": 0.010796
+  }
+}

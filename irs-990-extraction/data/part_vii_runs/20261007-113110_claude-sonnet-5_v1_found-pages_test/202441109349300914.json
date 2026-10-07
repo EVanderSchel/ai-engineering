@@ -1,0 +1,167 @@
+{
+  "object_id": "202441109349300914",
+  "seconds": 9.8,
+  "cost_usd": 0.0321268,
+  "answer": {
+    "rows": [
+      {
+        "name": "Serita Cox",
+        "title": "CEO",
+        "hours": 40.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 197810,
+        "pay_related": 0,
+        "other_pay": 46229
+      },
+      {
+        "name": "Robert Beaudry",
+        "title": "Board Chair",
+        "hours": 2.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Ryan Kelly",
+        "title": "Board Treasurer",
+        "hours": 2.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Ann Ferrell Tata",
+        "title": "Board Member",
+        "hours": 1.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Neil Walsh",
+        "title": "Board Member",
+        "hours": 1.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Keirsten Taillon",
+        "title": "Board Member",
+        "hours": 1.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Reid Cox",
+        "title": "CFO",
+        "hours": 40.0,
+        "hours_related": null,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 167285,
+        "pay_related": 0,
+        "other_pay": 47415
+      },
+      {
+        "name": "Jill BlochDirector",
+        "title": "of Strategic Partnerships",
+        "hours": 40.0,
+        "hours_related": null,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": true,
+        "former": false,
+        "pay": 110000,
+        "pay_related": 0,
+        "other_pay": 4920
+      }
+    ],
+    "totals": {
+      "total_pay": 475095,
+      "total_pay_related": 0,
+      "total_other_pay": 98564,
+      "people_over_100k": 3
+    }
+  },
+  "problems": [],
+  "pages": [
+    7,
+    8
+  ],
+  "model": "claude-sonnet-5",
+  "prompt": "extract_part_vii/v1",
+  "prompt_sha256": "62191ed55ac7484392227a21816af82b403dd54c1803848576742aed273a3e64",
+  "scan": null,
+  "usage": {
+    "input_tokens": 5080,
+    "output_tokens": 895,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 2254
+  },
+  "attempts": [
+    {
+      "stop_reason": "end_turn",
+      "rows": 8,
+      "problems": [],
+      "seconds": 7.3
+    }
+  ],
+  "pages_from": "finder",
+  "page_finder": {
+    "pages": [
+      7,
+      8
+    ],
+    "prompt": "find_pages/v1",
+    "cost_usd": 0.012566
+  }
+}

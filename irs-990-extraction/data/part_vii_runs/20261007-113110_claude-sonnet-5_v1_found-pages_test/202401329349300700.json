@@ -1,0 +1,197 @@
+{
+  "object_id": "202401329349300700",
+  "seconds": 17.7,
+  "cost_usd": 0.055020799999999995,
+  "answer": {
+    "rows": [
+      {
+        "name": "JOHN WOMACK MD",
+        "title": "SECRETARY",
+        "hours": 1.0,
+        "hours_related": 8.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "ROBYN R CHADWICK",
+        "title": "TREASURER",
+        "hours": 0.0,
+        "hours_related": 50.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 407594,
+        "other_pay": 47662
+      },
+      {
+        "name": "ZANDI SMART RN",
+        "title": "CHAIR",
+        "hours": 1.0,
+        "hours_related": 8.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "JAMES BRULL DVM DO",
+        "title": "DIRECTOR",
+        "hours": 1.0,
+        "hours_related": 8.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "JOY M SCOTT",
+        "title": "DIRECTOR",
+        "hours": 0.0,
+        "hours_related": 50.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 482226,
+        "other_pay": 51441
+      },
+      {
+        "name": "DANIEL STRICKER",
+        "title": "PRESIDENT & CEO, ASCENSION LIVING (END 8/2022)",
+        "hours": 0.0,
+        "hours_related": 50.0,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 875500,
+        "other_pay": 25705
+      },
+      {
+        "name": "LISA ANN MUSGRAVE MHA BSN RN",
+        "title": "SENIOR VP, POST-ACUTE AND AT-HOME SERVICES",
+        "hours": 0.0,
+        "hours_related": 50.0,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 363090,
+        "other_pay": 25944
+      },
+      {
+        "name": "MICHAEL ROBERT GORDON",
+        "title": "CFO, ASCENSION LIVING",
+        "hours": 0.0,
+        "hours_related": 50.0,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 438596,
+        "other_pay": 42377
+      },
+      {
+        "name": "AUSTIN B HIBBS",
+        "title": "DIRECTOR, SALES & OPERATIONS",
+        "hours": 50.0,
+        "hours_related": 0.0,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": true,
+        "former": false,
+        "pay": 105928,
+        "pay_related": 0,
+        "other_pay": 18974
+      },
+      {
+        "name": "CHEYENNE J STRUNK",
+        "title": "EXECUTIVE DIRECTOR",
+        "hours": 50.0,
+        "hours_related": 0.0,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": true,
+        "former": false,
+        "pay": 136788,
+        "pay_related": 0,
+        "other_pay": 36117
+      }
+    ],
+    "totals": {
+      "total_pay": 242716,
+      "total_pay_related": 2567006,
+      "total_other_pay": 248220,
+      "people_over_100k": 2
+    }
+  },
+  "problems": [],
+  "pages": [
+    7,
+    8
+  ],
+  "model": "claude-sonnet-5",
+  "prompt": "extract_part_vii/v1",
+  "prompt_sha256": "62191ed55ac7484392227a21816af82b403dd54c1803848576742aed273a3e64",
+  "scan": null,
+  "usage": {
+    "input_tokens": 5136,
+    "output_tokens": 2026,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 2254
+  },
+  "attempts": [
+    {
+      "stop_reason": "end_turn",
+      "rows": 10,
+      "problems": [],
+      "seconds": 14.5
+    }
+  ],
+  "pages_from": "finder",
+  "page_finder": {
+    "pages": [
+      7,
+      8
+    ],
+    "prompt": "find_pages/v1",
+    "cost_usd": 0.024038
+  }
+}

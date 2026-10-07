@@ -1,0 +1,212 @@
+{
+  "object_id": "202430529349300533",
+  "seconds": 11.5,
+  "cost_usd": 0.033748799999999995,
+  "answer": {
+    "rows": [
+      {
+        "name": "Todd Hanes",
+        "title": "PresidentCEO",
+        "hours": 40.0,
+        "hours_related": 0.0,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": true,
+        "former": false,
+        "pay": 126119,
+        "pay_related": 0,
+        "other_pay": 14763
+      },
+      {
+        "name": "Liesl Cornelius",
+        "title": "Member",
+        "hours": 1.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Scott Basinger",
+        "title": "Member",
+        "hours": 1.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Ann Valentine",
+        "title": "Member",
+        "hours": 1.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Jennie Gilroy",
+        "title": "Member",
+        "hours": 1.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Chelsea Waidelich",
+        "title": "Member",
+        "hours": 1.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Carl Newcomer",
+        "title": "Member",
+        "hours": 1.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Ginny Cress",
+        "title": "Secretary",
+        "hours": 1.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Robert Bob Aschliman",
+        "title": "Treasurer",
+        "hours": 1.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Doug Steiner",
+        "title": "Vice Chair",
+        "hours": 1.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Jim Leonard",
+        "title": "Board Chair",
+        "hours": 1.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      }
+    ],
+    "totals": {
+      "total_pay": 126119,
+      "total_pay_related": 0,
+      "total_other_pay": 14763,
+      "people_over_100k": 1
+    }
+  },
+  "problems": [],
+  "pages": [
+    7,
+    8
+  ],
+  "model": "claude-sonnet-5",
+  "prompt": "extract_part_vii/v1",
+  "prompt_sha256": "62191ed55ac7484392227a21816af82b403dd54c1803848576742aed273a3e64",
+  "scan": null,
+  "usage": {
+    "input_tokens": 5136,
+    "output_tokens": 1213,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 2254
+  },
+  "attempts": [
+    {
+      "stop_reason": "end_turn",
+      "rows": 11,
+      "problems": [],
+      "seconds": 9.1
+    }
+  ],
+  "pages_from": "finder",
+  "page_finder": {
+    "pages": [
+      7,
+      8
+    ],
+    "prompt": "find_pages/v1",
+    "cost_usd": 0.010896
+  }
+}

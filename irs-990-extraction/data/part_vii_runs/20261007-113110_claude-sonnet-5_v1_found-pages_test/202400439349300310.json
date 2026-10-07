@@ -1,0 +1,227 @@
+{
+  "object_id": "202400439349300310",
+  "seconds": 12.4,
+  "cost_usd": 0.0387028,
+  "answer": {
+    "rows": [
+      {
+        "name": "POONAM PATIDAR",
+        "title": "CHAIR",
+        "hours": 2.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "VINCENT CHUN",
+        "title": "VICE CHAIR",
+        "hours": 2.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "JULIA CHANDLER",
+        "title": "DIRECTOR",
+        "hours": 1.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "ELISA CHOI",
+        "title": "DIRECTOR",
+        "hours": 1.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "STEPHANIE PHAM",
+        "title": "DIRECTOR",
+        "hours": 1.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "MINITA SHAH-MARA",
+        "title": "DIRECTOR",
+        "hours": 1.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "RAJESH SOUNDAR",
+        "title": "DIRECTOR",
+        "hours": 1.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "GRACE LEE",
+        "title": "DIRECTOR",
+        "hours": 1.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "CATHERINE CHAN",
+        "title": "DIRECTOR",
+        "hours": 1.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "BARBARA DILULLO",
+        "title": "DIRECTOR",
+        "hours": 1.0,
+        "hours_related": null,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "CRISTINA AYALA",
+        "title": "CO-EXECUTIVE DIRECTOR",
+        "hours": 40.0,
+        "hours_related": null,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 121323,
+        "pay_related": 0,
+        "other_pay": 8952
+      },
+      {
+        "name": "DAWN SAUMA",
+        "title": "CO-EXECUTIVE DIRECTOR",
+        "hours": 40.0,
+        "hours_related": null,
+        "director": false,
+        "institutional_trustee": false,
+        "officer": true,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 131565,
+        "pay_related": 0,
+        "other_pay": 0
+      }
+    ],
+    "totals": {
+      "total_pay": 252888,
+      "total_pay_related": 0,
+      "total_other_pay": 8952,
+      "people_over_100k": 2
+    }
+  },
+  "problems": [],
+  "pages": [
+    7,
+    8
+  ],
+  "model": "claude-sonnet-5",
+  "prompt": "extract_part_vii/v1",
+  "prompt_sha256": "62191ed55ac7484392227a21816af82b403dd54c1803848576742aed273a3e64",
+  "scan": null,
+  "usage": {
+    "input_tokens": 5080,
+    "output_tokens": 1379,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 2254
+  },
+  "attempts": [
+    {
+      "stop_reason": "end_turn",
+      "rows": 12,
+      "problems": [],
+      "seconds": 10.0
+    }
+  ],
+  "pages_from": "finder",
+  "page_finder": {
+    "pages": [
+      7,
+      8
+    ],
+    "prompt": "find_pages/v1",
+    "cost_usd": 0.014302
+  }
+}

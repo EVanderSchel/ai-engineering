@@ -1,0 +1,92 @@
+{
+  "object_id": "202401919349301955",
+  "seconds": 8.1,
+  "cost_usd": 0.031915,
+  "answer": {
+    "rows": [
+      {
+        "name": "Vishnu Patel",
+        "title": "Director",
+        "hours": 1.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Chandulal Patel",
+        "title": "Director",
+        "hours": 1.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      },
+      {
+        "name": "Vipul B Patel",
+        "title": "Director",
+        "hours": 1.0,
+        "hours_related": 0.0,
+        "director": true,
+        "institutional_trustee": false,
+        "officer": false,
+        "key_employee": false,
+        "highest_compensated": false,
+        "former": false,
+        "pay": 0,
+        "pay_related": 0,
+        "other_pay": 0
+      }
+    ],
+    "totals": {
+      "total_pay": null,
+      "total_pay_related": null,
+      "total_other_pay": null,
+      "people_over_100k": 0
+    }
+  },
+  "problems": [],
+  "pages": [
+    7,
+    8
+  ],
+  "model": "claude-sonnet-5",
+  "prompt": "extract_part_vii/v1",
+  "prompt_sha256": "62191ed55ac7484392227a21816af82b403dd54c1803848576742aed273a3e64",
+  "scan": null,
+  "usage": {
+    "input_tokens": 5472,
+    "output_tokens": 453,
+    "cache_creation_input_tokens": 2254,
+    "cache_read_input_tokens": 0
+  },
+  "attempts": [
+    {
+      "stop_reason": "end_turn",
+      "rows": 3,
+      "problems": [],
+      "seconds": 5.4
+    }
+  ],
+  "pages_from": "finder",
+  "page_finder": {
+    "pages": [
+      7,
+      8
+    ],
+    "prompt": "find_pages/v1",
+    "cost_usd": 0.010806
+  }
+}

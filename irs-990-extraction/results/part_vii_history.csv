@@ -6,3 +6,4 @@ run,model,prompt,prompt_sha256,scan,returns,people,missed_people,invented_people
 20261006-121149_claude-sonnet-5_v1_scan-light,claude-sonnet-5,extract_part_vii/v1,62191ed55ac7484392227a21816af82b403dd54c1803848576742aed273a3e64,light,21,320,0,0,1.0,80/84,19,4,0,0,0,0,0,0,0.0376,17.6
 20261006-121446_claude-sonnet-5_v1_scan-medium,claude-sonnet-5,extract_part_vii/v1,62191ed55ac7484392227a21816af82b403dd54c1803848576742aed273a3e64,medium,21,320,0,0,1.0,81/84,20,3,0,0,0,0,1,0,0.0383,18.1
 20261006-124741_claude-sonnet-5_v1_scan-heavy,claude-sonnet-5,extract_part_vii/v1,62191ed55ac7484392227a21816af82b403dd54c1803848576742aed273a3e64,heavy,21,320,25,25,0.9486,70/84,1,6,2,2,0,201,9,0,0.1213,80.1
+20261007-113110_claude-sonnet-5_v1_found-pages_test,claude-sonnet-5,extract_part_vii/v1,62191ed55ac7484392227a21816af82b403dd54c1803848576742aed273a3e64,none,39,383,0,0,0.996,153/156,35,3,0,0,0,20,1,0,0.0379,12.6

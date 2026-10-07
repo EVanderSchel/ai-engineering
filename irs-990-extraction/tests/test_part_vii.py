@@ -135,3 +135,58 @@ def test_cost_counts_both_attempts(paid, pdf):
     short = {"rows": [], "totals": paid["totals"]}
     result = part_vii.extract(FakeStreamClient(reply(short), reply(paid)), pdf, [7, 8])
     assert result.cost_usd == pytest.approx(2 * (5000 * 2.00 + 2000 * 10.00) / 1_000_000)
+
+
+@pytest.mark.parametrize(
+    ("argv", "message"),
+    [
+        (["--split", "test", "--find-pages"], "held out"),
+        (["--split", "test", "--final"], "--find-pages"),
+        (["--find-pages", "--count-tokens"], "known pages"),
+    ],
+)
+def test_the_command_line_guards(monkeypatch, capsys, argv, message):
+    monkeypatch.setattr("sys.argv", ["part_vii.py", *argv])
+    with pytest.raises(SystemExit):
+        part_vii.main()
+    assert message in capsys.readouterr().err
+
+
+def test_find_pages_runs_the_whole_pipeline_and_counts_both_costs(paid, tmp_path, monkeypatch):
+    import find_pages
+    import score_part_vii
+
+    found_usage = part_vii.Usage(input_tokens=7000, output_tokens=20)
+    finds = iter([[7, 8], None])  # the second return: the finder finds nothing
+
+    def fake_find(client, pdf, model):
+        return find_pages.Found(
+            pages=next(finds), model=model, prompt="find_pages/v1", prompt_sha256="x", usage=found_usage
+        )
+
+    def fake_extract(client, pdf, pages, model):
+        result = part_vii.Extraction(paid, [], pages, model, "extract_part_vii/v1", "y")
+        result.usage = part_vii.Usage(input_tokens=5000, output_tokens=2000)
+        return result
+
+    monkeypatch.setattr(part_vii.anthropic, "Anthropic", lambda: None)
+    monkeypatch.setattr(find_pages, "find_pages", fake_find)
+    monkeypatch.setattr(part_vii, "extract", fake_extract)
+    monkeypatch.setattr(part_vii.scans, "source_pdf", lambda object_id, scan: object_id)
+    monkeypatch.setattr(part_vii, "RUNS_DIR", tmp_path / "runs")
+    monkeypatch.setattr(score_part_vii, "HISTORY", tmp_path / "history.csv")
+    monkeypatch.setattr(score_part_vii, "score_run", lambda run_dir: {})
+    monkeypatch.setattr(score_part_vii, "record", lambda score: None)
+    monkeypatch.setattr(score_part_vii, "report", lambda score: "")
+    monkeypatch.setattr("sys.argv", ["part_vii.py", "--find-pages", "--limit", "2"])
+    part_vii.main()
+
+    [run] = (tmp_path / "runs").iterdir()
+    assert run.name.endswith("_found-pages")
+    first, second = sorted(
+        (json.loads(p.read_text(encoding="utf-8")) for p in run.glob("2*.json")), key=lambda r: r["pages"] == []
+    )
+    assert first["pages_from"] == "finder" and first["page_finder"]["pages"] == [7, 8] and first["pages"] == [7, 8]
+    both = (5000 * 2.00 + 2000 * 10.00 + 7000 * 2.00 + 20 * 10.00) / 1e6
+    assert first["cost_usd"] == pytest.approx(both)
+    assert second["answer"] is None and second["problems"] == ["the page finder found no Part VII pages"]

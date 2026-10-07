@@ -1,0 +1,21 @@
+{
+  "run": "20261007-113207_claude-sonnet-5_v2_image-1568_cache_scan-medium_batch",
+  "complete": true,
+  "filings": 39,
+  "of": 39,
+  "error": null,
+  "batch": true,
+  "batch_ids": [
+    "msgbatch_01Ffp4RKSgF2C36QTQsihupG",
+    "msgbatch_01VwKW2vFoJCpYPmyqTb321X"
+  ],
+  "started_at": "2026-10-07T16:32:07+00:00",
+  "ended_at": "2026-10-07T16:40:32+00:00",
+  "cost_usd": 0.6882280000000001,
+  "usage": {
+    "input_tokens": 85893,
+    "output_tokens": 116443,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 201200
+  }
+}
