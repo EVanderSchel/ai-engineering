@@ -172,3 +172,113 @@ jobs:
 
       - name: Smoke test the image
         run: bash irs-990-extraction/deploy/smoke_test.sh "irs990-api:pr-${{ github.sha }}" "${{ github.sha }}"
+
+  # After a merge to main passes the checks: build the API image, smoke-test that exact image, then push
+  # it to GitHub Container Registry, tagged with the commit SHA (what gets deployed) and "latest".
+  publish:
+    name: irs-990-extraction-publish
+    needs: [lint, test, audit]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Compute lowercase image name
+        run: echo "IMAGE_NAME=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/irs990-api" >> "$GITHUB_ENV"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Build into the runner's Docker first (load, don't push), so the exact image that will be deployed
+      # is smoke-tested before anything reaches the registry.
+      - name: Build image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: irs-990-extraction
+          load: true
+          push: false
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:latest
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          build-args: GIT_SHA=${{ github.sha }}
+          cache-from: type=gha,scope=irs990-api
+          cache-to: type=gha,mode=max,scope=irs990-api
+
+      - name: Smoke test the image
+        run: bash irs-990-extraction/deploy/smoke_test.sh "${{ env.IMAGE_NAME }}:${{ github.sha }}" "${{ github.sha }}"
+
+      # Push the image that was just tested, not a rebuild of it.
+      - name: Push image
+        run: |
+          docker push "${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          docker push "${{ env.IMAGE_NAME }}:latest"
+
+  # Roll the new image out to Azure Container Apps. Waits for your approval (the irs990-production
+  # environment requires it), then logs in with OIDC: GitHub gives this job a short-lived token that Azure
+  # trusts for this repo's irs990-production environment only, so no Azure password is stored.
+  deploy:
+    name: irs-990-extraction-deploy
+    needs: publish
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: irs990-production
+      url: ${{ steps.deploy.outputs.url }}
+
+    permissions:
+      id-token: write # lets the job request the OIDC token
+      contents: read
+
+    env:
+      RESOURCE_GROUP: rg-irs990-demo
+      APP_NAME: ca-irs990-api
+
+    steps:
+      - name: Log in to Azure (OIDC, no stored secret)
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy this commit's image
+        id: deploy
+        run: |
+          image="ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/irs990-api:${GITHUB_SHA}"
+          az config set extension.use_dynamic_install=yes_without_prompt --only-show-errors
+          az containerapp update -n "$APP_NAME" -g "$RESOURCE_GROUP" --image "$image" --only-show-errors -o none
+          fqdn=$(az containerapp show -n "$APP_NAME" -g "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv --only-show-errors)
+          echo "url=https://$fqdn" >> "$GITHUB_OUTPUT"
+
+      # /health reports the commit its image was built from, so this confirms the new version is serving,
+      # not the old one still answering while Azure switches over. With scale-to-zero, the first call may
+      # take ~30 s while a container starts.
+      - name: Wait for this commit to be live
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          for attempt in $(seq 1 30); do
+            version=$(curl -s --max-time 90 "$URL/health" | python3 -c "import sys, json; print(json.load(sys.stdin).get('version', ''))" 2>/dev/null || true)
+            echo "attempt $attempt: live version '${version}'"
+            if [ "$version" = "$GITHUB_SHA" ]; then
+              echo "Deployed ${GITHUB_SHA} to $URL"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::$URL never reported version $GITHUB_SHA"
+          exit 1
