@@ -129,3 +129,14 @@ def test_doubts_are_scored_against_the_real_errors(run_dir):
 def test_runs_without_doubts_leave_the_columns_empty(run_dir):
     score = evaluate.score_run(run_dir)
     assert score["unsure_flagged"] == "" and score["unsure_caught"] == ""
+
+
+def test_rescoring_everything_forgets_runs_that_were_deleted(run_dir, tmp_path, monkeypatch):
+    history = tmp_path / "results" / "history.csv"
+    monkeypatch.setattr(evaluate, "HISTORY", history)
+    evaluate.record(evaluate.score_run(run_dir))
+    gone = evaluate.score_run(run_dir) | {"run": "20261001-000000_deleted"}
+    evaluate.record(gone)
+    evaluate.forget_missing(history, run_dir.parent)
+    runs = [line.split(",")[0] for line in history.read_text(encoding="utf-8").splitlines()[1:]]
+    assert runs == [run_dir.name]

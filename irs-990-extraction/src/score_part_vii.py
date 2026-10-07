@@ -206,6 +206,8 @@ def main() -> None:
     run_dirs = sorted(p for p in RUNS_DIR.iterdir() if p.is_dir()) if args.all else [pathlib.Path(p) for p in args.runs]
     if not run_dirs:
         parser.error("give a run directory, or --all")
+    if args.all:
+        evaluate.forget_missing(HISTORY, RUNS_DIR)
     for run_dir in run_dirs:
         if not evaluate.is_complete(run_dir):
             print(f"Skipped {run_dir.name}: the run didn't finish (see its summary.json)", end="\n\n")

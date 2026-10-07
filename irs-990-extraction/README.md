@@ -233,6 +233,29 @@ The pipeline returns every field with the same apparent certainty, right or wron
 
 Claude's doubts are a weak signal. Blank-vs-0 mistakes, the most common error on clean pages, were flagged 2 times out of 29: Claude is confidently wrong about them. It does better on genuinely illegible text (every value it couldn't read at all on heavy scans was flagged), but most errors still went unflagged. A model's self-reported confidence is not the same as its error rate; measured signals (disagreement, effort, checks) did much better here.
 
+**Review rules** (`src/review.py`). A rule combines signals: send the *whole document* to a person when Claude gave no answer, the checks failed or needed a retry, or Claude wrote more than a set number of output tokens (it thinks longer on hard pages); send *single fields* when Claude doubted them or a second run disagrees. A rule is scored by the errors it sends to review (assuming the reviewer fixes them), the share of fields a person must look at, and the accuracy afterwards. Scored on the three prompt-v3 runs, with the prompt-v2 run of the same pages as the second run (the prompts differ only by the doubts paragraph, so it's a second, slightly different reading):
+
+| Rule | Clean: errors caught / fields reviewed / accuracy after | Medium scan | Heavy scan |
+|---|---|---|---|
+| No review | 0 of 11 / 0% / 98.8% | 0 of 26 / 0% / 97.1% | 119 of 203 / 14% / 90.5% (filings with no answer) |
+| Checks failed or retried | 0 of 11 / 0% / 98.8% | 0 of 26 / 0% / 97.1% | 187 of 203 / 57% / 98.2% |
+| Claude's doubts | 1 of 11 / 1.6% / 98.9% | 5 of 26 / 5.6% / 97.6% | 155 of 203 / 26% / 94.6% |
+| Second run disagrees | **11 of 11 / 1.2% / 100%** | 9 of 26 / 2.5% / 98.1% | 171 of 203 / 31% / 96.4% |
+| Checks + thinking > 2,000 tokens | 0 of 11 / 4.8% / 98.8% | 24 of 26 / 33% / 99.8% | 195 of 203 / 86% / 99.1% |
+| Checks + thinking > 2,000 + second run | **11 of 11 / 6.0% / 100%** | **24 of 26 / 34% / 99.8%** | **195 of 203 / 86% / 99.1%** |
+| Everything (adds doubts) | 11 of 11 / 6.7% / 100% | 24 of 26 / 36% / 99.8% | 196 of 203 / 87% / 99.2% |
+
+- **Different signals catch different errors.** On clean pages the errors are random slips on easy documents: a second run catches all of them, reviewing 1.2% of fields, while thinking length catches none. On scans the errors repeat (both runs misread the same blurred digit), so the second run catches only a third, and the effort signal (how long Claude thought) is what finds them.
+- **Combined, the rule `checks + thinking > 2,000 tokens + second run`** brings clean pages to 100% by reviewing 6% of fields, medium scans to 99.8% by reviewing a third, and heavy scans to 99.1% by reviewing most of each document, which by then is simply "a person transcribes this one". It doubles the API cost (about 3.5 cents per clean filing).
+- **Claude's doubts add almost nothing** once the other signals are in (one more error caught, on heavy scans).
+- These rules and the 2,000-token threshold were chosen on the same 21 dev filings they're scored on, so the numbers are optimistic; the held-out test split is where they'd be confirmed.
+
+**Review queue** (`src/review_queue.py`). The flagged fields of a run go on a local HTML page (`data/review/<run>.html`, gitignored, regenerable): one section per filing that needs a person, with page 1 on the left (click to zoom) and the fields to check on the right. Each field shows its form line, the extracted value, the second run's value when they disagree, and whether Claude doubted it. The reviewer corrects a value or clicks "Looks right"; "Blank" means the line is empty on the form, which is different from 0. A contents list at the top shows every filing with its progress, and filings with a few flagged fields come before whole-document reviews. A field counts as reviewed only once it has been edited or confirmed: "Download corrections" saves the reviewed fields and lists the ones nobody checked, so an untouched field is never passed off as confirmed. Entries stay in the browser while they work. `--apply corrections.json` writes the run again with the reviewed values (`data/runs/<run>_reviewed/`; unreviewed fields keep the extracted value and are listed as unreviewed), scored like any other run, so the history shows accuracy after review.
+
+The first real review found two problems with the first version of the page, now fixed: two filings sat below a 42-field whole-document review with nothing saying more followed, and the download sent every field, so fields nobody had looked at counted as confirmed (5 errors stayed in that way). `--simulate` writes a perfect reviewer's corrections from the answer keys, to test that loop: on the clean run, the 53 flagged fields (6.0%) take accuracy from 98.8% to 100%, as the rule's score predicted.
+
+Crops of each line would be quicker to review than the whole page, but page 1's lines move: a long mission pushes Part I down by several lines. Fixed positions and lining up the pages' text rows both put crops on the wrong line, and a wrong crop is worse than the whole page. Exact crops (for example from positions Claude reports) belong with the planned upgrade of this page to a shared web page that saves each reviewer's decisions.
+
 ## Setup
 
 Needs Python 3.14 and [uv](https://docs.astral.sh/uv/) (`pip install uv`):

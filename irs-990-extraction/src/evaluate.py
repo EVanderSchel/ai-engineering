@@ -173,6 +173,20 @@ def score_run(run_dir) -> dict:
     }
 
 
+def forget_missing(history, runs_dir) -> None:
+    """Drop history rows whose run directory no longer exists (a deleted test or simulated run), so
+    rescoring every run (--all) rebuilds the history from what is actually on disk."""
+    if not history.exists():
+        return
+    with history.open(encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        columns, rows = reader.fieldnames, [row for row in reader if (runs_dir / row["run"]).is_dir()]
+    with history.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=columns, lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
+
+
 def record(score: dict) -> None:
     """Add the run's row to results/history.csv, replacing any earlier row for the same run."""
     rows = []
@@ -227,6 +241,8 @@ def main() -> None:
     run_dirs = sorted(p for p in RUNS_DIR.iterdir() if p.is_dir()) if args.all else [pathlib.Path(p) for p in args.runs]
     if not run_dirs:
         parser.error("give a run directory, or --all")
+    if args.all:
+        forget_missing(HISTORY, RUNS_DIR)
     for run_dir in run_dirs:
         if not is_complete(run_dir):
             print(f"Skipped {run_dir.name}: the run didn't finish (see its summary.json)", end="\n\n")
