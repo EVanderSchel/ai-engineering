@@ -256,6 +256,41 @@ The first real review found two problems with the first version of the page, now
 
 Crops of each line would be quicker to review than the whole page, but page 1's lines move: a long mission pushes Part I down by several lines. Fixed positions and lining up the pages' text rows both put crops on the wrong line, and a wrong crop is worse than the whole page. Exact crops (for example from positions Claude reports) belong with the planned upgrade of this page to a shared web page that saves each reviewer's decisions.
 
+## Batch processing (step 7)
+
+`extract.py` sends one request and waits before sending the next. `src/batch.py` sends Part I for every filing at once with the Message Batches API: Anthropic processes them in the background (most batches end within an hour, all within 24) at half the token price. Each request is the one `extract.py` makes, keyed by the filing's object ID; structured outputs go in `output_config` (the SDK's `parse()` helper doesn't cover batches) and the JSON is validated with the same Pydantic model. Results are saved in the usual run format, so `evaluate.py` scores them.
+
+The batch ID is written to the run directory (`batch_state.json`) before anything waits, and collecting skips results already saved, so a crash or a closed terminal never submits or pays for anything twice: `--no-wait` submits and exits, `--resume data/runs/<run>` collects later.
+
+First batch, the 21 dev filings (prompt v2, clean pages):
+
+| | One at a time (cached) | Batch |
+|---|---|---|
+| Field accuracy | 98.6-100% over earlier runs | 99.0% |
+| Cost per filing | $0.0175 | $0.0107 |
+| Time for 21 filings | about 3.5 minutes, one after another | 3 min 16 s, all at once |
+
+The batch saved 39%, not 50%: its requests run in parallel, so many start before the prompt and schema are cached and write their own cache entry (on average 1,700 cache-write tokens and 3,350 cache-read tokens per request, against nearly all reads one at a time). For 21 filings the time is about the same; for 10,000, one at a time would take about 28 hours, while batches typically finish within a few.
+
+**Making it sturdy.** A large job meets every failure eventually, so each filing moves through the same steps as in `extract.py`, a batch at a time, with its progress in `batch_state.json`:
+- a request that errors (other than being invalid), expires, or is canceled is sent again in the next batch, up to 3 times; an invalid request isn't, since it would fail the same way;
+- an answer that breaks the form's arithmetic gets one retry in the same conversation (Claude's reply and the broken rules), as a small follow-up batch, and the record keeps both attempts and their cost;
+- filings are packed into batches under the size limit: the API takes 100,000 requests or 256 MB per batch, and each request carries a page image (about 0.5 MB), so for this job size is the real limit (about 400 filings per batch at the 200 MB margin used);
+- every batch is written down the moment it's created and every result the moment it arrives, so `--resume` after a crash picks up exactly where it stopped. The tests run each of these cases against a fake Batches API.
+
+**Can the cache be warmed?** `--warm` sends the first filing on its own (standard price) to put the prompt and schema in the cache, then batches the rest straight away. It made things worse: 3,521 cache-write and 1,509 cache-read tokens per batch request (against 1,677 and 3,353 without it), $0.0137 per filing instead of $0.0107. Batch requests apparently don't share the cache that ordinary requests fill, and how much they cache varies between identical batches. Caching inside a batch is out of the caller's hands: plan on about 40% saved, not 50%.
+
+**Parallel requests, for answers now** (`src/parallel.py`). The opposite trade: full price, but several requests in flight at once. A thread pool runs `extract.py`'s own `extract()` in each worker (a request is mostly waiting on the network, so threads do as well as an async rewrite and reuse the tested code); the SDK retries rate limits (429) and overload by itself, following the server's retry-after, with more retries allowed than usual; an error it can't retry away cancels the rest and marks the run incomplete. The first filing goes alone, so its request fills the cache and the others read it, which works here because ordinary requests share a cache, unlike batches.
+
+| 21 dev filings, prompt v2 | One at a time | Batch | Parallel, 8 workers |
+|---|---|---|---|
+| Time | about 3.5 min | 3 min 16 s (up to 24 h) | **39 s** |
+| Cost per filing | $0.0175 | **$0.0107** | $0.0178 |
+| Field accuracy | 98.6-100% | 99.0% | 99.0% |
+| Requests that wrote the cache | 1 | about a third | 1 |
+
+No sign of rate limiting at 8 workers (each filing took its usual 10 s, 16 s at most). The choice is the classic one: batch for a backlog (cheapest), parallel when someone is waiting (fastest), one at a time only for small experiments.
+
 ## Setup
 
 Needs Python 3.14 and [uv](https://docs.astral.sh/uv/) (`pip install uv`):

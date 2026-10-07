@@ -1,0 +1,17 @@
+{
+  "run": "20261007-085940_claude-sonnet-5_v2_image-1568_cache_parallel-8",
+  "complete": true,
+  "filings": 21,
+  "of": 21,
+  "error": null,
+  "workers": 8,
+  "started_at": "2026-10-07T13:59:41+00:00",
+  "wall_seconds": 39.2,
+  "cost_usd": 0.373555,
+  "usage": {
+    "input_tokens": 42140,
+    "output_tokens": 25658,
+    "cache_creation_input_tokens": 5030,
+    "cache_read_input_tokens": 100600
+  }
+}
