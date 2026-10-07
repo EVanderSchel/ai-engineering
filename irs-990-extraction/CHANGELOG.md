@@ -42,6 +42,7 @@ All notable changes to this project are documented here, following [Keep a Chang
 - Model comparison: `--thinking-budget` for models without adaptive thinking, and a thinking_budget column in the history. Claude Haiku 4.5 reached 90.5% on clean pages (Sonnet 5: 99.0%) for $0.0104 per filing; with thinking it was slower, pricier, and no better. Sonnet 5 stays, batched for backlogs
 - HTTP API (`src/api.py`, FastAPI): `POST /extract` (PDF or image upload) returning Part I, the checks, and a review recommendation; `GET /health`; API-key auth, per-caller rate limit, upload checks by content, JSON request logs
 - Container: two-stage `Dockerfile` (pinned base images, uv, non-root, version baked in), `.dockerignore` keeping `data/` out, `deploy/smoke_test.sh`, and an `irs-990-extraction-image` CI job that builds and smoke-tests the image on every pull request; Dependabot covers the base images
+- Azure deployment (`deploy/`): Key Vault secrets, OIDC deploys with least privilege (a custom role for the shared Container Apps environment), publish and approval-gated deploy jobs in CI, health probes, and alerts for errors, restarts, and unusual traffic
 
 ### Fixed
 
