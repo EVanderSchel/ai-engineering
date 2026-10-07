@@ -4,6 +4,12 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 ## [Unreleased]
 
+Add entries here as you make notable changes. Move them under a new version heading when you cut a release.
+
+## [1.0.0] - 2026-10-07
+
+First release: structured data from IRS Form 990 page images with Claude, scored against the IRS's e-file XML, with human-review support, batch and parallel processing, and a deployed API. On the 39 held-out test filings: Part I 99.2-99.3% of fields, Part VII 383 of 383 people found and 99.6% of their fields, 99.9% after review.
+
 ### Added
 
 - Project scaffolding: uv project on Python 3.14, ruff, pytest, CI workflow with change detection, lint, test, and vulnerability-audit checks
