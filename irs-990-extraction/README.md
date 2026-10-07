@@ -272,6 +272,14 @@ First batch, the 21 dev filings (prompt v2, clean pages):
 
 The batch saved 39%, not 50%: its requests run in parallel, so many start before the prompt and schema are cached and write their own cache entry (on average 1,700 cache-write tokens and 3,350 cache-read tokens per request, against nearly all reads one at a time). For 21 filings the time is about the same; for 10,000, one at a time would take about 28 hours, while batches typically finish within a few.
 
+**Making it sturdy.** A large job meets every failure eventually, so each filing moves through the same steps as in `extract.py`, a batch at a time, with its progress in `batch_state.json`:
+- a request that errors (other than being invalid), expires, or is canceled is sent again in the next batch, up to 3 times; an invalid request isn't, since it would fail the same way;
+- an answer that breaks the form's arithmetic gets one retry in the same conversation (Claude's reply and the broken rules), as a small follow-up batch, and the record keeps both attempts and their cost;
+- filings are packed into batches under the size limit: the API takes 100,000 requests or 256 MB per batch, and each request carries a page image (about 0.5 MB), so for this job size is the real limit (about 400 filings per batch at the 200 MB margin used);
+- every batch is written down the moment it's created and every result the moment it arrives, so `--resume` after a crash picks up exactly where it stopped. The tests run each of these cases against a fake Batches API.
+
+**Can the cache be warmed?** `--warm` sends the first filing on its own (standard price) to put the prompt and schema in the cache, then batches the rest straight away. It made things worse: 3,521 cache-write and 1,509 cache-read tokens per batch request (against 1,677 and 3,353 without it), $0.0137 per filing instead of $0.0107. Batch requests apparently don't share the cache that ordinary requests fill, and how much they cache varies between identical batches. Caching inside a batch is out of the caller's hands: plan on about 40% saved, not 50%.
+
 ## Setup
 
 Needs Python 3.14 and [uv](https://docs.astral.sh/uv/) (`pip install uv`):
