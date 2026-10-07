@@ -41,14 +41,32 @@ WORKERS = 8
 MAX_RETRIES = 6  # the SDK's default is 2; parallel requests meet rate limits more often
 
 
-def run(client, rows: list[dict], run_dir, *, workers: int, model: str, input_kind: str, scan: str | None) -> dict:
+def run(
+    client,
+    rows: list[dict],
+    run_dir,
+    *,
+    workers: int,
+    model: str,
+    input_kind: str,
+    scan: str | None,
+    thinking_budget: int | None = None,
+) -> dict:
     """Extract every row, `workers` at a time after a first one alone. Returns the summary it saves."""
     started_at = datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds")
     started = time.monotonic()
     total, done, error = Usage(), [], None
 
     def one(row):
-        return extract_filing(client, row["object_id"], row["band"], input_kind=input_kind, scan=scan, model=model)
+        return extract_filing(
+            client,
+            row["object_id"],
+            row["band"],
+            input_kind=input_kind,
+            scan=scan,
+            thinking_budget=thinking_budget,
+            model=model,
+        )
 
     def save(row, record, result):
         total.add(result.usage)
@@ -100,6 +118,7 @@ def main() -> None:
     parser.add_argument("--model", default=MODEL, choices=sorted(PRICES))
     parser.add_argument("--input", default=INPUT, help="how to send page 1: image-<pixels> or pdf")
     parser.add_argument("--scan", choices=sorted(scans.LEVELS), help="read a simulated scan")
+    parser.add_argument("--thinking-budget", type=int, help="fixed thinking budget in tokens (Claude Haiku 4.5)")
     parser.add_argument("--final", action="store_true", help="required for --split test")
     args = parser.parse_args()
     if args.split == "test" and not args.final:
@@ -114,11 +133,21 @@ def main() -> None:
     version = prompts.load("extract").version
     run_id = f"{datetime.datetime.now():%Y%m%d-%H%M%S}_{args.model}_{version}_{args.input}_cache"
     run_id += (f"_scan-{args.scan}" if args.scan else "") + f"_parallel-{args.workers}"
+    run_id += f"_think-{args.thinking_budget}" if args.thinking_budget else ""
     run_dir = RUNS_DIR / run_id
     run_dir.mkdir(parents=True)
 
     client = anthropic.Anthropic(max_retries=MAX_RETRIES)
-    summary = run(client, rows, run_dir, workers=args.workers, model=args.model, input_kind=args.input, scan=args.scan)
+    summary = run(
+        client,
+        rows,
+        run_dir,
+        workers=args.workers,
+        model=args.model,
+        input_kind=args.input,
+        scan=args.scan,
+        thinking_budget=args.thinking_budget,
+    )
     print(f"\n{summary['filings']} of {len(rows)} filings in {summary['wall_seconds']}s, ${summary['cost_usd']:.4f}")
     if not summary["complete"]:
         raise SystemExit(f"Stopped: {summary['error']}")

@@ -228,3 +228,23 @@ def test_confidence_asks_for_doubts_and_records_them(good, monkeypatch):
     assert result.unsure == ["volunteers"] and result.answer == good and result.prompt == "extract/v3"
     plain = extract.extract(FakeClient(reply(good)), BLOCK)
     assert plain.unsure is None  # not asked, which is different from "asked, and sure of everything"
+
+
+def test_a_thinking_budget_is_sent_only_when_set(good):
+    client = FakeClient(reply(good), reply(good))
+    plain = extract.extract(client, BLOCK, model="claude-haiku-4-5")
+    budgeted = extract.extract(client, BLOCK, model="claude-haiku-4-5", thinking_budget=4000)
+    assert "thinking" not in client.requests[0]
+    assert client.requests[1]["thinking"] == {"type": "enabled", "budget_tokens": 4000}
+    assert (plain.thinking_budget, budgeted.thinking_budget) == (None, 4000)
+
+
+def test_an_answer_that_is_not_valid_json_is_one_failed_filing_not_a_crash():
+    class Broken(FakeClient):
+        def parse(self, **request):  # what the SDK does with a malformed answer: validate it, and raise
+            self.requests.append(request)
+            Form990PartI.model_validate_json("{not json")
+
+    result = extract.extract(Broken(), BLOCK, model="claude-haiku-4-5")
+    assert result.answer is None and "valid JSON" in result.problems[0]
+    assert [a.stop_reason for a in result.attempts] == ["invalid_json"]

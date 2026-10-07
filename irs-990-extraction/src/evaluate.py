@@ -42,6 +42,7 @@ HISTORY_COLUMNS = [
     "input",
     "cache",
     "scan",
+    "thinking_budget",
     "filings",
     "field_accuracy",
     "filings_all_correct",
@@ -157,7 +158,8 @@ def score_run(run_dir) -> dict:
         "prompt_sha256": first["prompt_sha256"],
         "input": first.get("input", "image-1568"),  # runs before step 4 all sent 1568 px images
         "cache": first.get("cache", False),
-        "scan": first.get("scan") or "none",  # a simulated scan level (step 5b), or the IRS PDF
+        "scan": first.get("scan") or "none",
+        "thinking_budget": first.get("thinking_budget") or "",  # a simulated scan level (step 5b), or the IRS PDF
         "filings": len(records),
         "field_accuracy": round(1 - len(errors) / n_fields, 4),
         "filings_all_correct": filings_all_correct,

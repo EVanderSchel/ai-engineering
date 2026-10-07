@@ -291,6 +291,25 @@ The batch saved 39%, not 50%: its requests run in parallel, so many start before
 
 No sign of rate limiting at 8 workers (each filing took its usual 10 s, 16 s at most). The choice is the classic one: batch for a backlog (cheapest), parallel when someone is waiting (fastest), one at a time only for small experiments.
 
+## Model comparison (step 8)
+
+Claude Sonnet 5 (used so far) against Claude Haiku 4.5, half its list price, on the 21 dev filings with prompt v2 and the same request. The Models API shows the differences that matter: Haiku 4.5 supports images, structured outputs, and batches, but has no adaptive thinking (it thinks only when given a fixed token budget, `--thinking-budget`) and no effort setting. So Haiku ran two ways, without thinking (its default) and with a 4,000-token budget, since every Sonnet run thought. Runs used `parallel.py`, which times each filing.
+
+| | Sonnet 5 | Haiku 4.5 | Haiku 4.5, thinking budget 4,000 |
+|---|---|---|---|
+| Field accuracy, clean pages | **99.0-99.1%** (3 runs) | 90.4-90.6% (3 runs) | 88.8-94.2% (2 runs) |
+| Field accuracy, medium scans | **96.6%** | 84.8% | (run crashed, see below) |
+| Errors per run, clean | about 9 | about 83 | about 75 |
+| Cost per filing | $0.0177 one at a time, **$0.0107 batched** | $0.0104 | $0.0194 |
+| Time per filing | 10 s | 8.6 s | 25 s |
+
+- **Haiku makes about nine times as many errors.** Mostly blank cells read as 0 (about 58 per run, nearly all in the Prior Year column and volunteers), then misread digits (66,630 as 66,830; 14,202 as 14,000) and names (POCCS as POCIS, a two-line name cut short). It gets fewer image tokens per page (about 1,560 to Sonnet's 1,975), so it sees less detail.
+- **Thinking doesn't rescue it.** With a budget Haiku was less consistent (88.8% and 94.2%), cost more than Sonnet, took 2.5 times as long, and once used its whole output allowance thinking.
+- **The saving is smaller than the price list suggests.** Haiku's prompt and schema come to 3,978 tokens, under its 4,096-token minimum for caching, so nothing is cached; one at a time it saves 41% against Sonnet, and Sonnet in a batch costs about the same as Haiku one at a time.
+- **Decision: Sonnet 5, batched for backlogs.** At equal cost it makes a ninth of the errors.
+
+A Haiku run crashed: with thinking on, it returned invalid JSON, and `parse()` raises in that case, which `extract()` didn't handle (Sonnet never had). It's fixed (an invalid answer is one filing without an answer, not a stopped run), and the run is kept, marked incomplete. This comparison is about reading small print on page images; whether Haiku would do for the rag project's text answers is a different question, for that project's own generation eval.
+
 ## Setup
 
 Needs Python 3.14 and [uv](https://docs.astral.sh/uv/) (`pip install uv`):

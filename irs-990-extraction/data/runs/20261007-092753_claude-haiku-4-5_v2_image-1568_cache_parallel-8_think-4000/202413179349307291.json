@@ -1,0 +1,34 @@
+{
+  "object_id": "202413179349307291",
+  "band": "small",
+  "seconds": 160.2,
+  "cost_usd": 0.085572,
+  "answer": null,
+  "problems": [
+    "Claude stopped without an answer (max_tokens)"
+  ],
+  "model": "claude-haiku-4-5",
+  "prompt": "extract/v2",
+  "prompt_sha256": "825aafcfd34546129a872140c76e4f67e69933e0b5d9d95ba8e5f5c156a81218",
+  "input": "image-1568",
+  "cache": true,
+  "scan": null,
+  "unsure": null,
+  "thinking_budget": 4000,
+  "usage": {
+    "input_tokens": 5572,
+    "output_tokens": 16000,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0
+  },
+  "attempts": [
+    {
+      "stop_reason": "max_tokens",
+      "answer": null,
+      "problems": [
+        "Claude stopped without an answer (max_tokens)"
+      ],
+      "seconds": 159.7
+    }
+  ]
+}
