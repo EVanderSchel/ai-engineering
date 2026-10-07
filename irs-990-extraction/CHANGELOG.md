@@ -39,7 +39,9 @@ All notable changes to this project are documented here, following [Keep a Chang
 - Batch extraction (`src/batch.py`): Part I for many filings through the Message Batches API, resumable and idempotent (`--no-wait`, `--resume`), scored like any run. 21 dev filings: 99.0%, $0.0107 per filing (39% less than one at a time; caching is weaker in a batch), 3 min 16 s
 - Sturdier batches: failed or expired requests resent (up to 3 times, never invalid ones), one retry round for answers that break the arithmetic, batches split under the size limit, state saved at every step. `--warm` (filling the cache first) was tried and made caching worse
 - Parallel extraction (`src/parallel.py`): a thread pool of workers running `extract()`, the first filing alone to fill the cache, more SDK retries for rate limits. 21 dev filings in 39 s at $0.0178 each; `extract.extract_filing()` shared by both
+- Model comparison: `--thinking-budget` for models without adaptive thinking, and a thinking_budget column in the history. Claude Haiku 4.5 reached 90.5% on clean pages (Sonnet 5: 99.0%) for $0.0104 per filing; with thinking it was slower, pricier, and no better. Sonnet 5 stays, batched for backlogs
 
 ### Fixed
 
+- An answer that isn't valid JSON (`parse()` raises) is now one filing without an answer, not a crashed run
 - Answer keys for organizations whose name is printed on two lines had only the first line (11 of 60); the name now joins `BusinessNameLine1Txt` and `BusinessNameLine2Txt`

@@ -25,6 +25,7 @@ from dataclasses import asdict, dataclass, field
 
 import anthropic
 import pymupdf
+from pydantic import ValidationError
 
 import checks
 import evaluate
@@ -150,6 +151,7 @@ class Extraction:
     cache: bool = False  # whether the system prompt was marked for prompt caching
     scan: str | None = None  # the simulated scan level read (scans.py), or None for the IRS's own PDF
     unsure: list[str] | None = None  # fields Claude said it isn't sure of (--confidence), None if not asked
+    thinking_budget: int | None = None  # fixed thinking budget (models without adaptive thinking), or None
     usage: Usage = field(default_factory=Usage)
     attempts: list[Attempt] = field(default_factory=list)
 
@@ -174,6 +176,7 @@ def extract(
     input_kind: str = INPUT,
     cache: bool = False,
     confidence: bool = False,
+    thinking_budget: int | None = None,
     model: str = MODEL,
     max_attempts: int = MAX_ATTEMPTS,
 ) -> Extraction:
@@ -192,18 +195,31 @@ def extract(
         prompt_sha256=system.sha256,
         input=input_kind,
         cache=cache,
+        thinking_budget=thinking_budget,
     )
+    # Claude Sonnet 5 thinks adaptively by default. Claude Haiku 4.5 doesn't think unless given a fixed
+    # token budget (it has no adaptive mode); thinking_budget sets one, for a like-for-like comparison.
+    thinking = {"thinking": {"type": "enabled", "budget_tokens": thinking_budget}} if thinking_budget else {}
     messages = [_first_message(block)]
 
     for attempt in range(1, max_attempts + 1):
         started = time.monotonic()
-        response = client.messages.parse(
-            model=model,
-            max_tokens=MAX_TOKENS,
-            system=_system(system.template, cache),
-            messages=messages,
-            output_format=output_format,
-        )
+        try:
+            response = client.messages.parse(
+                model=model,
+                max_tokens=MAX_TOKENS,
+                system=_system(system.template, cache),
+                messages=messages,
+                output_format=output_format,
+                **thinking,
+            )
+        except ValidationError as e:
+            # parse() validates the JSON itself and raises if it isn't valid (seen with Claude Haiku 4.5 when
+            # thinking: an answer cut off or malformed). One filing without an answer, not a crashed run;
+            # the tokens it used aren't known here, so this attempt's cost isn't counted.
+            result.answer, result.problems = None, [f"the answer wasn't valid JSON ({e.error_count()} error(s))"]
+            result.attempts.append(Attempt("invalid_json", None, result.problems, round(time.monotonic() - started, 1)))
+            return result
         result.usage.add(response.usage)
 
         if response.stop_reason in ("refusal", "max_tokens"):
@@ -236,12 +252,21 @@ def extract_filing(
     cache: bool = True,
     scan: str | None = None,
     confidence: bool = False,
+    thinking_budget: int | None = None,
     model: str = MODEL,
 ) -> tuple[dict, Extraction]:
     """Extract one gold-set filing and build its run record. The SDK's API errors are left to the caller."""
     started = time.monotonic()
     block = page_block(scans.source_pdf(object_id, scan), input_kind)
-    result = extract(client, block, input_kind=input_kind, cache=cache, confidence=confidence, model=model)
+    result = extract(
+        client,
+        block,
+        input_kind=input_kind,
+        cache=cache,
+        confidence=confidence,
+        thinking_budget=thinking_budget,
+        model=model,
+    )
     result.scan = scan
     seconds = round(time.monotonic() - started, 1)
     record = {"object_id": object_id, "band": band, "seconds": seconds, "cost_usd": result.cost_usd}
@@ -267,6 +292,7 @@ def main() -> None:
     )
     parser.add_argument("--scan", choices=sorted(scans.LEVELS), help="read a simulated scan (make it with scans.py)")
     parser.add_argument("--confidence", action="store_true", help="also ask Claude which fields it isn't sure of")
+    parser.add_argument("--thinking-budget", type=int, help="fixed thinking budget in tokens (Claude Haiku 4.5)")
     parser.add_argument("--final", action="store_true", help="required for --split test: see the README")
     args = parser.parse_args()
     if args.split == "test" and not args.final:
@@ -284,6 +310,7 @@ def main() -> None:
     version = prompts.load("extract").version
     run_id = f"{datetime.datetime.now():%Y%m%d-%H%M%S}_{args.model}_{version}_{args.input}" + ("_cache" * args.cache)
     run_id += (f"_scan-{args.scan}" if args.scan else "") + ("_confidence" * args.confidence)
+    run_id += f"_think-{args.thinking_budget}" if args.thinking_budget else ""
     run_dir = RUNS_DIR / run_id
     run_dir.mkdir(parents=True)
     client = anthropic.Anthropic()
@@ -305,6 +332,7 @@ def main() -> None:
                 cache=args.cache,
                 scan=args.scan,
                 confidence=args.confidence,
+                thinking_budget=args.thinking_budget,
                 model=args.model,
             )
         except (anthropic.APIStatusError, anthropic.APIConnectionError) as e:

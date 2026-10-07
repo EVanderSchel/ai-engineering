@@ -1,0 +1,14 @@
+{
+  "run": "20261007-093056_claude-haiku-4-5_v2_image-1568_cache_scan-medium_parallel-8_think-4000",
+  "complete": false,
+  "filings": 20,
+  "of": 21,
+  "error": "pydantic ValidationError (json_invalid): Claude Haiku 4.5 returned invalid JSON and parse() raised; extract.py didn't handle it then (fixed in the same step)",
+  "cost_usd": 0.536088,
+  "usage": {
+    "input_tokens": 174533,
+    "output_tokens": 72311,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0
+  }
+}

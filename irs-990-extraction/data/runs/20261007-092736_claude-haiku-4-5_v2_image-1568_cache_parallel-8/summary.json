@@ -1,0 +1,17 @@
+{
+  "run": "20261007-092736_claude-haiku-4-5_v2_image-1568_cache_parallel-8",
+  "complete": true,
+  "filings": 21,
+  "of": 21,
+  "error": null,
+  "workers": 8,
+  "started_at": "2026-10-07T14:27:36+00:00",
+  "wall_seconds": 36.3,
+  "cost_usd": 0.213767,
+  "usage": {
+    "input_tokens": 141412,
+    "output_tokens": 14471,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0
+  }
+}

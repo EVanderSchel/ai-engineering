@@ -1,0 +1,17 @@
+{
+  "run": "20261007-092753_claude-haiku-4-5_v2_image-1568_cache_parallel-8_think-4000",
+  "complete": true,
+  "filings": 21,
+  "of": 21,
+  "error": null,
+  "workers": 8,
+  "started_at": "2026-10-07T14:27:53+00:00",
+  "wall_seconds": 178.0,
+  "cost_usd": 0.448533,
+  "usage": {
+    "input_tokens": 148393,
+    "output_tokens": 60028,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0
+  }
+}
