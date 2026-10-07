@@ -167,7 +167,10 @@ def score_run(run_dir) -> dict:
         "retries": sum(len(r["attempts"]) - 1 for r in records),
         "check_failures": sum(bool(r["problems"]) for r in records),
         "cost_per_filing_usd": round(sum(r["cost_usd"] for r in records) / len(records), 4),
-        "mean_seconds": round(statistics.mean(r["seconds"] for r in records), 1),
+        # batch runs have no time per filing (they run together): "" in the history
+        "mean_seconds": round(statistics.mean(seconds), 1)
+        if (seconds := [r["seconds"] for r in records if r["seconds"] is not None])
+        else "",
         "per_field": per_field,
         "errors": errors,
     }
@@ -210,8 +213,9 @@ def report(score: dict) -> str:
         f"  Field accuracy {score['field_accuracy']:.1%}; all 42 fields right on "
         f"{score['filings_all_correct']} of {score['filings']} filings",
         "  Errors: " + ", ".join(f"{t} {score[t]}" for t in ERROR_TYPES),
-        f"  ${score['cost_per_filing_usd']:.4f} and {score['mean_seconds']}s per filing; "
-        f"{score['retries']} retries, {score['check_failures']} filings still failing checks",
+        f"  ${score['cost_per_filing_usd']:.4f} per filing"
+        + (f", {score['mean_seconds']}s each; " if score["mean_seconds"] != "" else " (batch: no time per filing); ")
+        + f"{score['retries']} retries, {score['check_failures']} filings still failing checks",
     ]
     if score["unsure_flagged"] != "":
         n_errors = len(score["errors"])

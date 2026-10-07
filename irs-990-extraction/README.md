@@ -256,6 +256,22 @@ The first real review found two problems with the first version of the page, now
 
 Crops of each line would be quicker to review than the whole page, but page 1's lines move: a long mission pushes Part I down by several lines. Fixed positions and lining up the pages' text rows both put crops on the wrong line, and a wrong crop is worse than the whole page. Exact crops (for example from positions Claude reports) belong with the planned upgrade of this page to a shared web page that saves each reviewer's decisions.
 
+## Batch processing (step 7)
+
+`extract.py` sends one request and waits before sending the next. `src/batch.py` sends Part I for every filing at once with the Message Batches API: Anthropic processes them in the background (most batches end within an hour, all within 24) at half the token price. Each request is the one `extract.py` makes, keyed by the filing's object ID; structured outputs go in `output_config` (the SDK's `parse()` helper doesn't cover batches) and the JSON is validated with the same Pydantic model. Results are saved in the usual run format, so `evaluate.py` scores them.
+
+The batch ID is written to the run directory (`batch_state.json`) before anything waits, and collecting skips results already saved, so a crash or a closed terminal never submits or pays for anything twice: `--no-wait` submits and exits, `--resume data/runs/<run>` collects later.
+
+First batch, the 21 dev filings (prompt v2, clean pages):
+
+| | One at a time (cached) | Batch |
+|---|---|---|
+| Field accuracy | 98.6-100% over earlier runs | 99.0% |
+| Cost per filing | $0.0175 | $0.0107 |
+| Time for 21 filings | about 3.5 minutes, one after another | 3 min 16 s, all at once |
+
+The batch saved 39%, not 50%: its requests run in parallel, so many start before the prompt and schema are cached and write their own cache entry (on average 1,700 cache-write tokens and 3,350 cache-read tokens per request, against nearly all reads one at a time). For 21 filings the time is about the same; for 10,000, one at a time would take about 28 hours, while batches typically finish within a few.
+
 ## Setup
 
 Needs Python 3.14 and [uv](https://docs.astral.sh/uv/) (`pip install uv`):

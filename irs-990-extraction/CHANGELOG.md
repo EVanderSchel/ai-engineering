@@ -36,6 +36,8 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 - Review queue (`src/review_queue.py`): a local HTML page of flagged fields beside page 1, with a contents list, progress, and a per-field "Looks right" so only checked fields count as reviewed; a corrections download that lists unreviewed fields, `--apply` to write a reviewed run, and `--simulate` for a perfect reviewer
 
+- Batch extraction (`src/batch.py`): Part I for many filings through the Message Batches API, resumable and idempotent (`--no-wait`, `--resume`), scored like any run. 21 dev filings: 99.0%, $0.0107 per filing (39% less than one at a time; caching is weaker in a batch), 3 min 16 s
+
 ### Fixed
 
 - Answer keys for organizations whose name is printed on two lines had only the first line (11 of 60); the name now joins `BusinessNameLine1Txt` and `BusinessNameLine2Txt`
