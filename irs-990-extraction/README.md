@@ -326,6 +326,15 @@ A Haiku run crashed: with thinking on, it returned invalid JSON, and `parse()` r
 
 Tested with a fake client for every response (15 tests). Run locally on a real return (Wilds Christian Association, 45 pages): 200 in 6.9 s for $0.024, all 42 fields matching the answer key.
 
+**Container.** The `Dockerfile` follows the rag project's: two stages (uv installs exactly `uv.lock` into a virtualenv, then only that and the app go into the runtime image), base images pinned by digest, a non-root user, and the commit SHA baked in for `/health`. Only `src/` and `prompts/` are copied; `.dockerignore` keeps out `data/` (its downloaded returns run to hundreds of MB). The image is 395 MB.
+
+```
+docker build -t irs990-api --build-arg GIT_SHA=$(git rev-parse HEAD) .
+docker run -p 8000:8000 -e ANTHROPIC_API_KEY -e IRS990_API_KEY=<a long random key> irs990-api
+```
+
+`deploy/smoke_test.sh <image> [version]` checks a built image without any keys or spend: inside it, a non-root user, both prompts loading with their registered fingerprints, and no `data/`; then the server's `/health` (ok, auth required, extraction off without an Anthropic key, the expected version); then `/extract` answering 401 without the key and 503 with it (the request got past auth into the endpoint). CI runs it on every pull request (`irs-990-extraction-image`), and Dependabot proposes base-image updates. Tried locally on the image, plus one real extraction through the container: 42 of 42 fields right, 8 s, $0.023.
+
 ## Setup
 
 Needs Python 3.14 and [uv](https://docs.astral.sh/uv/) (`pip install uv`):
