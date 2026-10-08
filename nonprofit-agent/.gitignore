@@ -1,0 +1,9 @@
+.venv/
+venv*/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.env
+# Responses cached from public APIs (ProPublica, IRS): re-downloadable, so never committed.
+data/cache/
