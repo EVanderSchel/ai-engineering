@@ -6,6 +6,7 @@ Hands-on projects built while upskilling toward an AI Engineer role. Each folder
 |---|---|---|
 | [rag](rag/) | A retrieval-augmented generation service built from scratch and run in production (released as `rag-v1.0.0`): hybrid search with reranking, a streaming FastAPI API with API-key auth and rate limiting, retrieval and LLM-as-judge evals that gate every pull request plus a weekly generation eval, versioned prompts, per-request cost/latency logging and tracing, health probes and alerts, and approval-gated deploys to Azure | Python 3.14, uv, ChromaDB, Claude API, FastAPI, Docker, GitHub Actions, Azure Container Apps, Key Vault, Langfuse |
 | [irs-990-extraction](irs-990-extraction/) | Structured data from charities' IRS Form 990 filings (page images only) with Claude's vision input, released as `irs-990-extraction-v1.0.0`: scored field by field against the IRS's own e-file XML (99.2% on held-out filings), multi-page table extraction, simulated scans, review rules and a review queue, batch and parallel processing, a model comparison, and an authenticated API deployed to Azure | Python 3.14, uv, Claude API (vision, structured outputs, Message Batches), Pydantic, FastAPI, Docker, GitHub Actions, Azure Container Apps |
+| [nonprofit-agent](nonprofit-agent/) | *In progress.* A tool-using agent that researches US charities from public IRS and ProPublica data: an agent loop built by hand and then with a framework, tools served over MCP, trajectory evals, and prompt-injection testing | Python 3.14, uv, Claude API (tool use), MCP, GitHub Actions |
 | [ci-cd-workflow](ci-cd-workflow/) | A complete CI/CD pipeline built one stage at a time around a small FastAPI service: tests, lint gates, Docker, container registry, staged deployments with approval, and versioned releases | GitHub Actions, Docker, GHCR, Render, pytest, ruff |
 | [skills-training](skills-training/) | Guided notebooks learning deep-learning frameworks side by side, from tensors and autograd to an MNIST classifier | TensorFlow, Keras, PyTorch, Jupyter |
 
@@ -35,6 +36,7 @@ Hands-on projects built while upskilling toward an AI Engineer role. Each folder
 
 - **rag:** `rag-test`, `rag-eval-gate`, `rag-lint` (ruff), `rag-audit` (known vulnerabilities in locked dependencies), and `rag-image`, which builds the Docker image and smoke-tests it (offline search, startup, auth); `rag-publish` repeats that test on the exact image before pushing it.
 - **irs-990-extraction:** `irs-990-extraction-test`, `-lint`, `-audit`, and `-image`, which builds the API image and smoke-tests it (prompts, non-root user, no data, startup, auth); `-publish` repeats that test on the exact image before pushing it.
+- **nonprofit-agent:** `nonprofit-agent-test`, `-lint`, `-audit`.
 - **ci-cd-workflow:** `ci-cd-workflow-lint`, `-test`, `-build`.
 - Plus each project's `-changes` job, and **CodeQL**: a pull request that introduces a new high or critical security finding can't merge.
 
@@ -50,7 +52,7 @@ Deployments to production environments additionally wait for manual approval.
 
 1. ~~**Productionize RAG**~~: done (`rag-v1.0.0`, see above).
 2. ~~**Document extraction**~~: done (`irs-990-extraction-v1.0.0`, see above).
-3. **Tool-using agent**: an agent loop built by hand and then with a framework, tools exposed over MCP, trajectory evals, and prompt-injection testing.
+3. **Tool-using agent** (in progress, [`nonprofit-agent`](nonprofit-agent/)): an agent loop built by hand and then with a framework, tools exposed over MCP, trajectory evals, and prompt-injection testing.
 4. **Fine-tune vs. prompt**: LoRA fine-tuning of a small open model, compared with a prompted frontier model and a classic baseline on accuracy, latency, and cost.
 
 ## License

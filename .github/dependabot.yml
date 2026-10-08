@@ -24,6 +24,14 @@ updates:
       irs-990-extraction-python:
         update-types: [minor, patch]
 
+  - package-ecosystem: uv
+    directory: /nonprofit-agent
+    schedule:
+      interval: weekly
+    groups:
+      nonprofit-agent-python:
+        update-types: [minor, patch]
+
   - package-ecosystem: pip
     directory: /ci-cd-workflow
     schedule:
