@@ -366,6 +366,16 @@ Every prompt, threshold, and model choice above was made on the 21 dev filings. 
 - **Part VII's test returns were easy for the page finder:** all 39 fit on pages 7-8, so this run didn't test continuation pages (dev had 3 returns with them, all found).
 - Final evaluation cost: $2.92.
 
+## Future enhancements
+
+Not needed for v1.0.0, but each closes a gap the steps above measured:
+
+- **A shared review page with exact crops** (step 6, "option B"): publish the review queue as a web page that saves each reviewer's decisions, so several people can work it, and show each flagged field as a crop of its own line. Crops need each field's position on the page (for example reported by Claude with the answer); fixed positions failed because a long mission statement moves Part I down.
+- **Production tracing, with review results as scores**: the deployed API logs only metadata (by design, no extracted values), so a wrong answer in production can be counted but not inspected. Request tracing (Langfuse, as in the rag project) would record each request's prompt version, answer, and cost; reviewer corrections from the review page could then be attached to each trace as scores, measuring accuracy in production rather than only on the gold set. Pairs naturally with the shared review page.
+- **Checkbox reading in Part VII**: the remaining Part VII errors are X's placed in the wrong narrow column. Instructions didn't help (prompt v2), which points to perception: try sending a zoomed crop of the checkbox columns alongside the page, measured over repeated runs.
+- **Hints and reviewer accuracy on the review page**: name each field's column plainly ("Prior Year, the left column"), add per-field warnings for known traps (line 16b's amount printed inside the label; a blank cell next to a 0), and report how often reviewers agree with the answer keys, to measure whether the hints help.
+- **A test set with continuation pages**: none of the 39 test returns spread Part VII onto continuation pages, so the page finder's hardest case was only seen in dev (3 returns, all found). Score it on more such returns before relying on it at scale.
+
 ## Setup
 
 Needs Python 3.14 and [uv](https://docs.astral.sh/uv/) (`pip install uv`):
