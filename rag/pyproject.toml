@@ -12,7 +12,7 @@ dependencies = [
     "rank_bm25>=0.2",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.54.0",
-    "langfuse>=4.15",
+    "langfuse>=4.17.0",
     "python-dotenv>=1.2.4",
     "torch>=2.10",
 ]
