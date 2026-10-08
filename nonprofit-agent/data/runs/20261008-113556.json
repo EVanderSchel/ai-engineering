@@ -1,0 +1,49 @@
+{
+ "question": "How did the American Red Cross's revenue change from 2021 to 2023?",
+ "model": "claude-sonnet-5",
+ "answer": "**American National Red Cross (EIN 53-0196605) \u2014 revenue grew modestly from FY2021 to FY2023**\n\n- **FY2021** (fiscal year ended June 2021), Form 990: total revenue **$3,090,183,560**\n- **FY2023** (fiscal year ended June 2023), Form 990: total revenue **$3,217,077,611**\n- **Change: +$126,894,051, or about +4.1%**\n\nFor context, program service revenue rose from ~$2.00B to ~$2.17B over the same period, while contributions and grants actually dipped slightly (from ~$962.9M in 2021 to ~$919.1M in 2023), with revenue growth driven mainly by program services. Note the Red Cross's fiscal year ends June 30, so \"2023\" reflects the year ended June 30, 2023.",
+ "stop": "answered",
+ "steps": 3,
+ "trajectory": [
+  {
+   "type": "tool",
+   "name": "search_organizations",
+   "input": {
+    "query": "american red cross"
+   },
+   "output": "{\"total_results\": 11, \"page\": 0, \"num_pages\": 1, \"organizations\": [{\"ein\": \"53-0196605\", \"name\": \"American National Red Cross\", \"city\": \"Washington\", \"state\": \"DC\", \"ntee_code\": \"P210\"}, {\"ein\": \"20-4801016\", \"name\": \"881458 American Red Cross Club\", \"city\": \"Fort Wayne\", \"state\": \"IN\", \"ntee_code\": \"N500\"}, {\"ein\": \"52-0743599\", \"name\": \"American Red Cross Overseas Association\", \"city\": \"Basye\", \"state\": \"VA\", \"ntee_code\": null}, {\"ein\": \"82-4446495\", \"name\": \"Haitian American Red Cross Corp\", \"city\": \"Wilton Manors\", \"state\": \"FL\", \"ntee_code\": \"P20\"}, {\"ein\": \"59-1748379\", \"name\": \"Association Of American Red Cross Retirees\", \"city\": \"Washington\", \"state\": \"DC\", \"ntee_code\": null}, {\"ein\": \"36-4908450\", \"name\": \"Coalition Of American Red Cross Unions\", \"city\": \"Twin Rocks\", \"state\": \"PA\", \"ntee_code\": \"J40\"}, {\"ein\": \"87-2723140\", \"name\": \"Friends Of The American Red Cross - Central Southwest Oklahoma\", \"city\": \"Oklahoma City\", \"state\": \"OK\", \"ntee_code\": \"P12\"}, {\"ein\": \"30-6186591\", \"name\": \"Annie B Fritch Tr Uw Fbo Lehigh Chapter Of The American Red Cross\", \"city\": \"Saint Louis\", \"state\": \"MO\", \"ntee_code\": \"T20\"}, {\"ein\": \"47-1618805\", \"name\": \"American Federation Of State County & Municipal Employees\", \"city\": \"Chicago\", \"state\": \"IL\", \"ntee_code\": null}, {\"ein\": \"84-6285723\", \"name\": \"Martha Steinbach Trust Fbo\", \"city\": \"Saint Louis\", \"state\": \"MO\", \"ntee_code\": \"T20Z\"}, {\"ein\": \"41-1815288\", \"name\": \"American Federation Of State County & Municipal Employees\", \"city\": \"Sauk City\", \"state\": \"WI\", \"ntee_code\": null}]}",
+   "is_error": false
+  },
+  {
+   "type": "tool",
+   "name": "compute_ratios",
+   "input": {
+    "ein": "53-0196605",
+    "tax_year": 2023,
+    "compare_with_year": 2021
+   },
+   "output": "{\"ein\": \"53-0196605\", \"tax_year\": 2023, \"form\": \"990\", \"surplus\": 245970722, \"surplus_margin\": 0.0765, \"liabilities_to_assets\": 0.2503, \"contributions_share_of_revenue\": 0.2857, \"officer_compensation_share_of_expenses\": 0.002, \"compared_with_year\": 2021, \"total_revenue_change\": 126894051, \"total_revenue_change_pct\": 0.0411, \"total_expenses_change\": 175081580, \"total_expenses_change_pct\": 0.0626, \"total_assets_change\": 359821148, \"total_assets_change_pct\": 0.0981}",
+   "is_error": false
+  },
+  {
+   "type": "tool",
+   "name": "get_financials",
+   "input": {
+    "ein": "53-0196605"
+   },
+   "output": "{\"ein\": \"53-0196605\", \"name\": \"American National Red Cross\", \"filings\": [{\"tax_year\": 2023, \"tax_period_end\": \"202306\", \"form\": \"990\", \"total_revenue\": 3217077611, \"total_expenses\": 2971106889, \"total_assets\": 4028321133, \"total_liabilities\": 1008326202, \"contributions_and_grants\": 919126379, \"program_service_revenue\": 2167924872, \"officer_compensation\": 5947262, \"other_salaries_and_wages\": 1182370329, \"professional_fundraising_fees\": 452216}, {\"tax_year\": 2022, \"tax_period_end\": \"202206\", \"form\": \"990\", \"total_revenue\": 3182229338, \"total_expenses\": 3048182336, \"total_assets\": 3872181875, \"total_liabilities\": 1171891777, \"contributions_and_grants\": 1060031161, \"program_service_revenue\": 2018755758, \"officer_compensation\": 5758532, \"other_salaries_and_wages\": 1119398026, \"professional_fundraising_fees\": 301063}, {\"tax_year\": 2021, \"tax_period_end\": \"202106\", \"form\": \"990\", \"total_revenue\": 3090183560, \"total_expenses\": 2796025309, \"total_assets\": 3668499985, \"total_liabilities\": 1300112674, \"contributions_and_grants\": 962942913, \"program_service_revenue\": 1999617756, \"officer_compensation\": 5750681, \"other_salaries_and_wages\": 1071857732, \"professional_fundraising_fees\": 216781}, {\"tax_year\": 2020, \"tax_period_end\": \"202006\", \"form\": \"990\", \"total_revenue\": 2839409246, \"total_expenses\": 2683608516, \"total_assets\": 3266899381, \"total_liabilities\": 1454684272, \"contributions_and_grants\": 887785755, \"program_service_revenue\": 1840018144, \"officer_compensation\": 5988644, \"other_salaries_and_wages\": 1099816849, \"professional_fundraising_fees\": 123953}, {\"tax_year\": 2019, \"tax_period_end\": \"201906\", \"form\": \"990\", \"total_revenue\": 2813454935, \"total_expenses\": 2937181875, \"total_assets\": 3049904049, \"total_liabilities\": 1607739689, \"contributions_and_grants\": 817365759, \"program_service_revenue\": 1883680966, \"officer_compensation\": 5593870, \"other_salaries_and_wages\": 1096208468, \"professional_fundraising_fees\": 247242}, {\"tax_year\": 2018, \"tax_period_end\": \"201806\", \"form\": \"990\", \"total_revenue\": 3608002096, \"total_expenses\": 3142984060, \"total_assets\": 3240247122, \"total_liabilities\": 1658095198, \"contributions_and_grants\": 1508477297, \"program_service_revenue\": 1849335300, \"officer_compensation\": 6327939, \"other_salaries_and_wages\": 1115029599, \"professional_fundraising_fees\": 413231}, {\"tax_year\": 2017, \"tax_period_end\": \"201706\", \"form\": \"990\", \"total_revenue\": 2676037116, \"total_expenses\": 2808630913, \"total_assets\": 3142581145, \"total_liabilities\": 1946658460, \"contributions_and_grants\": 700040441, \"program_service_revenue\": 1845547694, \"officer_compensation\": 4965695, \"other_salaries_and_wages\": 1086796068, \"professional_fundraising_fees\": 0}, {\"tax_year\": 2016, \"tax_period_end\": \"201606\", \"form\": \"990\", \"total_revenue\": 2618203252, \"total_expenses\": 2679603949, \"total_assets\": 3235806694, \"total_liabilities\": 2250133837, \"contributions_and_grants\": 637862655, \"program_service_revenue\": 1878941932, \"officer_compensation\": 5108275, \"other_salaries_and_wages\": 1112886481, \"professional_fundraising_fees\": 0}, {\"tax_year\": 2015, \"tax_period_end\": \"201506\", \"form\": \"990\", \"total_revenue\": 2726672619, \"total_expenses\": 2886003368, \"total_assets\": 3486142571, \"total_liabilities\": 1892332242, \"contributions_and_grants\": 660035659, \"program_service_revenue\": 1925059348, \"officer_compensation\": 4715289, \"other_salaries_and_wages\": 1173075473, \"professional_fundraising_fees\": 0}, {\"tax_year\": 2014, \"tax_period_end\": \"201406\", \"form\": \"990\", \"total_revenue\": 2974133836, \"total_expenses\": 3047227207, \"total_assets\": 3791643231, \"total_liabilities\": 1830884753, \"contributions_and_grants\": 788226198, \"program_service_revenue\": 2019244653, \"officer_compensation\": 4835529, \"other_salaries_and_wages\": 1258269459, \"professional_fundraising_fees\": 0}, {\"tax_year\": 2013, \"tax_period_end\": \"201306\", \"form\": \"990\", \"total_revenue\": 3412238741, \"total_expenses\": 3356880480, \"total_assets\": 3898835153, \"total_liabilities\": 1908777901, \"contributions_and_grants\": 1133413010, \"program_service_revenue\": 2162884552, \"officer_compensation\": 4602313, \"other_salaries_and_wages\": 1324855754, \"professional_fundraising_fees\": 0}, {\"tax_year\": 2012, \"tax_period_end\": \"201206\", \"form\": \"990\", \"total_revenue\": 3154538043, \"total_expenses\": 3329153707, \"total_assets\": 3777960071, \"total_liabilities\": 2182737621, \"contributions_and_grants\": 741190737, \"program_service_revenue\": 2290746478, \"officer_compensation\": 4647035, \"other_salaries_and_wages\": 1318857177, \"professional_fundraising_fees\": 0}, {\"tax_year\": 2011, \"tax_period_end\": \"201106\", \"form\": \"990\", \"total_revenue\": 3452960387, \"total_expenses\": 3422010386, \"total_assets\": 4253578616, \"total_liabilities\": 2061654331, \"contributions_and_grants\": 1013873120, \"program_service_revenue\": 2328884915, \"officer_compensation\": 4480899, \"other_salaries_and_wages\": 1344063923, \"professional_fundraising_fees\": 0}]}",
+   "is_error": false
+  },
+  {
+   "type": "text",
+   "text": "**American National Red Cross (EIN 53-0196605) \u2014 revenue grew modestly from FY2021 to FY2023**\n\n- **FY2021** (fiscal year ended June 2021), Form 990: total revenue **$3,090,183,560**\n- **FY2023** (fiscal year ended June 2023), Form 990: total revenue **$3,217,077,611**\n- **Change: +$126,894,051, or about +4.1%**\n\nFor context, program service revenue rose from ~$2.00B to ~$2.17B over the same period, while contributions and grants actually dipped slightly (from ~$962.9M in 2021 to ~$919.1M in 2023), with revenue growth driven mainly by program services. Note the Red Cross's fiscal year ends June 30, so \"2023\" reflects the year ended June 30, 2023."
+  }
+ ],
+ "usage": {
+  "input_tokens": 6,
+  "output_tokens": 496,
+  "cache_creation_input_tokens": 5133,
+  "cache_read_input_tokens": 4423
+ },
+ "cost": 0.018689
+}

@@ -1,0 +1,49 @@
+{
+ "question": "How did the American Red Cross's revenue change from 2021 to 2023?",
+ "model": "claude-sonnet-5",
+ "answer": "**American Red Cross revenue rose from ~$3.09 billion to ~$3.22 billion between tax years 2021 and 2023 \u2014 an increase of about $127 million (\u22484.1%).**\n\nDetails (American National Red Cross, EIN 53-0196605, Form 990 figures; fiscal years end June 30):\n\n| | FY2021 (ended 6/30/2021) | FY2023 (ended 6/30/2023) |\n|---|---|---|\n| Total revenue | $3,090,183,560 | $3,217,077,611 |\n| Contributions & grants | $962,942,913 | $919,126,379 |\n| Program service revenue | $1,999,617,756 | $2,167,924,872 |\n\nThe growth came mainly from higher program service revenue (+$168M), which outweighed a roughly $44M decline in contributions and grants.\n\nNote: tax year 2022 data wasn't pulled, so this reflects the net change over the two-year span rather than a year-by-year trend.",
+ "stop": "answered",
+ "steps": 3,
+ "trajectory": [
+  {
+   "type": "tool",
+   "name": "search_organizations",
+   "input": {
+    "query": "American Red Cross"
+   },
+   "output": "{\"total_results\": 11, \"page\": 0, \"num_pages\": 1, \"organizations\": [{\"ein\": \"53-0196605\", \"name\": \"American National Red Cross\", \"city\": \"Washington\", \"state\": \"DC\", \"ntee_code\": \"P210\"}, {\"ein\": \"20-4801016\", \"name\": \"881458 American Red Cross Club\", \"city\": \"Fort Wayne\", \"state\": \"IN\", \"ntee_code\": \"N500\"}, {\"ein\": \"52-0743599\", \"name\": \"American Red Cross Overseas Association\", \"city\": \"Basye\", \"state\": \"VA\", \"ntee_code\": null}, {\"ein\": \"82-4446495\", \"name\": \"Haitian American Red Cross Corp\", \"city\": \"Wilton Manors\", \"state\": \"FL\", \"ntee_code\": \"P20\"}, {\"ein\": \"59-1748379\", \"name\": \"Association Of American Red Cross Retirees\", \"city\": \"Washington\", \"state\": \"DC\", \"ntee_code\": null}, {\"ein\": \"36-4908450\", \"name\": \"Coalition Of American Red Cross Unions\", \"city\": \"Twin Rocks\", \"state\": \"PA\", \"ntee_code\": \"J40\"}, {\"ein\": \"87-2723140\", \"name\": \"Friends Of The American Red Cross - Central Southwest Oklahoma\", \"city\": \"Oklahoma City\", \"state\": \"OK\", \"ntee_code\": \"P12\"}, {\"ein\": \"30-6186591\", \"name\": \"Annie B Fritch Tr Uw Fbo Lehigh Chapter Of The American Red Cross\", \"city\": \"Saint Louis\", \"state\": \"MO\", \"ntee_code\": \"T20\"}, {\"ein\": \"47-1618805\", \"name\": \"American Federation Of State County & Municipal Employees\", \"city\": \"Chicago\", \"state\": \"IL\", \"ntee_code\": null}, {\"ein\": \"84-6285723\", \"name\": \"Martha Steinbach Trust Fbo\", \"city\": \"Saint Louis\", \"state\": \"MO\", \"ntee_code\": \"T20Z\"}, {\"ein\": \"41-1815288\", \"name\": \"American Federation Of State County & Municipal Employees\", \"city\": \"Sauk City\", \"state\": \"WI\", \"ntee_code\": null}]}",
+   "is_error": false
+  },
+  {
+   "type": "tool",
+   "name": "get_financials",
+   "input": {
+    "ein": "53-0196605",
+    "tax_year": 2021
+   },
+   "output": "{\"ein\": \"53-0196605\", \"name\": \"American National Red Cross\", \"filings\": [{\"tax_year\": 2021, \"tax_period_end\": \"202106\", \"form\": \"990\", \"total_revenue\": 3090183560, \"total_expenses\": 2796025309, \"total_assets\": 3668499985, \"total_liabilities\": 1300112674, \"contributions_and_grants\": 962942913, \"program_service_revenue\": 1999617756, \"officer_compensation\": 5750681, \"other_salaries_and_wages\": 1071857732, \"professional_fundraising_fees\": 216781}]}",
+   "is_error": false
+  },
+  {
+   "type": "tool",
+   "name": "get_financials",
+   "input": {
+    "ein": "53-0196605",
+    "tax_year": 2023
+   },
+   "output": "{\"ein\": \"53-0196605\", \"name\": \"American National Red Cross\", \"filings\": [{\"tax_year\": 2023, \"tax_period_end\": \"202306\", \"form\": \"990\", \"total_revenue\": 3217077611, \"total_expenses\": 2971106889, \"total_assets\": 4028321133, \"total_liabilities\": 1008326202, \"contributions_and_grants\": 919126379, \"program_service_revenue\": 2167924872, \"officer_compensation\": 5947262, \"other_salaries_and_wages\": 1182370329, \"professional_fundraising_fees\": 452216}]}",
+   "is_error": false
+  },
+  {
+   "type": "text",
+   "text": "**American Red Cross revenue rose from ~$3.09 billion to ~$3.22 billion between tax years 2021 and 2023 \u2014 an increase of about $127 million (\u22484.1%).**\n\nDetails (American National Red Cross, EIN 53-0196605, Form 990 figures; fiscal years end June 30):\n\n| | FY2021 (ended 6/30/2021) | FY2023 (ended 6/30/2023) |\n|---|---|---|\n| Total revenue | $3,090,183,560 | $3,217,077,611 |\n| Contributions & grants | $962,942,913 | $919,126,379 |\n| Program service revenue | $1,999,617,756 | $2,167,924,872 |\n\nThe growth came mainly from higher program service revenue (+$168M), which outweighed a roughly $44M decline in contributions and grants.\n\nNote: tax year 2022 data wasn't pulled, so this reflects the net change over the two-year span rather than a year-by-year trend."
+  }
+ ],
+ "usage": {
+  "input_tokens": 6,
+  "output_tokens": 635,
+  "cache_creation_input_tokens": 3025,
+  "cache_read_input_tokens": 3904
+ },
+ "cost": 0.014705
+}

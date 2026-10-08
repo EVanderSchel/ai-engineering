@@ -59,7 +59,16 @@ def search_organizations(query: str, state: str | None = None, page: int = 0) ->
     """Find tax-exempt organizations by name or keyword, optionally in one US state (2-letter code)."""
     if state is not None and not re.fullmatch(r"[A-Za-z]{2}", state):
         raise ToolError(f"state must be a 2-letter code like 'IA', not {state!r}.")
-    data = propublica.search(query, state=state.upper() if state else None, page=page)
+    try:
+        data = propublica.search(query, state=state.upper() if state else None, page=page)
+    except propublica.NotFound:  # the API answers a search with no matches with a 404
+        return {
+            "total_results": 0,
+            "page": page,
+            "num_pages": 0,
+            "organizations": [],
+            "hint": "No matches. Try other spellings or fewer words (e.g. 'foodbank' as well as 'food bank').",
+        }
     return {
         "total_results": data["total_results"],
         "page": data["cur_page"],
@@ -107,6 +116,18 @@ def _filing_summary(filing: dict) -> dict:
     return summary
 
 
+def _no_data_for_year(data: dict, tax_year: int) -> ToolError:
+    """Why a year can't be answered. Recent returns are often filed but available only as PDF images, so
+    say so: "not filed" and "filed, but no figures yet" lead to different answers."""
+    years = sorted({f["tax_prd_yr"] for f in data["filings_with_data"]}, reverse=True)
+    pdf_only = {f["tax_prd_yr"] for f in data["filings_without_data"]}
+    if tax_year in pdf_only:
+        reason = f"Tax year {tax_year} was filed, but only as a PDF image: no figures are available for it yet."
+    else:
+        reason = f"No filing with financial data for tax year {tax_year}."
+    return ToolError(f"{reason} Years with data: {years}.")
+
+
 def get_financials(ein: str | int, tax_year: int | None = None) -> dict:
     """Financial figures from an organization's filings: every year with data, or one tax year."""
     data = _organization(ein)
@@ -114,8 +135,7 @@ def get_financials(ein: str | int, tax_year: int | None = None) -> dict:
     if tax_year is not None:
         filings = [f for f in filings if f["tax_prd_yr"] == tax_year]
         if not filings:
-            years = sorted({f["tax_prd_yr"] for f in data["filings_with_data"]}, reverse=True)
-            raise ToolError(f"No financial data for tax year {tax_year}. Years with data: {years}.")
+            raise _no_data_for_year(data, tax_year)
     return {
         "ein": format_ein(ein),
         "name": data["organization"]["name"],
@@ -129,16 +149,20 @@ def _ratio(numerator, denominator) -> float | None:
     return round(numerator / denominator, 4)
 
 
-def compute_ratios(ein: str | int, tax_year: int) -> dict:
+def compute_ratios(ein: str | int, tax_year: int, compare_with_year: int | None = None) -> dict:
     """Standard ratios for one tax year, computed in code so the model doesn't do arithmetic, plus the
-    change from the previous year with data."""
-    filings = get_financials(ein)["filings"]
-    by_year = {f["tax_year"]: f for f in filings}
-    if tax_year not in by_year:
-        raise ToolError(f"No financial data for tax year {tax_year}. Years with data: {sorted(by_year, reverse=True)}.")
+    change from compare_with_year (default: the previous year with data)."""
+    data = _organization(ein)
+    by_year = {f["tax_prd_yr"]: _filing_summary(f) for f in data["filings_with_data"]}
+    for year in (tax_year, compare_with_year):
+        if year is not None and year not in by_year:
+            raise _no_data_for_year(data, year)
     f = by_year[tax_year]
-    earlier = [y for y in by_year if y < tax_year]
-    previous = by_year[max(earlier)] if earlier else None
+    if compare_with_year is not None:
+        previous = by_year[compare_with_year]
+    else:
+        earlier = [y for y in by_year if y < tax_year]
+        previous = by_year[max(earlier)] if earlier else None
 
     revenue, expenses = f["total_revenue"], f["total_expenses"]
     surplus = revenue - expenses if revenue is not None and expenses is not None else None

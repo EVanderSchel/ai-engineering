@@ -1,0 +1,39 @@
+{
+ "question": "What was the American Red Cross's revenue in 2024?",
+ "model": "claude-sonnet-5",
+ "answer": "The American National Red Cross's (EIN 53-0196605, Washington, DC) tax year 2024 Form 990 has been filed with the IRS, but only as a scanned PDF image \u2014 no structured financial figures are available for it yet in this data source, so I can't report a 2024 revenue number.\n\nThe most recent year with extracted figures is tax year 2023. Would you like that figure instead?",
+ "stop": "answered",
+ "steps": 3,
+ "trajectory": [
+  {
+   "type": "tool",
+   "name": "search_organizations",
+   "input": {
+    "query": "american red cross"
+   },
+   "output": "{\"total_results\": 11, \"page\": 0, \"num_pages\": 1, \"organizations\": [{\"ein\": \"53-0196605\", \"name\": \"American National Red Cross\", \"city\": \"Washington\", \"state\": \"DC\", \"ntee_code\": \"P210\"}, {\"ein\": \"20-4801016\", \"name\": \"881458 American Red Cross Club\", \"city\": \"Fort Wayne\", \"state\": \"IN\", \"ntee_code\": \"N500\"}, {\"ein\": \"52-0743599\", \"name\": \"American Red Cross Overseas Association\", \"city\": \"Basye\", \"state\": \"VA\", \"ntee_code\": null}, {\"ein\": \"82-4446495\", \"name\": \"Haitian American Red Cross Corp\", \"city\": \"Wilton Manors\", \"state\": \"FL\", \"ntee_code\": \"P20\"}, {\"ein\": \"59-1748379\", \"name\": \"Association Of American Red Cross Retirees\", \"city\": \"Washington\", \"state\": \"DC\", \"ntee_code\": null}, {\"ein\": \"36-4908450\", \"name\": \"Coalition Of American Red Cross Unions\", \"city\": \"Twin Rocks\", \"state\": \"PA\", \"ntee_code\": \"J40\"}, {\"ein\": \"87-2723140\", \"name\": \"Friends Of The American Red Cross - Central Southwest Oklahoma\", \"city\": \"Oklahoma City\", \"state\": \"OK\", \"ntee_code\": \"P12\"}, {\"ein\": \"30-6186591\", \"name\": \"Annie B Fritch Tr Uw Fbo Lehigh Chapter Of The American Red Cross\", \"city\": \"Saint Louis\", \"state\": \"MO\", \"ntee_code\": \"T20\"}, {\"ein\": \"47-1618805\", \"name\": \"American Federation Of State County & Municipal Employees\", \"city\": \"Chicago\", \"state\": \"IL\", \"ntee_code\": null}, {\"ein\": \"84-6285723\", \"name\": \"Martha Steinbach Trust Fbo\", \"city\": \"Saint Louis\", \"state\": \"MO\", \"ntee_code\": \"T20Z\"}, {\"ein\": \"41-1815288\", \"name\": \"American Federation Of State County & Municipal Employees\", \"city\": \"Sauk City\", \"state\": \"WI\", \"ntee_code\": null}]}",
+   "is_error": false
+  },
+  {
+   "type": "tool",
+   "name": "get_financials",
+   "input": {
+    "ein": "53-0196605",
+    "tax_year": 2024
+   },
+   "output": "Tax year 2024 was filed, but only as a PDF image: no figures are available for it yet. Years with data: [2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014, 2013, 2012, 2011].",
+   "is_error": true
+  },
+  {
+   "type": "text",
+   "text": "The American National Red Cross's (EIN 53-0196605, Washington, DC) tax year 2024 Form 990 has been filed with the IRS, but only as a scanned PDF image \u2014 no structured financial figures are available for it yet in this data source, so I can't report a 2024 revenue number.\n\nThe most recent year with extracted figures is tax year 2023. Would you like that figure instead?"
+  }
+ ],
+ "usage": {
+  "input_tokens": 6,
+  "output_tokens": 284,
+  "cache_creation_input_tokens": 1072,
+  "cache_read_input_tokens": 6145
+ },
+ "cost": 0.006761
+}

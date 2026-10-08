@@ -34,7 +34,7 @@ Plain Python functions in [`src/tools.py`](src/tools.py), over a polite, caching
 | `search_organizations(query, state=None, page=0)` | Up to 25 matches per page: EIN, name, city, state, NTEE category code |
 | `get_organization(ein)` | Profile, plus which tax years have financial data and which were filed only as PDFs |
 | `get_financials(ein, tax_year=None)` | Per year: form type, revenue, expenses, assets, liabilities; on the full Form 990 also contributions, program revenue, officer pay, other salaries, fundraising fees |
-| `compute_ratios(ein, tax_year)` | Surplus and margin, liabilities to assets, contributions share, officer pay share, and change from the previous year with data |
+| `compute_ratios(ein, tax_year, compare_with_year=None)` | Surplus and margin, liabilities to assets, contributions share, officer pay share, and change from another year (default: the previous year with data) |
 
 Design choices, and why:
 
@@ -44,6 +44,24 @@ Design choices, and why:
 - **Errors tell the model what to do next.** E.g. "No financial data for tax year 2024. Years with data: [2023, 2022, ...]" rather than a stack trace.
 
 What the data can't answer (found while exploring the API): **program vs. overhead spending** isn't in ProPublica's extracted fields, and the **newest filings** are often PDF-only (the Red Cross's 2024 return, as of 2026-10-08). The agent has to say so rather than guess.
+
+## The agent loop (step 2)
+
+[`src/agent.py`](src/agent.py) is the loop by hand, on the Claude API (Claude Sonnet 5): send the question, system prompt and tool descriptions; when Claude asks for tools, run them and send the results back; repeat until it answers. Limits: 10 model calls and $0.25 per question. Tool failures (bad EIN, unknown year, network) go back to Claude as error results instead of crashing the loop. The prompt and tools are cached, and every run's full trajectory (each tool call and result) is saved in `data/runs/`.
+
+```powershell
+.\.venv\Scripts\python.exe srcgent.py "How did the American Red Cross's revenue change from 2021 to 2023?"
+```
+
+**First runs** (3 questions, then again after fixing what the trajectories showed; $0.16 in total):
+
+| Question | First run | Cause | After the fix |
+|---|---|---|---|
+| Red Cross revenue 2021 to 2023 | Right (+4.1%), but computed by the model, against instructions | `compute_ratios` could only compare with the previous year | One `compute_ratios` call with `compare_with_year=2021` |
+| Which of Iowa's largest food banks depends most on donations? | Right winner, but claimed its 3 were "by far" the largest; missed River Bend Food Reservoir, the 2nd largest ($39.1M) | Searched only "food bank"; search matches words in names | Searched "food bank", "foodbank", "food reservoir"; compared 4; stated its method and that the list may not be exhaustive |
+| Red Cross revenue in 2024 (filed as a PDF only) | Didn't guess, but said 2023 was "the most recent filing" | The error message said only "no data" | "Filed, but only as a PDF image: no figures yet" |
+
+Also found: a search with no matches returns HTTP 404 from the API, which the tool reported as an outage; it now returns zero results with a hint. One run per question shows a change, not that it holds every time: step 3 runs each question repeatedly.
 
 ## Setup
 
