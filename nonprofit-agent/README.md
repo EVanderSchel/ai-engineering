@@ -1,6 +1,6 @@
 # nonprofit-agent
 
-Project 3 of the AI Engineer roadmap: a **tool-using agent** that answers research questions about US charities, such as "How did the American Red Cross's revenue change over the last three years?" or "Which of these two food banks spends a larger share on programs?". It works from public data only.
+Project 3 of the AI Engineer roadmap: a **tool-using agent** that answers research questions about US charities, such as "How did the American Red Cross's revenue change over the last three years?" or "Which of Iowa's largest food banks depends most on donations?". It works from public data only.
 
 Plain language: a regular Claude call answers from memory. An agent is given **tools** (functions it can ask us to run, such as "look up this charity's filings") and works in a loop. It decides which tool to call, reads the result, decides what to do next, and stops when it can answer. It's like a research assistant with a phone and a calculator: it doesn't know the numbers, but it knows who to call and what to ask.
 
@@ -24,6 +24,26 @@ Rules: only ProPublica's JSON API and the IRS's own downloads are used. ProPubli
 | 5 | MCP server exposing the tools, so any MCP client (Claude Code, Claude Desktop) can use them | Tools as a reusable, standard interface |
 | 6 | Prompt-injection testing: hostile text inside tool results (e.g. an organization's mission statement) | Tool output is untrusted input |
 | 7 | Guardrails and release (`nonprofit-agent-v1.0.0`) | Shipping an agent safely |
+
+## The tools (step 1)
+
+Plain Python functions in [`src/tools.py`](src/tools.py), over a polite, caching API client ([`src/propublica.py`](src/propublica.py)). No Claude calls yet: a tool is ordinary code, and the model only ever sees its description and its output.
+
+| Tool | Returns |
+|---|---|
+| `search_organizations(query, state=None, page=0)` | Up to 25 matches per page: EIN, name, city, state, NTEE category code |
+| `get_organization(ein)` | Profile, plus which tax years have financial data and which were filed only as PDFs |
+| `get_financials(ein, tax_year=None)` | Per year: form type, revenue, expenses, assets, liabilities; on the full Form 990 also contributions, program revenue, officer pay, other salaries, fundraising fees |
+| `compute_ratios(ein, tax_year)` | Surplus and margin, liabilities to assets, contributions share, officer pay share, and change from the previous year with data |
+
+Design choices, and why:
+
+- **Small, plain-named output.** A raw filing has 60+ cryptic fields (`totfuncexpns`); every byte a tool returns is input tokens the model pays for and has to interpret. Tools return a handful of named fields.
+- **Blank is not zero.** Fields a form doesn't have (a 990-PF has no officer-pay line here) come back as `null`, never 0, the same rule as Project 2.
+- **Arithmetic happens in code.** `compute_ratios` exists so the model reports numbers instead of calculating them.
+- **Errors tell the model what to do next.** E.g. "No financial data for tax year 2024. Years with data: [2023, 2022, ...]" rather than a stack trace.
+
+What the data can't answer (found while exploring the API): **program vs. overhead spending** isn't in ProPublica's extracted fields, and the **newest filings** are often PDF-only (the Red Cross's 2024 return, as of 2026-10-08). The agent has to say so rather than guess.
 
 ## Setup
 
