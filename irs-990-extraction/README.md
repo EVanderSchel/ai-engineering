@@ -4,6 +4,13 @@ Structured, validated data from charities' **IRS Form 990** filings, extracted w
 
 **Why it matters:** the Form 990 is the public record of how a tax-exempt organization raises and spends money: revenue, expenses, program spending, executive pay. Donors, journalists, and watchdogs rely on it, but much of it is published only as page images. Turning those images into reliable, structured data is the problem this project works on.
 
+**Results** (released as `irs-990-extraction-v1.0.0`; scored on 39 held-out filings that no design decision saw, see [Final results](#final-results-the-held-out-test-split)):
+
+- **Part I** (the 42-field summary on page 1): 99.2-99.3% of fields exactly right, about 1 cent per filing in batches. The only remaining errors are blank lines read as 0 and the reverse.
+- **Part VII** (officers and pay, a table that can run across many pages, found automatically in returns of up to 79 image-only pages): 383 of 383 people found, none invented, 99.6% of their fields right.
+- **Human review**: a rule built from measured signals (the form's own arithmetic, how long the model thought, disagreement between two runs) brings Part I to 99.9% with a person checking 4-11% of fields; a review page and corrections loop close it.
+- **In production**: an authenticated, rate-limited HTTP API on Azure Container Apps, deployed by an approval-gated pipeline.
+
 ## Data sources
 
 | What | Where | Role |
@@ -19,7 +26,7 @@ IRS data is public domain. Thanks to ProPublica for the Nonprofit Explorer API; 
 
 - The IRS PDFs have **no text layer**: every page is an image, even for e-filed returns. Extraction therefore reads the images (Claude's vision input), not extracted text.
 - For e-filed returns, the page images are clean IRS renderings of the filed data, and the XML holds exactly the same values. A spot check of Part I (revenue, expenses, assets, employees, mission) matched on every field.
-- Older paper-filed returns are genuine scans with no XML, so they can only be labeled by hand. A few will form a "hard" test set.
+- Older paper-filed returns are genuine scans with no XML, so they have no answer keys. Instead, step 5 degrades the e-filed returns' images the way a scanner would (simulated scans), which keeps the answer keys valid.
 - Scope starts with **Form 990** (not 990-EZ or 990-PF, which are different forms), **Part I (Summary)** on page 1, then officer compensation (Part VII).
 
 ## Plan
@@ -31,11 +38,12 @@ IRS data is public domain. Thanks to ProPublica for the Nonprofit Explorer API; 
 | 2 | Schema and baseline: Pydantic model of Part I, Claude structured outputs from page images, validation and retry *(done)* |
 | 3 | Eval harness: per-field accuracy with normalization, results history by prompt version and model; prompt v2 *(done)* |
 | 4 | Vision input choices: page selection, resolution, PDF vs. image input, cost per document; prompt caching *(done)* |
-| 5 | Harder documents: multi-page sections (Part VII), scanned paper returns |
-| 6 | Confidence and human review: per-field confidence, thresholds tuned on the eval set, review queue |
-| 7 | Batch processing: Message Batches API, concurrency, idempotent reprocessing |
-| 8 | Model comparison: Sonnet vs. Haiku on accuracy, cost, and latency, over repeated runs |
-| 9 | Optional: an `/extract` API reusing the rag project's production setup |
+| 5 | Harder documents: multi-page sections (Part VII), scanned paper returns (simulated) *(done)* |
+| 6 | Confidence and human review: per-field confidence, thresholds tuned on the eval set, review queue *(done)* |
+| 7 | Batch processing: Message Batches API, concurrency, idempotent reprocessing *(done)* |
+| 8 | Model comparison: Sonnet vs. Haiku on accuracy, cost, and latency, over repeated runs *(done)* |
+| 9 | An `/extract` API reusing the rag project's production setup, deployed to Azure *(done)* |
+| Final | The chosen configuration scored once on the 39 held-out test filings; release `v1.0.0` *(done)* |
 
 ## Gold set
 

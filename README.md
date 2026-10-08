@@ -5,7 +5,7 @@ Hands-on projects built while upskilling toward an AI Engineer role. Each folder
 | Project | Description | Key tools |
 |---|---|---|
 | [rag](rag/) | A retrieval-augmented generation service built from scratch and run in production (released as `rag-v1.0.0`): hybrid search with reranking, a streaming FastAPI API with API-key auth and rate limiting, retrieval and LLM-as-judge evals that gate every pull request plus a weekly generation eval, versioned prompts, per-request cost/latency logging and tracing, health probes and alerts, and approval-gated deploys to Azure | Python 3.14, uv, ChromaDB, Claude API, FastAPI, Docker, GitHub Actions, Azure Container Apps, Key Vault, Langfuse |
-| [irs-990-extraction](irs-990-extraction/) | *In progress.* Structured data extracted from charities' IRS Form 990 filings (page images only) with Claude's vision input, measured field by field against the IRS's own e-file XML, with confidence scores and a human-review queue | Python 3.14, uv, Claude API (vision, structured outputs), Pydantic |
+| [irs-990-extraction](irs-990-extraction/) | Structured data from charities' IRS Form 990 filings (page images only) with Claude's vision input, released as `irs-990-extraction-v1.0.0`: scored field by field against the IRS's own e-file XML (99.2% on held-out filings), multi-page table extraction, simulated scans, review rules and a review queue, batch and parallel processing, a model comparison, and an authenticated API deployed to Azure | Python 3.14, uv, Claude API (vision, structured outputs, Message Batches), Pydantic, FastAPI, Docker, GitHub Actions, Azure Container Apps |
 | [ci-cd-workflow](ci-cd-workflow/) | A complete CI/CD pipeline built one stage at a time around a small FastAPI service: tests, lint gates, Docker, container registry, staged deployments with approval, and versioned releases | GitHub Actions, Docker, GHCR, Render, pytest, ruff |
 | [skills-training](skills-training/) | Guided notebooks learning deep-learning frameworks side by side, from tensors and autograd to an MNIST classifier | TensorFlow, Keras, PyTorch, Jupyter |
 
@@ -15,6 +15,13 @@ Hands-on projects built while upskilling toward an AI Engineer role. Each folder
 - **Prompts are versioned like code.** Each version is an immutable, fingerprinted file, and eval results record which version produced them. Revisions raised the source-citation rate from 0% to 100% and trap resistance from 83% to 100%, with no loss in faithfulness.
 - **Performance was profiled, not guessed.** p50 retrieval latency went from 274 ms to 42 ms after tracing the cost to the vector database reloading its embedding model on every query.
 - **Deployed safely.** Merges to `main` publish a smoke-tested image and, after manual approval, deploy it to Azure Container Apps. GitHub logs in to Azure with OIDC (no stored credentials), secrets live in Key Vault, and the deploy only succeeds once `/health` reports the new commit. Health probes restart a hung container, and alerts email on server errors or repeated restarts.
+
+## Highlights from `irs-990-extraction`
+
+- **Scored against ground truth, not judged by eye.** The IRS publishes the same returns as page images and as e-file XML, so 60 real filings became answer keys automatically. Every run is scored field by field, errors are classified (blank read as 0, misread value, ...), and a held-out test split was scored only once, at the end: 99.2-99.3% on Part I.
+- **Failures were traced to causes before anything was fixed.** EIN digits scrambled next to the dash came from asking the model to reformat while transcribing (fixed by copying as printed: 0 errors in 42 reads). A prompt change aimed at checkbox misreads made no difference over repeated runs, showing it was perception, not instructions. Repeated runs separated real effects from noise throughout.
+- **Uncertainty is measured, not asked for.** The model's own "I'm unsure" flags caught 9% of its errors on clean pages; the form's arithmetic, how long the model thought, and disagreement between two runs caught 83-85% on unseen filings, reviewing 4-11% of fields.
+- **Cost and speed were engineered.** Prompt caching cut cost 35%; batches about 40% more (not 50%: measured); 8 parallel workers took 21 filings from 3.5 minutes to 39 seconds. Claude Haiku 4.5 cost about the same as batched Sonnet 5 but made nine times as many errors.
 
 ## Layout
 
@@ -27,7 +34,7 @@ Hands-on projects built while upskilling toward an AI Engineer role. Each folder
 `main` is protected: every change goes through a pull request, and merging requires each project's checks to pass:
 
 - **rag:** `rag-test`, `rag-eval-gate`, `rag-lint` (ruff), `rag-audit` (known vulnerabilities in locked dependencies), and `rag-image`, which builds the Docker image and smoke-tests it (offline search, startup, auth); `rag-publish` repeats that test on the exact image before pushing it.
-- **irs-990-extraction:** `irs-990-extraction-test`, `-lint`, `-audit`.
+- **irs-990-extraction:** `irs-990-extraction-test`, `-lint`, `-audit`, and `-image`, which builds the API image and smoke-tests it (prompts, non-root user, no data, startup, auth); `-publish` repeats that test on the exact image before pushing it.
 - **ci-cd-workflow:** `ci-cd-workflow-lint`, `-test`, `-build`.
 - Plus each project's `-changes` job, and **CodeQL**: a pull request that introduces a new high or critical security finding can't merge.
 
@@ -42,7 +49,7 @@ Deployments to production environments additionally wait for manual approval.
 ## Roadmap
 
 1. ~~**Productionize RAG**~~: done (`rag-v1.0.0`, see above).
-2. **Document extraction** *(in progress)*: structured, validated data from IRS Form 990 filings, with confidence scores, a human-review queue, and field-level accuracy evals against the IRS's e-file data.
+2. ~~**Document extraction**~~: done (`irs-990-extraction-v1.0.0`, see above).
 3. **Tool-using agent**: an agent loop built by hand and then with a framework, tools exposed over MCP, trajectory evals, and prompt-injection testing.
 4. **Fine-tune vs. prompt**: LoRA fine-tuning of a small open model, compared with a prompted frontier model and a classic baseline on accuracy, latency, and cost.
 
