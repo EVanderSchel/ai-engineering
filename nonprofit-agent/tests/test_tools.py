@@ -64,6 +64,19 @@ def test_search_returns_compact_results():
     }
 
 
+def test_search_with_no_matches_is_an_empty_result_not_an_error(monkeypatch):
+    """The API answers a search with no matches with a 404 (verified 2026-10-08: q=foodbank, state IA)."""
+
+    def no_matches(query, state=None, page=0):
+        raise propublica.NotFound("/search.json")
+
+    monkeypatch.setattr(propublica, "search", no_matches)
+    result = tools.search_organizations("foodbank", state="IA")
+    assert result["total_results"] == 0
+    assert result["organizations"] == []
+    assert "other spellings" in result["hint"]
+
+
 def test_search_rejects_a_state_name():
     with pytest.raises(tools.ToolError, match="2-letter"):
         tools.search_organizations("food bank", state="Iowa")
@@ -107,6 +120,16 @@ def test_missing_year_lists_the_years_available():
         tools.get_financials(RED_CROSS, tax_year=2024)
 
 
+def test_a_year_filed_only_as_a_pdf_is_explained():
+    with pytest.raises(tools.ToolError, match="Tax year 2024 was filed, but only as a PDF image"):
+        tools.get_financials(RED_CROSS, tax_year=2024)
+
+
+def test_a_year_never_filed_is_explained():
+    with pytest.raises(tools.ToolError, match="No filing with financial data for tax year 1999"):
+        tools.get_financials(RED_CROSS, tax_year=1999)
+
+
 def test_fields_a_form_does_not_have_are_none_not_zero():
     filing = tools.get_financials(GATES)["filings"][0]
     assert filing["form"] == "990-PF"
@@ -127,6 +150,18 @@ def test_ratios_and_change_from_the_previous_year():
     assert r["compared_with_year"] == 2022
     assert r["total_revenue_change"] == 3217077611 - 3182229338
     assert r["total_revenue_change_pct"] == round((3217077611 - 3182229338) / 3182229338, 4)
+
+
+def test_change_between_any_two_years():
+    r = tools.compute_ratios(RED_CROSS, 2023, compare_with_year=2021)
+    assert r["compared_with_year"] == 2021
+    assert r["total_revenue_change"] == 3217077611 - 3090183560
+    assert r["total_revenue_change_pct"] == round((3217077611 - 3090183560) / 3090183560, 4)
+
+
+def test_comparison_year_without_data_is_explained():
+    with pytest.raises(tools.ToolError, match="Tax year 2024 was filed, but only as a PDF image"):
+        tools.compute_ratios(RED_CROSS, 2023, compare_with_year=2024)
 
 
 def test_oldest_year_has_no_comparison():
