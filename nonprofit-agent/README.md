@@ -98,6 +98,34 @@ What the runs showed:
 
 Step 3 cost $6.55 in API calls (pilot, judge checks, baseline with re-grades, v1, v2).
 
+## Framework comparison (step 4)
+
+The same agent on the SDK's **Tool Runner** (`client.beta.messages.tool_runner`), in [`src/runner_agent.py`](src/runner_agent.py), next to the hand-built loop in [`src/agent.py`](src/agent.py). Everything else is shared: model, system prompt, tool names, descriptions and schemas, limits, tool execution and the grounding guardrail. Tests check that the runner sends exactly the same request, and push one scripted conversation (a tool call, a tool error, an ungrounded draft, the fix) through both loops to get identical trajectories and answers. They run the SDK's real runner against a fake HTTP layer, so no API calls.
+
+**Results** on the eval (66 runs each):
+
+| | Hand-built loop (v2) | Tool Runner |
+|---|---|---|
+| correct / grounded | 100% / 100% | 98.5% / 100% |
+| Model calls / tool calls per question | 3.58 / 4.18 | 3.58 / 4.08 |
+| Agent cost | $1.056 | $1.034 |
+| Cost difference per question (paired) | | -$0.0003 +/- $0.0017 |
+| Code (lines, no comments or blanks) | 76 | 85 |
+
+The one failure is q14's overclaim about food banks it never checked, the same failure the baseline had; the requests are identical, so it's the model's run-to-run variation, not the loop.
+
+What the comparison showed:
+
+- **The framework changes the code, not the behavior**: same calls, cost and answers within noise.
+- **It saved less code than expected.** The runner removes the core loop (call, find tool requests, run them, match results by id, stop), and a bare runner agent is about 10 lines. This agent needs four things the runner doesn't do, found by reading the SDK's source (anthropic 1.12.1):
+  - a **cost limit**: it counts model calls, not dollars, so the loop body adds up usage and stops;
+  - **our error messages**: only the SDK's own `ToolError` becomes a clean error result, and any other exception reaches the model as `repr(exc)` (e.g. `ToolError('No financial data...')`) with a stack trace logged, so an adapter converts ours;
+  - a **check of the final answer**: `end_turn` always ends a runner, whatever is appended, so the grounding guardrail keeps its own copy of the conversation and starts a new runner with the feedback, the workaround the SDK documents for `pause_turn`;
+  - a **record of what happened**: the runner's history is private, so the trajectory is rebuilt from each message plus `generate_tool_call_response()`.
+- **When each fits.** For "run my tools until done", the runner is shorter. For an agent that has to be measured, limited and checked, the hand-built loop is clearer because nothing is hidden. The project keeps the hand-built loop as the main agent; `python src/run_eval.py --agent runner` runs the eval on the runner version.
+
+Step 4 cost $1.88 in API calls.
+
 ## Future enhancements
 
 New data sources, each a new tool to measure against the eval baseline. In order of value:
