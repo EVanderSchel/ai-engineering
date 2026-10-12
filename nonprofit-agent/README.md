@@ -126,6 +126,25 @@ What the comparison showed:
 
 Step 4 cost $1.88 in API calls.
 
+## MCP server (step 5)
+
+[`src/mcp_server.py`](src/mcp_server.py) publishes the four tools as the `nonprofit-research` server over the **Model Context Protocol**, a standard way for an app to discover a server's tools and call them. Any MCP client can then research nonprofits with them, without this project's agent loop. It's built on the official MCP Python SDK (`mcp` 2.x, where `FastMCP` was renamed `MCPServer`) and runs over stdio, so it never prints to stdout.
+
+- **Clients see what our agent sees:** the same tool names, descriptions and parameter descriptions, and results and errors from the same `agent.run_tool`. The SDK prefixes errors with the tool's name ("Error executing tool get_financials: ...").
+- **The system prompt travels as the server's instructions**, so a client's model gets the same rules (answer only from tool results, use `compute_ratios`, state the year, mention newer returns).
+- **All four tools are marked read-only and open-world** (they change nothing and call an outside API), so clients can treat them accordingly.
+- **What doesn't travel:** the step and cost limits and the grounding guardrail. They live in the agent loop, and the server never sees the answer a client writes.
+
+To use it from Claude Code (registered for this folder only):
+
+```powershell
+claude mcp add nonprofit-research -- C:\dev\ai-engineering\nonprofit-agent\.venv\Scripts\python.exe C:\dev\ai-engineering\nonprofit-agent\src\mcp_server.py
+```
+
+**Tried in Claude Code** with q22's question ("how did The Beacon in Des Moines' revenue change since 2020?"): five tool calls. It found Beacon Of Life and said why ("the only one in Des Moines" of 18 Iowa "beacon" results), gave the correct change (+$88,423, +17.6%) with the dip in 2021-22, explained the June fiscal year, and noted that returns through June 2025 are filed without figures yet. It also added a figure it computed itself ("dropped 19.3% ($96,736) below 2020"): correct, but unchecked, which is exactly what the guardrail would have sent back in our agent. Sharing tools shares data and guidance, not checks.
+
+Tests run the server through a real MCP client: in-process for tool calls (fake tools, no network) and once as a subprocess over stdio, the way Claude Code starts it. Step 5 cost nothing in API calls (Claude Code ran under the user's subscription).
+
 ## Future enhancements
 
 New data sources, each a new tool to measure against the eval baseline. In order of value:
