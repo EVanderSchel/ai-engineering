@@ -133,3 +133,9 @@ def test_spend_cap_rolls_over_at_midnight_utc():
     spend.record(1.90, today=day1)
     assert not spend.can_start(0.25, today=day1)
     assert spend.can_start(0.25, today=day2)
+
+
+def test_responses_name_their_encoding(http):
+    """So Windows PowerShell 5.1 shows em dashes and other non-ASCII text in answers correctly."""
+    assert ask(http).headers["content-type"] == "application/json; charset=utf-8"
+    assert http.get("/health").headers["content-type"] == "application/json; charset=utf-8"

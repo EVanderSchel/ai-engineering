@@ -4,6 +4,21 @@ Project 3 of the AI Engineer roadmap: a **tool-using agent** that answers resear
 
 Plain language: a regular Claude call answers from memory. An agent is given **tools** (functions it can ask us to run, such as "look up this charity's filings") and works in a loop. It decides which tool to call, reads the result, decides what to do next, and stops when it can answer. It's like a research assistant with a phone and a calculator: it doesn't know the numbers, but it knows who to call and what to ask.
 
+Released as `nonprofit-agent-v1.0.0`, and running as an authenticated API on Azure.
+
+## Results (v1.0.0)
+
+Measured on the released version, against a frozen copy of the data:
+
+| | Result |
+|---|---|
+| Correct answers (22 approved questions x 3 runs: figures checked by code, written criteria by a validated Claude Opus 5 judge) | **98.5%** (65/66) |
+| Grounded answers (every dollar amount and percentage traceable to a tool result) | **100%** (66/66) |
+| Prompt-injection attacks followed (5 attacks x 2 placements x 6 questions) | **0/60**, all 60 flagged to the user, original question still answered correctly in 60/60 |
+| Cost per question | median $0.013, up to about $0.15 for group questions (capped at $0.25) |
+
+How it got there, measured at each step: correct 97.0% / grounded 92.4% at the baseline; prompt rules for years and data lag; a code-level grounding guardrail (92.4% to 100% grounded); free-text marking and injection rules (attacks followed 7% to 0%). Known limitation: on one group question (q14), the agent sometimes still asserts the size of food banks it never checked (1 run in 3). Total API spend for the project's measured runs: about $18.
+
 ## Why this domain
 
 - **Public, free, real data.** The [ProPublica Nonprofit Explorer API](https://projects.propublica.org/nonprofits/api) serves organization profiles and financials from IRS filings. No key needed. This builds on Project 2 (`irs-990-extraction`), whose deployed API can be one of the agent's tools.
@@ -23,7 +38,7 @@ Rules: only ProPublica's JSON API and the IRS's own downloads are used. ProPubli
 | 4 | Same agent with a framework (the SDK's Tool Runner), compared with the hand-built loop | What a framework saves and what it hides |
 | 5 | MCP server exposing the tools, so any MCP client (Claude Code, Claude Desktop) can use them | Tools as a reusable, standard interface |
 | 6 | Prompt-injection testing: hostile text inside tool results (e.g. an organization's mission statement) | Tool output is untrusted input |
-| 7 | Guardrails and release (`nonprofit-agent-v1.0.0`) | Shipping an agent safely |
+| 7 | Guardrails, an authenticated API on Azure, and release (`nonprofit-agent-v1.0.0`) | Shipping an agent safely |
 
 ## The tools (step 1)
 
@@ -186,6 +201,20 @@ A regression run of the main eval with the defenses (22 questions, 1 run each) s
 
 Step 6 cost $5.51 in API calls (pilot, baseline, v1, regression run).
 
+## Guardrails, API and release (step 7)
+
+**Guardrail review.** By release the agent has: step and cost limits per question (10 model calls, $0.25); tools that never crash the loop and validate their inputs; read-only tools (it can only read public data, rate-limited); the grounding guardrail; and the free-text and injection rules. Step 7 closed three gaps:
+
+- **Claude API failures** (rate limit, overload, exhausted credit, rejected key, network) used to crash the run. Now the run stops with a plain-language reason ("The Claude API account's credit balance is too low. Add credits and try again.") and keeps what it found; the eval runners still log these as infrastructure failures, never as wrong answers.
+- **Non-answers are explained**: a step or cost limit, a cut-off answer, a refusal or an API error each comes with a sentence saying so and how far the agent got.
+- **Caution under attack**: a rule to answer with the clear best match and state the assumption, instead of stopping to ask, when that organization's record contains suspicious text. Under attack, q22 went from 3 failures in 10 runs (v1) to 0 at release.
+
+**The API** ([`src/api.py`](src/api.py)): `POST /ask` with `{"question": "..."}` returns the answer, why it stopped if it didn't answer, any figures the guardrail couldn't verify, the tool calls it made (so the answer can be checked), and the cost. Every question spends Anthropic credit, so the checks run cheapest first and a rejected request never reaches Claude: an API key; 3-500 character questions; 5 questions a minute; a **$2.00 daily spend cap**, where a question may only start if its worst case ($0.25) still fits, so the cap can't be exceeded; and one question at a time. Behind all of them, the deployment's key belongs to a **dedicated Anthropic workspace with its own spend limit**, a backstop outside the code. Logs record each question's cost and the day's total, never its text.
+
+**Deployment** ([`deploy/`](deploy/README.md)): a container image (non-root, code only, smoke-tested in CI on every pull request) on Azure Container Apps, scaled to zero when idle and to at most one replica (the in-memory limits require it), with secrets from Key Vault, health probes, and alerts for server errors, restarts and more than 30 requests an hour. Merges to main publish the image; the deploy waits for approval, logs in to Azure with OIDC (no stored password) and confirms the new version is live.
+
+Through the public API, q22 ("How has The Beacon in Des Moines' revenue changed since 2020?") was answered correctly in 12 seconds for $0.03, stating its assumption about which organization was meant.
+
 ## Future enhancements
 
 New data sources, each a new tool to measure against the eval baseline. In order of value:
@@ -193,6 +222,13 @@ New data sources, each a new tool to measure against the eval baseline. In order
 1. **Figures from the IRS e-file XML, to close the 1-2 year lag.** ProPublica's extracted figures stop at tax year 2023 for most organizations, while their returns through 2025 are already filed (e.g. Northeast Iowa Food Bank: figures through 2023, latest return June 2025, as of 2026-10-12). The IRS publishes those returns as XML long before the extract catches up, and Project 2 already reads them: `irs-990-extraction/src/sources.py` fetches single returns from the IRS's archives, and `irs_xml.py` pulls the same Part I fields (revenue, expenses, contributions, ...). Locating a return needs the IRS's yearly index (~90 MB). For now the tools only *say* newer returns exist.
 2. **Single Audits from the Federal Audit Clearinghouse** ([API](https://www.fac.gov/api/), free api.data.gov key): federal money spent and from which programs, plus audit findings, material weaknesses and going-concern doubts. Covers organizations spending more than $750,000 of federal awards a year ($1M from 2025). Use the FAC API, not ProPublica's audit pages. `findings_text` is free text from outside parties, so it's also input for prompt-injection testing.
 3. **Form 990-T (unrelated business income):** income from activities outside the mission and the tax paid on it. Not in ProPublica's API, but in the IRS e-file XML (`RETURN_TYPE` 990T in the IRS index; 23,282 in 2024 vs 363,100 Form 990s), so it shares the work of item 1.
+
+Other improvements:
+
+4. **The q14 overclaim**: on group questions the agent sometimes still states the size of organizations it never checked. A check like the grounding guardrail, aimed at claims about unchecked organizations, or a tool that searches by category, would target it.
+5. **Harder eval questions.** The main eval is near saturation (98.5% correct), so it now mainly guards against regressions; new questions (for example ones needing the new data sources above) would make it informative again.
+6. **A cheaper judge**: Claude Opus 5 is about half of each eval's cost. A cheaper judge would need re-validating (the must-pass/must-fail check and a blind human sample).
+7. **A hosted MCP server**: the tools over streamable HTTP, so MCP clients connect by URL, with the same authentication and limits as the API.
 
 ## Setup
 
@@ -204,6 +240,14 @@ uv run ruff check . ; uv run ruff format --check .
 bash security/audit.sh   # known vulnerabilities in locked dependencies (Git Bash)
 ```
 
+Ask a question (uses your `ANTHROPIC_API_KEY`), run the API locally, or serve the tools over MCP:
+
+```powershell
+.\.venv\Scripts\python.exe src\agent.py "How did Iowa Public Radio's revenue change from 2020 to 2023?"
+.\.venv\Scripts\python.exe -m uvicorn api:app --app-dir src     # then http://localhost:8000/docs
+.\.venv\Scripts\python.exe src\mcp_server.py                     # for an MCP client (see step 5)
+```
+
 ## Layout
 
 - `src/`: flat modules (`pytest.ini` puts `src` on the import path).
@@ -211,3 +255,4 @@ bash security/audit.sh   # known vulnerabilities in locked dependencies (Git Bas
 - `evals/`: the questions, the frozen API snapshot, saved eval runs (`runs/`) and prompt-injection runs (`injection/`); transcripts in `traces/` are regenerated, not committed.
 - `data/cache/`: cached API responses (gitignored, re-downloadable).
 - `security/`: the dependency audit and the list of reviewed, accepted vulnerabilities.
+- `deploy/`: Azure deployment scripts and guide, and the container smoke test; `Dockerfile` at the top.
