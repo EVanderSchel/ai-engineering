@@ -29,12 +29,14 @@ import anthropic
 import agent
 import grade
 import propublica
+import runner_agent
 from paths import ROOT
 
 EVALS_DIR = ROOT / "evals"
 CASES_PATH = EVALS_DIR / "cases.jsonl"
 SNAPSHOT_DIR = EVALS_DIR / "snapshot"
 RUNS_DIR = EVALS_DIR / "runs"
+AGENTS = {"loop": agent.run, "runner": runner_agent.run}  # hand-built loop (steps 2-3), Tool Runner (step 4)
 
 _write_lock = threading.Lock()
 
@@ -82,9 +84,9 @@ def served_by(requested: str, served: list[str | None]) -> None:
         raise RuntimeError(f"requested {requested} but served by {sorted(wrong, key=str)}")
 
 
-def run_case(client, case: dict, rep: int, variant_dir, model: str) -> dict:
+def run_case(client, case: dict, rep: int, variant_dir, model: str, run=agent.run) -> dict:
     started = time.monotonic()
-    result = agent.run(client, case["question"], model=model)
+    result = run(client, case["question"], model=model)
     seconds = time.monotonic() - started
     served_by(model, result.served_models)
     traces = variant_dir / "traces"
@@ -174,6 +176,7 @@ def main() -> None:
     parser.add_argument("--reps", type=int, default=3)
     parser.add_argument("--cases", help="comma-separated case ids (default: all)")
     parser.add_argument("--model", default=agent.MODEL, choices=sorted(agent.PRICES))
+    parser.add_argument("--agent", default="loop", choices=sorted(AGENTS), help="which loop runs the agent")
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--regrade", action="store_true", help="grade saved runs again instead of running")
     args = parser.parse_args()
@@ -193,10 +196,10 @@ def main() -> None:
 
     done = {(r["prompt_id"], r["rep"]) for r in read_rows(results_path)}
     todo = [(c, rep) for c in cases.values() for rep in range(args.reps) if (c["id"], rep) not in done]
-    print(f"{len(todo)} runs to do ({len(done)} already done) on {args.model}, {args.workers} at a time")
+    print(f"{len(todo)} runs to do ({len(done)} done) on {args.model}, {args.agent} agent, {args.workers} at a time")
 
     def attempt(case, rep):
-        row = run_case(client, case, rep, variant_dir, args.model)
+        row = run_case(client, case, rep, variant_dir, args.model, AGENTS[args.agent]) | {"agent": args.agent}
         return grade_row(client, case, row)
 
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
