@@ -9,3 +9,4 @@ __pycache__/
 data/cache/
 # Eval transcripts: the same conversations are in each results.jsonl row; run_eval.py regenerates them.
 evals/runs/*/traces/
+evals/injection/*/traces/
