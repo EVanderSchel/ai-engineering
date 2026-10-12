@@ -8,6 +8,7 @@ bot-protected, and this project doesn't work around that.
 
 import hashlib
 import json
+import threading
 import time
 
 import requests
@@ -18,20 +19,24 @@ API_BASE = "https://projects.propublica.org/nonprofits/api/v2"
 HEADERS = {"User-Agent": "nonprofit-agent (learning project; github.com/EVanderSchel/ai-engineering)"}
 MIN_SECONDS_BETWEEN_REQUESTS = 1.0
 
+NOT_FOUND = {"not_found": True}  # how a cached 404 is stored
+
 _last_request = 0.0
+_turn_lock = threading.Lock()  # the eval runs several agents at once; they share one request budget
 
 
 class NotFound(LookupError):
-    """The API answered 404: no such organization."""
+    """The API answered 404: no such organization (or, for a search, no matches)."""
 
 
 def _wait_turn() -> None:
     """Sleep until at least MIN_SECONDS_BETWEEN_REQUESTS has passed since the last request."""
     global _last_request
-    wait = MIN_SECONDS_BETWEEN_REQUESTS - (time.monotonic() - _last_request)
-    if wait > 0:
-        time.sleep(wait)
-    _last_request = time.monotonic()
+    with _turn_lock:
+        wait = MIN_SECONDS_BETWEEN_REQUESTS - (time.monotonic() - _last_request)
+        if wait > 0:
+            time.sleep(wait)
+        _last_request = time.monotonic()
 
 
 def _get(url: str, params: dict, *, attempts: int = 4) -> requests.Response:
@@ -60,19 +65,30 @@ def cache_path(path: str, params: dict):
 
 def fetch(path: str, params: dict | None = None) -> dict:
     """The API's JSON for `path` (e.g. "/search.json"), from the cache if it was fetched before.
-    Raises NotFound on 404; errors are never cached, so a later call tries again."""
+    Raises NotFound on 404. A 404 is an answer (no such organization, no matches), so it's cached like one;
+    other errors are never cached, so a later call tries again."""
     params = params or {}
     cached = cache_path(path, params)
     if cached.exists():
-        return json.loads(cached.read_text(encoding="utf-8"))
-    response = _get(API_BASE + path, params)
-    if response.status_code == 404:
+        data = json.loads(cached.read_text(encoding="utf-8"))
+    else:
+        response = _get(API_BASE + path, params)
+        if response.status_code == 404:
+            data = NOT_FOUND
+        else:
+            response.raise_for_status()
+            data = response.json()
+        _save(cached, data)
+    if data == NOT_FOUND:
         raise NotFound(path)
-    response.raise_for_status()
-    data = response.json()
-    cached.parent.mkdir(parents=True, exist_ok=True)
-    cached.write_text(json.dumps(data), encoding="utf-8")
     return data
+
+
+def _save(cached, data: dict) -> None:
+    cached.parent.mkdir(parents=True, exist_ok=True)
+    partial = cached.with_name(f"{cached.stem}.{threading.get_ident()}.partial")
+    partial.write_text(json.dumps(data), encoding="utf-8")
+    partial.replace(cached)  # readers never see a half-written file
 
 
 def search(query: str, *, state: str | None = None, page: int = 0) -> dict:

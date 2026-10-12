@@ -58,12 +58,21 @@ def test_state_filter_uses_the_api_parameter_name(network):
     assert calls[0] == (propublica.API_BASE + "/search.json", {"q": "food bank", "page": 0, "state[id]": "IA"})
 
 
-def test_404_raises_not_found_and_is_not_cached(network):
+def test_404_raises_not_found_and_is_cached_as_an_answer(network):
     calls, responses = network
-    responses.extend([FakeResponse(404), FakeResponse(200, {"organization": {}})])
-    with pytest.raises(propublica.NotFound):
-        propublica.organization("000000001")
-    assert propublica.organization("000000001") == {"organization": {}}  # asked again, not served from cache
+    responses.append(FakeResponse(404))
+    for _ in range(2):
+        with pytest.raises(propublica.NotFound):
+            propublica.search("hawkeye riverside charitable trust")
+    assert len(calls) == 1  # "no matches" is an answer: the second call is served from the cache
+
+
+def test_other_errors_are_not_cached(network):
+    calls, responses = network
+    responses.extend([FakeResponse(400), FakeResponse(200, {"ok": True})])
+    with pytest.raises(requests.HTTPError):
+        propublica.fetch("/search.json", {"q": "x"})
+    assert propublica.fetch("/search.json", {"q": "x"}) == {"ok": True}  # asked again
     assert len(calls) == 2
 
 

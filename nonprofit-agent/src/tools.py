@@ -86,12 +86,32 @@ def search_organizations(query: str, state: str | None = None, page: int = 0) ->
     }
 
 
+def _latest_return(data: dict) -> str | None:
+    """End of the period covered by the organization's most recent return, as "YYYY-MM". ProPublica's
+    extracted figures lag the returns themselves by one to two years (verified 2026-10-12: returns through
+    June 2025, figures through tax year 2023 for most organizations), so this is often newer than any figures."""
+    period = data["organization"].get("tax_period")  # e.g. "2025-06-01"
+    return period[:7] if period else None
+
+
+def _newer_returns_note(data: dict) -> str | None:
+    """Said whenever figures stop before the latest return, so the model doesn't call old figures the latest."""
+    latest = _latest_return(data)
+    years = [f["tax_prd_yr"] for f in data["filings_with_data"]]
+    if latest and years and int(latest[:4]) > max(years):
+        return (
+            f"Returns through the period ending {latest} have been filed, but this data source has extracted "
+            f"figures only through tax year {max(years)}. Say so when reporting the latest figures."
+        )
+    return None
+
+
 def get_organization(ein: str | int) -> dict:
     """An organization's profile, and which tax years have financial data."""
     data = _organization(ein)
     org = data["organization"]
     with_data = sorted({f["tax_prd_yr"] for f in data["filings_with_data"]}, reverse=True)
-    pdf_only = sorted(
+    no_figures = sorted(
         {f["tax_prd_yr"] for f in data["filings_without_data"]} - set(with_data),
         reverse=True,
     )
@@ -104,7 +124,9 @@ def get_organization(ein: str | int) -> dict:
         "subsection": f"501(c)({org['subsection_code']})" if org.get("subsection_code") else None,
         "tax_exempt_since": org.get("ruling_date"),
         "years_with_financial_data": with_data,
-        "years_filed_without_data": pdf_only,  # filed, but only as a PDF: no figures available here
+        "years_filed_without_data": no_figures,  # filed, but no extracted figures in this data source
+        "latest_return_period_end": _latest_return(data),
+        "note": _newer_returns_note(data),
     }
 
 
@@ -117,12 +139,19 @@ def _filing_summary(filing: dict) -> dict:
 
 
 def _no_data_for_year(data: dict, tax_year: int) -> ToolError:
-    """Why a year can't be answered. Recent returns are often filed but available only as PDF images, so
-    say so: "not filed" and "filed, but no figures yet" lead to different answers."""
+    """Why a year can't be answered: "filed, but no figures here yet", "not filed yet", or "no filing with data"
+    lead to different answers. Recent returns are usually filed but not yet in the extracted figures."""
     years = sorted({f["tax_prd_yr"] for f in data["filings_with_data"]}, reverse=True)
-    pdf_only = {f["tax_prd_yr"] for f in data["filings_without_data"]}
-    if tax_year in pdf_only:
-        reason = f"Tax year {tax_year} was filed, but only as a PDF image: no figures are available for it yet."
+    listed = {f["tax_prd_yr"] for f in data["filings_without_data"]}
+    latest = _latest_return(data)
+    latest_year = int(latest[:4]) if latest else None
+    if tax_year in listed or (latest_year and years and max(years) < tax_year <= latest_year):
+        reason = (
+            f"Tax year {tax_year} was filed, but this data source has no extracted figures for it yet "
+            "(its figures lag the returns by one to two years)."
+        )
+    elif latest_year and tax_year > latest_year:
+        reason = f"No return for tax year {tax_year} has been filed yet: the latest covers the period ending {latest}."
     else:
         reason = f"No filing with financial data for tax year {tax_year}."
     return ToolError(f"{reason} Years with data: {years}.")
@@ -140,6 +169,8 @@ def get_financials(ein: str | int, tax_year: int | None = None) -> dict:
         "ein": format_ein(ein),
         "name": data["organization"]["name"],
         "filings": [_filing_summary(f) for f in filings],
+        "latest_return_period_end": _latest_return(data),
+        "note": _newer_returns_note(data),
     }
 
 
@@ -182,4 +213,5 @@ def compute_ratios(ein: str | int, tax_year: int, compare_with_year: int | None 
         change = f[name] - before if before is not None and f[name] is not None else None
         result[f"{name}_change"] = change
         result[f"{name}_change_pct"] = _ratio(change, before)
+    result["note"] = _newer_returns_note(data)
     return result

@@ -18,6 +18,7 @@ from dataclasses import asdict, dataclass, field
 
 import anthropic
 
+import grounding
 import tools
 from paths import DATA_DIR
 
@@ -26,6 +27,12 @@ MAX_STEPS = 10  # model calls per question
 MAX_COST = 0.25  # US dollars per question
 MAX_TOKENS = 8000  # per model call, including thinking
 RUNS_DIR = DATA_DIR / "runs"
+MAX_GROUNDING_RETRIES = 1  # times a draft answer with figures no tool returned is sent back
+
+GROUNDING_FEEDBACK = """\
+[Automatic check, not from the user] Before this answer is shown, every figure in it must appear in a tool \
+result. These don't: {figures}. For each one, either retrieve it with a tool (use compute_ratios for ratios, \
+percentages and changes; get_financials for amounts) or remove it. Then give your complete answer again."""
 
 # US dollars per million tokens: (input, output). Cache writes cost 1.25x input, cache reads 0.1x.
 PRICES = {
@@ -36,6 +43,8 @@ PRICES = {
 
 SYSTEM_PROMPT = """\
 You research US tax-exempt organizations using public IRS data served by ProPublica's Nonprofit Explorer.
+Its extracted financial figures lag the returns themselves by one to two years: an organization has usually
+filed newer returns than its latest figures.
 
 - Answer only from tool results, never from memory. If the tools can't answer something, say so and why.
 - Find an organization's EIN with search_organizations before using the other tools, unless the user gave it.
@@ -50,6 +59,11 @@ You research US tax-exempt organizations using public IRS data served by ProPubl
   result states; don't call an earlier year "the most recent filing" when a later one was filed.
 - Name the tax year and form for every figure you report. A tax year is the year the organization's fiscal
   year ended; say so when it doesn't match the calendar year.
+- When the question names no year, use the most recent year with figures and say that it is the most recent
+  in this data. If a tool result notes newer returns have been filed, say that too.
+- When comparing organizations, use the same tax year for all of them: the most recent year they all have
+  figures for. If one lacks that year, say so, and either leave it out or show its latest year clearly
+  labeled as a different year.
 - A null field means the form doesn't report it, not zero.
 - Be concise: lead with the answer, then the figures that support it."""
 
@@ -77,8 +91,9 @@ TOOL_SPECS = [
         "name": "get_organization",
         "description": (
             "Profile of one organization by EIN: name, location, NTEE code, 501(c) subsection, tax-exempt "
-            "since, and which tax years have financial data versus were filed only as PDFs (no figures). Call "
-            "this to confirm you have the right organization or to see which years can be answered."
+            "since, which tax years have financial figures, which were filed without figures in this data "
+            "source, and the period covered by the latest return filed. Call this to confirm you have the right "
+            "organization or to see which years can be answered."
         ),
         "input_schema": {
             "type": "object",
@@ -194,6 +209,9 @@ class Result:
     # "is_error"}. This is the trajectory that step 3's evals score.
     trajectory: list[dict] = field(default_factory=list)
     usage: Usage = field(default_factory=Usage)
+    served_models: list[str] = field(default_factory=list)  # the model the API says answered each call
+    grounding_retries: int = 0  # drafts sent back by the grounding guardrail
+    ungrounded: list[str] = field(default_factory=list)  # figures in the final answer no tool returned
 
     @property
     def cost(self) -> float:
@@ -240,6 +258,7 @@ def run(
         )
         result.steps += 1
         result.usage.add(response.usage)
+        result.served_models.append(getattr(response, "model", None))
 
         for block in response.content:
             if block.type == "text" and block.text.strip():
@@ -248,7 +267,20 @@ def run(
         if response.stop_reason == "end_turn":
             result.answer = "\n".join(b.text for b in response.content if b.type == "text").strip()
             result.stop = "answered"
-            return result
+            # Guardrail: every figure in the answer must come from a tool result. Prompt rules reduce made-up
+            # or self-computed figures but don't stop them (step 3's eval: about 1 answer in 13), so check in
+            # code and send the draft back once. If it still fails, return it with the figures flagged.
+            stray = [grounding.describe(f) for f in grounding.ungrounded(result.answer, result.trajectory)]
+            result.ungrounded = stray
+            out_of_budget = result.steps >= max_steps or result.cost >= max_cost
+            if not stray or result.grounding_retries >= MAX_GROUNDING_RETRIES or out_of_budget:
+                return result
+            result.grounding_retries += 1
+            feedback = GROUNDING_FEEDBACK.format(figures=", ".join(stray))
+            record({"type": "guardrail", "figures": stray, "text": feedback})
+            messages.append({"role": "assistant", "content": response.content})
+            messages.append({"role": "user", "content": feedback})
+            continue
         if response.stop_reason != "tool_use":
             # "max_tokens" (ran out of room mid-answer), "refusal" (declined for safety), ...: stop and say why.
             result.stop = response.stop_reason
@@ -276,6 +308,8 @@ def run(
 def show(event: dict) -> None:
     if event["type"] == "text":
         print(f"\n[claude] {event['text']}")
+    elif event["type"] == "guardrail":
+        print(f"\n[guardrail] sent back: figures not in any tool result: {', '.join(event['figures'])}")
     else:
         flag = " ERROR" if event["is_error"] else ""
         output = event["output"] if len(event["output"]) <= 300 else event["output"][:300] + " ..."
@@ -308,6 +342,8 @@ def main() -> None:
     )
     tools_used = sum(e["type"] == "tool" for e in result.trajectory)
     print(f"\n--- stop: {result.stop} | {result.steps} model calls, {tools_used} tool calls | ${result.cost:.4f}")
+    if result.ungrounded:
+        print(f"WARNING: figures not in any tool result: {', '.join(result.ungrounded)}")
     print(f"saved {save(result)}")
 
 

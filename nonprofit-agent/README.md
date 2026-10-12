@@ -32,7 +32,7 @@ Plain Python functions in [`src/tools.py`](src/tools.py), over a polite, caching
 | Tool | Returns |
 |---|---|
 | `search_organizations(query, state=None, page=0)` | Up to 25 matches per page: EIN, name, city, state, NTEE category code |
-| `get_organization(ein)` | Profile, plus which tax years have financial data and which were filed only as PDFs |
+| `get_organization(ein)` | Profile, which tax years have financial figures, which were filed without figures in this data source, and the period of the latest return filed |
 | `get_financials(ein, tax_year=None)` | Per year: form type, revenue, expenses, assets, liabilities; on the full Form 990 also contributions, program revenue, officer pay, other salaries, fundraising fees |
 | `compute_ratios(ein, tax_year, compare_with_year=None)` | Surplus and margin, liabilities to assets, contributions share, officer pay share, and change from another year (default: the previous year with data) |
 
@@ -50,7 +50,7 @@ What the data can't answer (found while exploring the API): **program vs. overhe
 [`src/agent.py`](src/agent.py) is the loop by hand, on the Claude API (Claude Sonnet 5): send the question, system prompt and tool descriptions; when Claude asks for tools, run them and send the results back; repeat until it answers. Limits: 10 model calls and $0.25 per question. Tool failures (bad EIN, unknown year, network) go back to Claude as error results instead of crashing the loop. The prompt and tools are cached, and every run's full trajectory (each tool call and result) is saved in `data/runs/`.
 
 ```powershell
-.\.venv\Scripts\python.exe srcgent.py "How did the American Red Cross's revenue change from 2021 to 2023?"
+.\.venv\Scripts\python.exe src\agent.py "How did the American Red Cross's revenue change from 2021 to 2023?"
 ```
 
 **First runs** (3 questions, then again after fixing what the trajectories showed; $0.16 in total):
@@ -62,6 +62,49 @@ What the data can't answer (found while exploring the API): **program vs. overhe
 | Red Cross revenue in 2024 (filed as a PDF only) | Didn't guess, but said 2023 was "the most recent filing" | The error message said only "no data" | "Filed, but only as a PDF image: no figures yet" |
 
 Also found: a search with no matches returns HTTP 404 from the API, which the tool reported as an outage; it now returns zero results with a hint. One run per question shows a change, not that it holds every time: step 3 runs each question repeatedly.
+
+## Trajectory evals (step 3)
+
+An eval that scores the agent's answers *and* how it got them, used to measure every change since.
+
+**Questions** ([`evals/cases.jsonl`](evals/cases.jsonl)): 22, reviewed and approved before anything ran, on real and mostly small Iowa nonprofits (so the model can't answer from memory). They cover lookups, changes between years, ratios, comparisons, group questions ("the two largest food banks"), questions the data can't answer (a year with no figures, program spending, a made-up organization), an ambiguous name (Habitat for Humanity: 27 Iowa affiliates), and one that's hard to find by name (The Beacon in Des Moines, filed as Beacon Of Life). Expected figures come from the API data via the tools' own code, not from a model, and each records the tool call that produces it. A test recomputes all of them from a **frozen copy of the API responses** ([`evals/snapshot/`](evals/snapshot/)) with the network blocked, so the answer key can't drift when ProPublica adds data.
+
+**Grading** ([`src/grade.py`](src/grade.py)), two pass/fail metrics per run:
+
+- **correct**: every expected figure appears in the answer (code; rounding allowed), and, for questions with written criteria, a judge model (Claude Opus 5, not the model under test) agrees the answer meets them. Its one-line reason is saved.
+- **grounded**: every dollar amount and percentage in the answer appears in some tool result (code, [`src/grounding.py`](src/grounding.py)). Catches figures the model computed or invented, even correct ones.
+
+**Trusting the judge.** [`src/check_judge.py`](src/check_judge.py) feeds it answers that must fail (a made-up figure, "$0" for unreported pay, the wrong year, a non-answer) and correct answers that must pass, twice each. The first version passed "I don't know" once; adding that a criterion to "say" something means saying it explicitly fixed that (8/8, consistent). Then a blind check: the user graded 15 judged answers without seeing the verdicts and agreed with the judge on all 15. On a borderline answer the judge can still flip, so q14's criterion was rewritten to be checkable after that happened.
+
+**Runner** ([`src/run_eval.py`](src/run_eval.py)): calls the real `agent.run`, 3 runs per question, 4 at a time. It saves each row as soon as it's graded (a crashed run resumes), records infrastructure failures separately instead of scoring them as wrong answers, checks that the model that answered is the one requested, and can re-grade saved answers after a criteria change (judge cost only).
+
+```powershell
+.\.venv\Scripts\python.exe src\run_eval.py --variant v2 --reps 3
+```
+
+**Results** (66 runs each; `evals/runs/<variant>/results.jsonl` holds every answer, trajectory, grade and reason):
+
+| Version | What changed | correct | grounded | Agent cost |
+|---|---|---|---|---|
+| baseline | Step 2's agent | 97.0% | 92.4% | $0.95 |
+| v1 | State the year; compare organizations on the same year; say when newer returns exist than the figures | 98.5% | 92.4% | $1.01 |
+| v2 | + grounding guardrail | **100%** | **100%** | $1.06 |
+
+What the runs showed:
+
+- **Prompt rules fixed what they targeted, and the habit moved elsewhere.** v1 stopped the overclaiming about unchecked food banks (q14: 1/3 to 3/3) and fixed the year wording. But the model kept computing or recalling figures in other places (5 ungrounded answers in both versions), and in one run it **invented** a revenue figure ("$17,795,524"; the real one is $12,797,138) that the judge passed, because that question's criteria were about something else.
+- **So v2 checks in code.** Before an answer is returned, the agent runs the same grounded check. If any figure isn't in a tool result, the draft goes back once ("retrieve it with a tool or remove it"); a second failure is returned with the figures flagged, never silently. In 66 runs it sent back 5 drafts: 2 fixed by fetching the figure, 3 by removing a self-computed one. None lost a correct figure, and each retry cost about $0.005.
+- **Caveats.** v2's grounded score is partly by construction (the guardrail and the metric share one check), and they share its blind spots: a whole-number percentage that happens to match some tool number, and wrong claims that aren't numbers. The eval is now saturated (100/100), so it serves as a regression test; showing further gains needs harder questions. Single runs vary (in v1, q13 once missed River Bend by searching differently), which is why every version runs each question 3 times.
+
+Step 3 cost $6.55 in API calls (pilot, judge checks, baseline with re-grades, v1, v2).
+
+## Future enhancements
+
+New data sources, each a new tool to measure against the eval baseline. In order of value:
+
+1. **Figures from the IRS e-file XML, to close the 1-2 year lag.** ProPublica's extracted figures stop at tax year 2023 for most organizations, while their returns through 2025 are already filed (e.g. Northeast Iowa Food Bank: figures through 2023, latest return June 2025, as of 2026-10-12). The IRS publishes those returns as XML long before the extract catches up, and Project 2 already reads them: `irs-990-extraction/src/sources.py` fetches single returns from the IRS's archives, and `irs_xml.py` pulls the same Part I fields (revenue, expenses, contributions, ...). Locating a return needs the IRS's yearly index (~90 MB). For now the tools only *say* newer returns exist.
+2. **Single Audits from the Federal Audit Clearinghouse** ([API](https://www.fac.gov/api/), free api.data.gov key): federal money spent and from which programs, plus audit findings, material weaknesses and going-concern doubts. Covers organizations spending more than $750,000 of federal awards a year ($1M from 2025). Use the FAC API, not ProPublica's audit pages. `findings_text` is free text from outside parties, so it's also input for prompt-injection testing.
+3. **Form 990-T (unrelated business income):** income from activities outside the mission and the tax paid on it. Not in ProPublica's API, but in the IRS e-file XML (`RETURN_TYPE` 990T in the IRS index; 23,282 in 2024 vs 363,100 Form 990s), so it shares the work of item 1.
 
 ## Setup
 
@@ -77,5 +120,6 @@ bash security/audit.sh   # known vulnerabilities in locked dependencies (Git Bas
 
 - `src/`: flat modules (`pytest.ini` puts `src` on the import path).
 - `tests/`: unit tests, no network and no API calls.
+- `evals/`: the questions, the frozen API snapshot, and saved eval runs (transcripts in `traces/` are regenerated, not committed).
 - `data/cache/`: cached API responses (gitignored, re-downloadable).
 - `security/`: the dependency audit and the list of reviewed, accepted vulnerabilities.
