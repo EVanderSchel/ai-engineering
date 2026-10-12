@@ -16,7 +16,7 @@ Claude:
     2. question length (3-500 characters)
     3. per-key rate limit (rate_limit.py, default 5 questions a minute)
     4. daily spend cap (spend.py, default $2.00 a UTC day)
-    5. one question at a time per container (another arriving meanwhile gets 503 and Retry-After)
+    5. one question at a time per container (another arriving meanwhile gets 429 and Retry-After)
     6. the agent's own limits (10 model calls, $0.25), fixed here: a caller can't raise them
 plus the hard backstop outside this code: the deployment's key belongs to a dedicated Anthropic workspace
 with its own spend limit.
@@ -112,9 +112,12 @@ class ErrorResponse(BaseModel):
 ERROR_RESPONSES = {
     401: {"model": ErrorResponse, "description": "Missing or wrong X-API-Key (only when NONPROFIT_API_KEY is set)"},
     422: {"description": "The question is missing, shorter than 3 or longer than 500 characters"},
-    429: {"model": ErrorResponse, "description": "Rate limit or daily spend cap reached (see Retry-After)"},
+    429: {
+        "model": ErrorResponse,
+        "description": "Rate limit, daily spend cap, or busy with another question (see Retry-After)",
+    },
     502: {"model": ErrorResponse, "description": "The Claude API failed (see detail)"},
-    503: {"model": ErrorResponse, "description": "Busy with another question, or no Anthropic key configured"},
+    503: {"model": ErrorResponse, "description": "No Anthropic key configured on the server"},
 }
 
 
@@ -147,9 +150,9 @@ def ask(body: AskRequest):
             f"Today's spend cap (${spend.daily_cap():.2f}) is reached. Try again after midnight UTC.",
             headers={"Retry-After": str(spend.seconds_until_reset())},
         )
-    if not _one_at_a_time.acquire(blocking=False):
+    if not _one_at_a_time.acquire(blocking=False):  # 429, not 503: busy isn't a server error to alert on
         raise HTTPException(
-            503, "Busy answering another question. Try again shortly.", headers={"Retry-After": str(BUSY_RETRY_SECONDS)}
+            429, "Busy answering another question. Try again shortly.", headers={"Retry-After": str(BUSY_RETRY_SECONDS)}
         )
     request_id, started = uuid.uuid4().hex[:12], time.monotonic()
     try:
