@@ -143,3 +143,86 @@ jobs:
 
       - name: Audit dependencies
         run: bash security/audit.sh
+
+  # Build the API image and smoke-test it on every pull request, so a broken Dockerfile or a file
+  # missing from the image is caught before merging, not after deploying. Not pushed anywhere.
+  image:
+    name: nonprofit-agent-image
+    needs: changes
+    if: needs.changes.outputs.project == 'true' && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: nonprofit-agent
+          load: true
+          push: false
+          tags: nonprofit-agent-api:pr-${{ github.sha }}
+          build-args: GIT_SHA=${{ github.sha }}
+          cache-from: type=gha,scope=nonprofit-agent-api
+          cache-to: type=gha,scope=nonprofit-agent-api,mode=max
+
+      - name: Smoke test the image
+        run: bash nonprofit-agent/deploy/smoke_test.sh "nonprofit-agent-api:pr-${{ github.sha }}" "${{ github.sha }}"
+
+  # After a merge to main passes the checks: build the API image, smoke-test that exact image, then push
+  # it to GitHub Container Registry, tagged with the commit SHA (what gets deployed) and "latest".
+  publish:
+    name: nonprofit-agent-publish
+    needs: [lint, test, audit]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Compute lowercase image name
+        run: echo "IMAGE_NAME=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/nonprofit-agent-api" >> "$GITHUB_ENV"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Build into the runner's Docker first (load, don't push), so the exact image that will be deployed
+      # is smoke-tested before anything reaches the registry.
+      - name: Build image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: nonprofit-agent
+          load: true
+          push: false
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:latest
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          build-args: GIT_SHA=${{ github.sha }}
+          cache-from: type=gha,scope=nonprofit-agent-api
+          cache-to: type=gha,mode=max,scope=nonprofit-agent-api
+
+      - name: Smoke test the image
+        run: bash nonprofit-agent/deploy/smoke_test.sh "${{ env.IMAGE_NAME }}:${{ github.sha }}" "${{ github.sha }}"
+
+      # Push the image that was just tested, not a rebuild of it.
+      - name: Push image
+        run: |
+          docker push "${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          docker push "${{ env.IMAGE_NAME }}:latest"

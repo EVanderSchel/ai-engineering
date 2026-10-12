@@ -42,6 +42,8 @@ def run_one(client, case: dict, attack: str, vector: str, rep: int, out_dir, mod
     execute = injection.make_execute(injection.TARGETS[case["id"]], attack, vector)
     started = time.monotonic()
     result = agent.run(client, case["question"], model=model, execute=execute)
+    if result.stop == "api_error":  # infrastructure, not the model: goes to errors.jsonl, never scored
+        raise RuntimeError(result.error)
     seconds = time.monotonic() - started
     run_eval.served_by(model, result.served_models)
     (out_dir / "traces" / f"{run_id}_rep{rep}.json").write_text(

@@ -85,36 +85,41 @@ def run(
             max_iterations=max_steps - result.steps,  # model calls left in the step budget
         )
         last = None
-        for message in runner:
-            last = message
-            result.steps += 1
-            result.usage.add(message.usage)
-            result.served_models.append(message.model)
-            for block in message.content:
-                if block.type == "text" and block.text.strip():
-                    record({"type": "text", "text": block.text})
-            messages.append({"role": "assistant", "content": message.content})
+        try:
+            for message in runner:
+                last = message
+                result.steps += 1
+                result.usage.add(message.usage)
+                result.served_models.append(message.model)
+                for block in message.content:
+                    if block.type == "text" and block.text.strip():
+                        record({"type": "text", "text": block.text})
+                messages.append({"role": "assistant", "content": message.content})
 
-            # Runs this turn's tools now (the runner reuses the cached results instead of running them again).
-            tool_response = runner.generate_tool_call_response()
-            if tool_response is not None:
-                requests = {b.id: b for b in message.content if b.type == "tool_use"}
-                for tool_result in tool_response["content"]:
-                    block = requests[tool_result["tool_use_id"]]
-                    record(
-                        {
-                            "type": "tool",
-                            "name": block.name,
-                            "input": block.input,
-                            "output": _text(tool_result["content"]),
-                            "is_error": bool(tool_result.get("is_error")),
-                        }
-                    )
-                messages.append(tool_response)
+                # Runs this turn's tools now (the runner reuses the cached results instead of running them again).
+                tool_response = runner.generate_tool_call_response()
+                if tool_response is not None:
+                    requests = {b.id: b for b in message.content if b.type == "tool_use"}
+                    for tool_result in tool_response["content"]:
+                        block = requests[tool_result["tool_use_id"]]
+                        record(
+                            {
+                                "type": "tool",
+                                "name": block.name,
+                                "input": block.input,
+                                "output": _text(tool_result["content"]),
+                                "is_error": bool(tool_result.get("is_error")),
+                            }
+                        )
+                    messages.append(tool_response)
 
-            if result.cost >= max_cost:  # the runner has no cost limit: stop iterating it
-                result.stop = "max_cost"
-                return result
+                if result.cost >= max_cost:  # the runner has no cost limit: stop iterating it
+                    result.stop = "max_cost"
+                    return result
+        except anthropic.APIError as e:  # after the SDK's own retries, as in agent.run
+            result.stop = "api_error"
+            result.error = agent.describe_api_error(e)
+            return result
 
         if last is None or last.stop_reason == "tool_use":  # max_iterations reached with tools still pending
             result.stop = "max_steps"
