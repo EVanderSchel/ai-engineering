@@ -7,3 +7,5 @@ __pycache__/
 .env
 # Responses cached from public APIs (ProPublica, IRS): re-downloadable, so never committed.
 data/cache/
+# Eval transcripts: the same conversations are in each results.jsonl row; run_eval.py regenerates them.
+evals/runs/*/traces/

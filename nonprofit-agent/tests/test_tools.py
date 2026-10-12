@@ -121,13 +121,34 @@ def test_missing_year_lists_the_years_available():
 
 
 def test_a_year_filed_only_as_a_pdf_is_explained():
-    with pytest.raises(tools.ToolError, match="Tax year 2024 was filed, but only as a PDF image"):
+    with pytest.raises(tools.ToolError, match="Tax year 2024 was filed, but this data source has no extracted figures"):
         tools.get_financials(RED_CROSS, tax_year=2024)
 
 
 def test_a_year_never_filed_is_explained():
     with pytest.raises(tools.ToolError, match="No filing with financial data for tax year 1999"):
         tools.get_financials(RED_CROSS, tax_year=1999)
+
+
+def test_a_year_after_the_figures_but_covered_by_the_latest_return_is_filed():
+    """The fixture's latest return covers the period ending 2025-06, but 2025 isn't in either filing list:
+    the organization record is the only place it shows up."""
+    with pytest.raises(tools.ToolError, match="Tax year 2025 was filed, but this data source has no extracted"):
+        tools.get_financials(RED_CROSS, tax_year=2025)
+
+
+def test_a_year_after_the_latest_return_is_not_filed_yet():
+    with pytest.raises(tools.ToolError, match="No return for tax year 2026 has been filed yet: .* ending 2025-06"):
+        tools.get_financials(RED_CROSS, tax_year=2026)
+
+
+def test_newer_returns_than_the_figures_are_pointed_out():
+    org = tools.get_organization(RED_CROSS)
+    assert org["latest_return_period_end"] == "2025-06"
+    expected = "Returns through the period ending 2025-06 have been filed, but this data source has extracted"
+    for result in (org, tools.get_financials(RED_CROSS), tools.compute_ratios(RED_CROSS, 2023)):
+        assert result["note"].startswith(expected)
+        assert "only through tax year 2023" in result["note"]
 
 
 def test_fields_a_form_does_not_have_are_none_not_zero():
@@ -160,7 +181,7 @@ def test_change_between_any_two_years():
 
 
 def test_comparison_year_without_data_is_explained():
-    with pytest.raises(tools.ToolError, match="Tax year 2024 was filed, but only as a PDF image"):
+    with pytest.raises(tools.ToolError, match="Tax year 2024 was filed, but this data source has no extracted figures"):
         tools.compute_ratios(RED_CROSS, 2023, compare_with_year=2024)
 
 

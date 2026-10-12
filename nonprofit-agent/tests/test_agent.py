@@ -139,3 +139,46 @@ def test_cost_counts_cache_reads_and_writes_at_their_prices():
 
 def test_every_tool_spec_has_a_function():
     assert {spec["name"] for spec in agent.TOOL_SPECS} == set(agent.TOOL_FUNCTIONS)
+
+
+# --- Grounding guardrail -----------------------------------------------------------------------------
+
+LOOKUP = response("tool_use", tool_use("get_financials", {"ein": "1"}, "t1"))  # the fake tool returns revenue 100
+
+
+def test_a_grounded_answer_is_returned_without_a_check_round():
+    client = FakeClient(LOOKUP, response("end_turn", text("Revenue was $100.")))
+    result = agent.run(client, "q")
+    assert (result.answer, result.grounding_retries, result.ungrounded) == ("Revenue was $100.", 0, [])
+    assert len(client.requests) == 2
+
+
+def test_an_ungrounded_draft_is_sent_back_and_the_fixed_answer_returned():
+    client = FakeClient(
+        LOOKUP,
+        response("end_turn", text("Revenue was $999,999.")),  # a figure no tool returned
+        response("end_turn", text("Revenue was $100.")),
+    )
+    result = agent.run(client, "q")
+    assert (result.answer, result.grounding_retries, result.ungrounded) == ("Revenue was $100.", 1, [])
+    feedback = client.requests[2]["messages"][-1]
+    assert feedback["role"] == "user"
+    assert "$999,999" in feedback["content"]
+    assert client.requests[2]["messages"][-2]["role"] == "assistant"  # the draft stays in the conversation
+    assert [e["type"] for e in result.trajectory] == ["tool", "text", "guardrail", "text"]
+
+
+def test_a_draft_still_ungrounded_after_the_retry_is_returned_flagged():
+    client = FakeClient(LOOKUP, response("end_turn", text("Revenue was $999,999.")))  # repeats forever
+    result = agent.run(client, "q")
+    assert result.stop == "answered"
+    assert result.grounding_retries == agent.MAX_GROUNDING_RETRIES == 1
+    assert result.ungrounded == ["$999,999"]
+    assert len(client.requests) == 3  # lookup, draft, one retry: no loop
+
+
+def test_no_retry_when_the_step_budget_is_spent():
+    client = FakeClient(LOOKUP, response("end_turn", text("Revenue was $999,999.")))
+    result = agent.run(client, "q", max_steps=2)
+    assert (result.grounding_retries, result.ungrounded) == (0, ["$999,999"])
+    assert len(client.requests) == 2
