@@ -153,3 +153,25 @@ def test_both_loops_give_the_same_trajectory_and_answer():
         loop_result.steps,
         loop_result.grounding_retries,
     )
+
+
+def test_an_api_error_stops_the_runner_like_the_hand_built_loop():
+    class FailingAPI(FakeAPI):
+        def handle(self, request):
+            self.requests.append(json.loads(request.content))
+            if len(self.requests) == 1:
+                return httpx2.Response(200, json=LOOKUP)
+            return httpx2.Response(
+                400,
+                json={
+                    "type": "error",
+                    "error": {
+                        "type": "invalid_request_error",
+                        "message": "Your credit balance is too low to access the Anthropic API.",
+                    },
+                },
+            )
+
+    result = runner_agent.run(FailingAPI(LOOKUP).client, "q")
+    assert result.stop == "api_error" and "credit balance" in result.error
+    assert [e["type"] for e in result.trajectory] == ["text", "tool"]

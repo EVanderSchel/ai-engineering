@@ -1,0 +1,15 @@
+# Only src/ and the dependency files go into the image. Never data/ (cached and saved runs) or evals/
+# (questions, the frozen API snapshot, eval results): none of it is needed to serve questions.
+data/
+evals/
+tests/
+security/
+deploy/
+.venv/
+venv*/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.env
+*.md

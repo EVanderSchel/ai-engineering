@@ -1,0 +1,50 @@
+# The nonprofit research agent's API (src/api.py) as a container image. Same build pattern as the
+# irs-990-extraction and rag projects' Dockerfiles: just the code and its locked dependencies.
+
+# --- Stage 1: install the locked dependencies into a virtualenv ---
+FROM python:3.14-slim@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d AS builder
+
+# uv installs exactly what uv.lock specifies, verifying every package's checksum. Pinned to a version
+# so the build doesn't change when uv releases.
+COPY --from=ghcr.io/astral-sh/uv:0.12.21@sha256:a7aed3216253ee804de3e2d8afa5073baa1a177335345d43845cd4165e43b711 /uv /bin/uv
+
+# UV_PROJECT_ENVIRONMENT: install into /opt/venv, which stage 2 copies.
+# UV_PYTHON_DOWNLOADS=never: use this image's Python, never download another.
+# UV_COMPILE_BYTECODE=1: pre-compile .py files now, so the container doesn't on every cold start.
+# UV_LINK_MODE=copy: real file copies (the default hard links don't survive the stage-to-stage copy).
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
+
+WORKDIR /build
+COPY pyproject.toml uv.lock ./
+# --frozen: install uv.lock as-is and fail if it's out of date. --no-dev: leave out pytest and ruff.
+RUN uv sync --frozen --no-dev
+
+# --- Stage 2: runtime image with only the finished virtualenv and the app ---
+# Same Python image as stage 1: the virtualenv points at this exact interpreter.
+FROM python:3.14-slim@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d
+
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH=/opt/venv/bin:$PATH \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+RUN useradd --create-home appuser \
+    && mkdir -p /app/data/cache \
+    && chown -R appuser /app/data
+USER appuser
+
+# Only the code. Nothing from data/ or evals/ goes in (see .dockerignore): the image starts with an empty,
+# writable data/cache/ for ProPublica responses, which fills as questions are asked and is lost on restart.
+COPY src/ ./src/
+
+# The commit this image was built from, reported by /health so a deploy can confirm which version is
+# live. Last on purpose: it changes on every commit, and everything after it would be rebuilt too.
+ARG GIT_SHA=dev
+ENV NONPROFIT_VERSION=$GIT_SHA
+
+EXPOSE 8000
+
+CMD ["uvicorn", "api:app", "--app-dir", "src", "--host", "0.0.0.0", "--port", "8000"]

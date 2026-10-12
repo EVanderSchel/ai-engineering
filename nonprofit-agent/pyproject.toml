@@ -7,8 +7,10 @@ requires-python = ">=3.14,<3.15"
 # Added by the steps that need them (the tools in step 1, the agent loop in step 2, ...).
 dependencies = [
     "anthropic>=1.12.1",
+    "fastapi>=0.143.0",
     "mcp>=2.3.0",
     "requests>=2.34.2",
+    "uvicorn[standard]>=0.54.0",
 ]
 
 [dependency-groups]

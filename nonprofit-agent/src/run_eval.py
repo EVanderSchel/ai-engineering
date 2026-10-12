@@ -87,6 +87,8 @@ def served_by(requested: str, served: list[str | None]) -> None:
 def run_case(client, case: dict, rep: int, variant_dir, model: str, run=agent.run) -> dict:
     started = time.monotonic()
     result = run(client, case["question"], model=model)
+    if result.stop == "api_error":  # infrastructure, not the model: goes to errors.jsonl, never scored
+        raise RuntimeError(result.error)
     seconds = time.monotonic() - started
     served_by(model, result.served_models)
     traces = variant_dir / "traces"

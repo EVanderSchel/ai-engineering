@@ -91,3 +91,12 @@ def test_served_model_check():
     run_eval.served_by("claude-sonnet-5", ["claude-sonnet-5", "claude-sonnet-5-20260101"])
     with pytest.raises(RuntimeError, match="served by"):
         run_eval.served_by("claude-sonnet-5", ["claude-sonnet-5", "claude-haiku-4-5"])
+
+
+def test_an_api_error_is_an_infrastructure_failure_not_a_wrong_answer(tmp_path):
+    def failing_run(client, question, model):
+        return run_eval.agent.Result(question=question, model=model, stop="api_error", error="credit balance too low")
+
+    (tmp_path / "traces").mkdir()
+    with pytest.raises(RuntimeError, match="credit balance"):  # the runner logs it to errors.jsonl, unscored
+        run_eval.run_case(None, CASES[0], 0, tmp_path, "claude-sonnet-5", failing_run)

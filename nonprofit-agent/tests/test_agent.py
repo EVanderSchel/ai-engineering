@@ -208,3 +208,59 @@ def test_run_tool_marks_and_call_tool_does_not(monkeypatch):
 def test_error_messages_are_not_marked():
     output, is_error = agent.run_tool("get_financials", {"ein": "1", "tax_year": 1999})
     assert is_error and output == "No financial data for tax year 1999."
+
+
+# --- API failures and non-answers (step 7) -----------------------------------------------------------
+
+import anthropic  # noqa: E402
+import httpx2  # noqa: E402
+
+REQUEST = httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
+
+
+def api_error(cls, status, message):
+    return cls(message, response=httpx2.Response(status, request=REQUEST), body=None)
+
+
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (api_error(anthropic.RateLimitError, 429, "rate limited"), "rate limit"),
+        (api_error(anthropic.OverloadedError, 529, "overloaded"), "overloaded"),
+        (api_error(anthropic.BadRequestError, 400, "Your credit balance is too low to access the API."), "credit"),
+        (api_error(anthropic.AuthenticationError, 401, "invalid x-api-key"), "API key"),
+        (anthropic.APIConnectionError(request=REQUEST), "Couldn't reach"),
+    ],
+)
+def test_api_errors_are_explained(error, expected):
+    assert expected in agent.describe_api_error(error)
+
+
+def test_an_api_error_stops_the_run_and_keeps_what_was_found():
+    class Failing:
+        def __init__(self):
+            self.calls = 0
+            self.messages = SimpleNamespace(create=self.create)
+
+        def create(self, **request):
+            self.calls += 1
+            if self.calls == 1:
+                return response("tool_use", tool_use("get_financials", {"ein": "1"}, "t1"))
+            raise api_error(anthropic.BadRequestError, 400, "Your credit balance is too low to access the API.")
+
+    result = agent.run(Failing(), "q")
+    assert (result.stop, result.answer) == ("api_error", None)
+    assert "credit balance" in result.error
+    assert [e["type"] for e in result.trajectory] == ["tool"]  # the work before the failure is kept
+    assert "credit balance" in agent.explain_stop(result) and "1 tool calls" in agent.explain_stop(result)
+
+
+@pytest.mark.parametrize(
+    ("stop", "phrase"), [("max_steps", "limit of"), ("max_cost", "cost limit"), ("refusal", "declined")]
+)
+def test_non_answers_are_explained(stop, phrase):
+    assert phrase in agent.explain_stop(agent.Result(question="q", model=agent.MODEL, stop=stop))
+
+
+def test_an_answer_needs_no_explanation():
+    assert agent.explain_stop(agent.Result(question="q", model=agent.MODEL, stop="answered")) is None
