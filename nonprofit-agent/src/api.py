@@ -33,6 +33,7 @@ import uuid
 
 import anthropic
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 import agent
@@ -40,7 +41,16 @@ import rate_limit
 import spend
 
 logger = logging.getLogger("uvicorn.error")
-app = FastAPI(title="Nonprofit research agent API")
+
+
+class UTF8JSONResponse(JSONResponse):
+    """JSON that names its encoding. JSON is always UTF-8, but Windows PowerShell 5.1's Invoke-RestMethod
+    assumes ISO-8859-1 when the Content-Type doesn't say, and shows an em dash in an answer as "â"."""
+
+    media_type = "application/json; charset=utf-8"
+
+
+app = FastAPI(title="Nonprofit research agent API", default_response_class=UTF8JSONResponse)
 
 # A question takes 5-60 seconds in total; one model call over two minutes means something is wrong.
 CLAUDE_TIMEOUT_SECONDS = 120.0

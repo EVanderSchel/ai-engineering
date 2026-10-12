@@ -6,7 +6,7 @@ Hands-on projects built while upskilling toward an AI Engineer role. Each folder
 |---|---|---|
 | [rag](rag/) | A retrieval-augmented generation service built from scratch and run in production (released as `rag-v1.0.0`): hybrid search with reranking, a streaming FastAPI API with API-key auth and rate limiting, retrieval and LLM-as-judge evals that gate every pull request plus a weekly generation eval, versioned prompts, per-request cost/latency logging and tracing, health probes and alerts, and approval-gated deploys to Azure | Python 3.14, uv, ChromaDB, Claude API, FastAPI, Docker, GitHub Actions, Azure Container Apps, Key Vault, Langfuse |
 | [irs-990-extraction](irs-990-extraction/) | Structured data from charities' IRS Form 990 filings (page images only) with Claude's vision input, released as `irs-990-extraction-v1.0.0`: scored field by field against the IRS's own e-file XML (99.2% on held-out filings), multi-page table extraction, simulated scans, review rules and a review queue, batch and parallel processing, a model comparison, and an authenticated API deployed to Azure | Python 3.14, uv, Claude API (vision, structured outputs, Message Batches), Pydantic, FastAPI, Docker, GitHub Actions, Azure Container Apps |
-| [nonprofit-agent](nonprofit-agent/) | *In progress.* A tool-using agent that researches US charities from public IRS and ProPublica data: an agent loop built by hand and then with a framework, tools served over MCP, trajectory evals, and prompt-injection testing | Python 3.14, uv, Claude API (tool use), MCP, GitHub Actions |
+| [nonprofit-agent](nonprofit-agent/) | A tool-using agent that researches US charities from public IRS data, released as `nonprofit-agent-v1.0.0`: an agent loop built by hand and compared with the SDK's Tool Runner, tools served over MCP, trajectory evals with a validated LLM judge (98.5% correct, 100% grounded), a code-level grounding guardrail, prompt-injection testing and defenses (0 of 60 attacks followed), and an authenticated, spend-capped API deployed to Azure | Python 3.14, uv, Claude API (tool use), MCP, FastAPI, Docker, GitHub Actions, Azure Container Apps, Key Vault |
 | [ci-cd-workflow](ci-cd-workflow/) | A complete CI/CD pipeline built one stage at a time around a small FastAPI service: tests, lint gates, Docker, container registry, staged deployments with approval, and versioned releases | GitHub Actions, Docker, GHCR, Render, pytest, ruff |
 | [skills-training](skills-training/) | Guided notebooks learning deep-learning frameworks side by side, from tensors and autograd to an MNIST classifier | TensorFlow, Keras, PyTorch, Jupyter |
 
@@ -24,6 +24,14 @@ Hands-on projects built while upskilling toward an AI Engineer role. Each folder
 - **Uncertainty is measured, not asked for.** The model's own "I'm unsure" flags caught 9% of its errors on clean pages; the form's arithmetic, how long the model thought, and disagreement between two runs caught 83-85% on unseen filings, reviewing 4-11% of fields.
 - **Cost and speed were engineered.** Prompt caching cut cost 35%; batches about 40% more (not 50%: measured); 8 parallel workers took 21 filings from 3.5 minutes to 39 seconds. Claude Haiku 4.5 cost about the same as batched Sonnet 5 but made nine times as many errors.
 
+## Highlights from `nonprofit-agent`
+
+- **Behavior is measured, not just answers.** A 22-question eval (approved question by question) scores every run on correctness, by code for figures and by a Claude Opus 5 judge for written criteria, and on whether every figure is traceable to a tool result. The judge was validated before use: answers that must fail and must pass, plus a blind human sample (15 of 15 agreed). Expected answers are recomputed from a frozen copy of the data, so they can't drift.
+- **Prompt rules weren't enough, so checks moved into code.** Rules fixed what they targeted, but the model kept computing or recalling figures elsewhere, once inventing a revenue figure that the judge passed. A grounding guardrail now sends back any draft whose figures no tool returned: grounded answers went from 92.4% to 100%.
+- **Prompt injection was tested, not assumed away.** Planted instructions were ignored from the start, but a plausible false footnote got through a third of the time, passed on as "ProPublica's data indicates...", while accuracy metrics stayed at 100%. Marking outside text as unverified and a rule on how to report it took attacks followed from 7% to 0%, with no false alarms on normal data.
+- **A framework compared on evidence.** The same agent on the SDK's Tool Runner behaved identically on the eval (same calls and cost within noise) but needed more code, because the cost limit, the guardrail and the trajectory had to be built around it.
+- **Shipped with spending controls.** The public API checks its key, question length, a rate limit, a daily spend cap that can't be exceeded, and one question at a time, all before Claude is called, with a dedicated Anthropic workspace's spend limit as the backstop. The tools are also served over MCP and were used from Claude Code.
+
 ## Layout
 
 - Each project lives in its own top-level folder, with its own dependencies.
@@ -36,7 +44,7 @@ Hands-on projects built while upskilling toward an AI Engineer role. Each folder
 
 - **rag:** `rag-test`, `rag-eval-gate`, `rag-lint` (ruff), `rag-audit` (known vulnerabilities in locked dependencies), and `rag-image`, which builds the Docker image and smoke-tests it (offline search, startup, auth); `rag-publish` repeats that test on the exact image before pushing it.
 - **irs-990-extraction:** `irs-990-extraction-test`, `-lint`, `-audit`, and `-image`, which builds the API image and smoke-tests it (prompts, non-root user, no data, startup, auth); `-publish` repeats that test on the exact image before pushing it.
-- **nonprofit-agent:** `nonprofit-agent-test`, `-lint`, `-audit`.
+- **nonprofit-agent:** `nonprofit-agent-test`, `-lint`, `-audit`, and `-image`, which builds the API image and smoke-tests it (non-root user, no eval data, startup, auth, validation); `-publish` repeats that test on the exact image before pushing it.
 - **ci-cd-workflow:** `ci-cd-workflow-lint`, `-test`, `-build`.
 - Plus each project's `-changes` job, and **CodeQL**: a pull request that introduces a new high or critical security finding can't merge.
 
@@ -52,7 +60,7 @@ Deployments to production environments additionally wait for manual approval.
 
 1. ~~**Productionize RAG**~~: done (`rag-v1.0.0`, see above).
 2. ~~**Document extraction**~~: done (`irs-990-extraction-v1.0.0`, see above).
-3. **Tool-using agent** (in progress, [`nonprofit-agent`](nonprofit-agent/)): an agent loop built by hand and then with a framework, tools exposed over MCP, trajectory evals, and prompt-injection testing.
+3. ~~**Tool-using agent**~~: done (`nonprofit-agent-v1.0.0`, see above).
 4. **Fine-tune vs. prompt**: LoRA fine-tuning of a small open model, compared with a prompted frontier model and a classic baseline on accuracy, latency, and cost.
 
 ## License
