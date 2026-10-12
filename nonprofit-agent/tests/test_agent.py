@@ -182,3 +182,29 @@ def test_no_retry_when_the_step_budget_is_spent():
     result = agent.run(client, "q", max_steps=2)
     assert (result.grounding_retries, result.ungrounded) == (0, ["$999,999"])
     assert len(client.requests) == 2
+
+
+# --- Marking free text (step 6) ----------------------------------------------------------------------
+
+
+def test_free_text_fields_are_marked_wherever_they_are():
+    output = json.dumps(
+        {"name": "Org", "total_revenue": 100, "organizations": [{"name": "A", "city": "Ames"}], "mission": "We help."}
+    )
+    assert json.loads(agent.mark_free_text(output)) == {
+        "name": {"unverified_text": "Org"},
+        "total_revenue": 100,  # figures untouched
+        "organizations": [{"name": {"unverified_text": "A"}, "city": "Ames"}],
+        "mission": {"unverified_text": "We help."},
+    }
+
+
+def test_run_tool_marks_and_call_tool_does_not(monkeypatch):
+    monkeypatch.setitem(agent.TOOL_FUNCTIONS, "get_organization", lambda ein: {"ein": ein, "name": "Org"})
+    assert json.loads(agent.run_tool("get_organization", {"ein": "1"})[0])["name"] == {"unverified_text": "Org"}
+    assert json.loads(agent.call_tool("get_organization", {"ein": "1"})[0])["name"] == "Org"
+
+
+def test_error_messages_are_not_marked():
+    output, is_error = agent.run_tool("get_financials", {"ein": "1", "tax_year": 1999})
+    assert is_error and output == "No financial data for tax year 1999."
