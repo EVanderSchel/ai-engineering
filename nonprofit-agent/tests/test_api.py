@@ -96,7 +96,7 @@ def test_busy_while_another_question_runs(http):
         response = ask(http)
     finally:
         api._one_at_a_time.release()
-    assert response.status_code == 503 and response.headers["Retry-After"] == str(api.BUSY_RETRY_SECONDS)
+    assert response.status_code == 429 and response.headers["Retry-After"] == str(api.BUSY_RETRY_SECONDS)
 
 
 def test_a_claude_api_failure_is_a_502_with_the_reason(http, monkeypatch):
