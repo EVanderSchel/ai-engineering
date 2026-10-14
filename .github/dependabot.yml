@@ -32,6 +32,14 @@ updates:
       nonprofit-agent-python:
         update-types: [minor, patch]
 
+  - package-ecosystem: uv
+    directory: /ntee-classification
+    schedule:
+      interval: weekly
+    groups:
+      ntee-classification-python:
+        update-types: [minor, patch]
+
   - package-ecosystem: pip
     directory: /ci-cd-workflow
     schedule:

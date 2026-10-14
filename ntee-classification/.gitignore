@@ -1,0 +1,13 @@
+.venv/
+venv*/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.env
+# Downloaded IRS files (master file, index, XML batch ZIPs): large and re-downloadable, so never committed.
+data/raw/
+# Model weights and adapters: they live in Colab / Google Drive, not in the repo.
+models/
+*.safetensors
