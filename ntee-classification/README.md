@@ -88,6 +88,39 @@ The grid showed character features adding 1-3 points and rare-group weighting ad
 - **Boilerplate instead of a mission.** "THE CORPORATION IS ORGANIZED AND SHALL BE OPERATED EXCLUSIVELY FOR CHARITABLE, EDUCATIONAL, SCIENTIFIC..." carries no information about the group (here Arts); no model can get these.
 - **Questionable labels.** A fund for soldiers' families and a stamp-collecting society are both coded B99 (Education).
 
+## Prompted Claude (step 3)
+
+[`src/prompted.py`](src/prompted.py) sends each mission to Claude with a system prompt from [`src/prompts.py`](src/prompts.py) and forces the answer into a schema of three ranked guesses, each one of the 25 group letters (structured outputs: no malformed replies, no invented groups). Thinking is off: this is quick labeling. The system prompt is cached. Answers are saved per mission as they arrive, so interrupted runs resume and pilot answers are reused.
+
+Three prompts, each adding to the last: **names** (the task and group names), **guided** (plus a description of each group and the NTEE conventions from steps 1-2: classify by activity, not motivation; support organizations take their cause's group), and **few-shot** (plus 4 labeled training missions per group). Two models: **Claude Haiku 4.5** and **Claude Sonnet 5.5**.
+
+**Pilot** (the same 300 dev missions for every approach, $2.49):
+
+| | Accuracy | Top-3 | Macro-F1 | Cost per 1,000 |
+|---|---|---|---|---|
+| Baseline (TF-IDF) | 54.3% | 77.3% | 0.445 | ~$0 |
+| Haiku: names / guided / few-shot | 53.3% / 58.7% / 59.0% | 80.0% / 78.7% / 80.7% | 0.444 / 0.527 / 0.525 | $1.08 / $1.76 / $0.83 |
+| Sonnet: names / guided / few-shot | 61.7% / 63.0% / 63.0% | 85.0% / 83.3% / 82.7% | 0.533 / 0.543 / 0.542 | $0.71 / $0.99 / $2.92 |
+
+**Full dev split** (1,813 missions) for the best value per model:
+
+| | Accuracy | Top-3 | Macro-F1 | Broad | Cost per 1,000 (batch) | Median latency |
+|---|---|---|---|---|---|---|
+| Baseline | 53.7% | 75.4% | 0.461 | 63.9% | ~$0 | 1.8 ms |
+| Claude Haiku 4.5, few-shot | 58.7% | 80.3% | 0.529 | 69.8% | $0.72 ($0.36) | 984 ms |
+| **Claude Sonnet 5.5, guided** | **62.5%** | **83.1%** | **0.558** | **70.8%** | $0.90 ($0.45) | 1,149 ms |
+
+What the runs showed:
+
+- **Claude beats the baseline by 5-9 points, about 500 times slower.** Still far below the 75-90% ceiling for exact groups; top-3 (83%) is much closer, consistent with the ambiguity found in step 1: the IRS group is usually among Claude's guesses, just not first.
+- **Its gains are on small groups with a distinctive meaning**, where the baseline saw too few training examples: R Civil Rights (F1 0.11 to 0.42), U Science and Technology (0.24 to 0.47), H Medical Research (0.39 to 0.58), C Environment (0.66 to 0.84). No gain on the fuzzy groups whose definitions overlap everything (S Community Improvement 0.49, T Philanthropy 0.30 to 0.32, W Public Benefit 0.31 to 0.34). Most remaining errors are neighboring service categories: health vs human services, human services vs community, education and youth.
+- **Prompting matters more for the smaller model**: descriptions and conventions lifted Haiku 5.4 points and Sonnet 1.3. Examples added nothing beyond the descriptions for either.
+- **The conventions only partly worked**: on support organizations Sonnet went from 12 to 14 of 24 right (baseline 10). Telling a model a rule isn't the same as recognizing when it applies.
+- **Caching thresholds decided the costs.** Sonnet 5.5 caches prompts from 512 tokens, Haiku 4.5 from 4,096, and Sonnet's tokenizer counts about 50% more tokens for the same text. So the pricier model was cheaper to run with a cached prompt, and giving Haiku's few-shot prompt 4 examples per group instead of 3 pushed it over its minimum, cutting its cost from about $3.84 to $0.72 per 1,000. One estimate missed that the structured-output schema adds tokens to every request (enough to make a 496-token prompt cache): measure, don't assume.
+- No refusals and no fallbacks in 3,926 requests.
+
+Step 3 cost $4.89 in API calls (pilots plus the two full dev runs). Token counting for estimates is free.
+
 ## Setup
 
 ```powershell
