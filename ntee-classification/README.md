@@ -29,6 +29,42 @@ Plain language: a frontier model like Claude can classify text well with no trai
 | 6 | Error analysis: label noise, confusable groups, short missions | PC |
 | 7 | Write-up and release (`ntee-classification-v1.0.0`) | |
 
+## Dataset (step 1)
+
+[`data/dataset.csv`](data/dataset.csv): **12,078 mission statements** labeled with their NTEE major group, built by [`src/build_dataset.py`](src/build_dataset.py) from public IRS data. Columns: `ein`, `form` (990 or 990EZ), `tax_period`, `mission`, `ntee_code` (full code, e.g. B25), `group` (its first letter), `broad` (the broad category), `split`.
+
+**Sources.** Labels: the IRS Exempt Organizations Business Master File (1,399,764 organizations with an NTEE code, streamed; only EIN and code kept). Text: one monthly e-file XML batch (`2025_TEOS_XML_06A`): Form 990 Part I line 1 (Part III as fallback) and Form 990-EZ's primary exempt purpose. The ZIP is downloaded, read and deleted.
+
+**How 36,224 returns became 12,078 examples** (full counts in [`data/stats.json`](data/stats.json)):
+
+| Stage | Returns |
+|---|---|
+| Form 990/990-EZ returns with a mission | 36,224 |
+| No NTEE code in the master file | -9,744 |
+| Too short (under 15 characters) or a placeholder ("N/A", "SEE SCHEDULE O") | -939 |
+| Group Z, "Unknown, Unclassified" (not a predictable category) | -178 |
+| Same organization twice (latest return kept) | -758 |
+| Same mission text, same group (collapsed) | -247 |
+| Same mission text, **different groups** (all copies dropped) | -429 |
+| Unique, usable pool | 23,929 |
+| Sampled in the natural mix, topped up to 100 per group where possible | **12,078**: 8,452 train / 1,813 dev / 1,813 test |
+
+The split is stratified by group with a fixed seed, and no organization or mission text appears twice, so nothing in test was seen in training. The test split is held out until each approach's final score.
+
+**What it looks like.** 25 groups (Z excluded). Largest: P Human Services (1,634), B Education (1,614), A Arts (1,253), N Recreation and Sports (1,065), X Religion (820). Smallest: V Social Science has only 41 (all there were); H and U exactly 100. Religion is underrepresented relative to how many religious organizations exist, because churches don't have to file a Form 990. Missions are short: median 130 characters, 10% under 36. 63% come from Form 990, 37% from the 990-EZ.
+
+**How good are the labels?** The user graded 50 random training examples from the mission text alone ([`data/label_check.md`](data/label_check.md)):
+
+| Verdict | Share |
+|---|---|
+| Agree with the IRS group | 74% (37) |
+| Unsure: several groups fit ("could be B or K also") | 20% (10) |
+| Disagree | 6% (3) |
+
+Clear errors are rare and mostly missions too short to tell ("RESIDENT SERVICES" coded as recreation). The bigger issue is **ambiguity**: an NTEE code is one label, but many organizations do several things. So exact-group accuracy has a realistic ceiling of roughly **75-90%**, not 100%, and results are also reported as top-3 accuracy and broad-category accuracy.
+
+Two disagreements are **NTEE conventions**, not mistakes: a Christ-centered school is coded B (Education), because organizations are classified by primary activity, not motivation; and a school-athletics booster club is coded with the schools (B), not sports (N). Models trained on the data can learn such conventions; a prompted model has to be told them. That's a hypothesis for the comparison in step 5.
+
 ## Setup
 
 ```powershell
