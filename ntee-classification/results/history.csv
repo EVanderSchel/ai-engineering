@@ -1,0 +1,2 @@
+time,approach,split,n,accuracy,top3,macro_f1,broad_accuracy,latency_ms,cost_per_1k_usd,notes
+2026-10-14T11:28:04,baseline,dev,1813,0.5367,0.754,0.461,0.6393,1.802,0.0,word+char C=1.0 weight=balanced

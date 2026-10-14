@@ -65,6 +65,29 @@ Clear errors are rare and mostly missions too short to tell ("RESIDENT SERVICES"
 
 Two disagreements are **NTEE conventions**, not mistakes: a Christ-centered school is coded B (Education), because organizations are classified by primary activity, not motivation; and a school-athletics booster club is coded with the schools (B), not sports (N). Models trained on the data can learn such conventions; a prompted model has to be told them. That's a hypothesis for the comparison in step 5.
 
+## Classic baseline and the eval harness (step 2)
+
+**The harness** ([`src/evaluate.py`](src/evaluate.py)) scores every approach the same way. Each approach gives a ranked list of groups per mission; the harness reports **accuracy** (exact group), **top-3**, **macro-F1** (every group counts equally, so ignoring rare groups shows), **broad-category accuracy**, per-group precision/recall/F1, the most common confusions, **latency** for one prediction and **cost per 1,000 predictions**. Each run is saved with every prediction in `results/<approach>_<split>.json` and summarized in `results/history.csv`. [`src/data.py`](src/data.py) refuses to load the test split without `final=True`.
+
+**The baseline** ([`src/baseline.py`](src/baseline.py)): TF-IDF features (word unigrams and bigrams, plus character 3-5-grams for typos and all-caps text) into a logistic regression, settings chosen on dev from a 12-way grid.
+
+| Dev split (1,813 missions) | Result |
+|---|---|
+| Accuracy | **53.7%** |
+| Top-3 | 75.4% |
+| Macro-F1 | 0.461 |
+| Broad category | 63.9% |
+| Latency / cost | 1.8 ms per mission on a laptop CPU / ~$0 |
+| Training | 18 seconds, 60,221 features |
+
+The grid showed character features adding 1-3 points and rare-group weighting adding 0.04-0.10 macro-F1 at no accuracy cost. Weakest groups: V Social Science (6 dev examples, F1 0), R Civil Rights (0.11), U Science and Technology (0.24). The dev score is slightly optimistic because settings were chosen on dev; the test split is scored once, at the end.
+
+**Where it fails**, the starting point for step 6:
+
+- **Support organizations.** 7.3% of missions carry a "single organization support / fundraising" code (x11, x12), which NTEE files under the cause supported; the baseline often calls them T (Philanthropy). Missions mentioning raising funds or support score 47.8%.
+- **Boilerplate instead of a mission.** "THE CORPORATION IS ORGANIZED AND SHALL BE OPERATED EXCLUSIVELY FOR CHARITABLE, EDUCATIONAL, SCIENTIFIC..." carries no information about the group (here Arts); no model can get these.
+- **Questionable labels.** A fund for soldiers' families and a stamp-collecting society are both coded B99 (Education).
+
 ## Setup
 
 ```powershell
