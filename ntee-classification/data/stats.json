@@ -1,0 +1,185 @@
+{
+ "funnel": {
+  "returns_with_mission": 36224,
+  "dropped_no_ntee_code": 9744,
+  "dropped_short_or_placeholder": 939,
+  "dropped_unknown_group_z": 178,
+  "labeled_and_clean": 25363,
+  "one_per_organization": 24605,
+  "dropped_identical_duplicates": 247,
+  "dropped_conflicting_duplicates": 429,
+  "unique": 23929
+ },
+ "rows": 12078,
+ "per_split": {
+  "dev": 1813,
+  "test": 1813,
+  "train": 8452
+ },
+ "per_group": {
+  "A": {
+   "dev": 188,
+   "test": 188,
+   "train": 877
+  },
+  "B": {
+   "dev": 242,
+   "test": 242,
+   "train": 1130
+  },
+  "C": {
+   "dev": 47,
+   "test": 47,
+   "train": 219
+  },
+  "D": {
+   "dev": 67,
+   "test": 67,
+   "train": 311
+  },
+  "E": {
+   "dev": 78,
+   "test": 78,
+   "train": 366
+  },
+  "F": {
+   "dev": 42,
+   "test": 42,
+   "train": 197
+  },
+  "G": {
+   "dev": 27,
+   "test": 27,
+   "train": 129
+  },
+  "H": {
+   "dev": 15,
+   "test": 15,
+   "train": 70
+  },
+  "I": {
+   "dev": 27,
+   "test": 27,
+   "train": 128
+  },
+  "J": {
+   "dev": 23,
+   "test": 23,
+   "train": 105
+  },
+  "K": {
+   "dev": 36,
+   "test": 36,
+   "train": 167
+  },
+  "L": {
+   "dev": 56,
+   "test": 56,
+   "train": 263
+  },
+  "M": {
+   "dev": 43,
+   "test": 43,
+   "train": 201
+  },
+  "N": {
+   "dev": 160,
+   "test": 160,
+   "train": 745
+  },
+  "O": {
+   "dev": 61,
+   "test": 61,
+   "train": 283
+  },
+  "P": {
+   "dev": 245,
+   "test": 245,
+   "train": 1144
+  },
+  "Q": {
+   "dev": 44,
+   "test": 44,
+   "train": 202
+  },
+  "R": {
+   "dev": 18,
+   "test": 18,
+   "train": 83
+  },
+  "S": {
+   "dev": 119,
+   "test": 119,
+   "train": 553
+  },
+  "T": {
+   "dev": 75,
+   "test": 75,
+   "train": 349
+  },
+  "U": {
+   "dev": 15,
+   "test": 15,
+   "train": 70
+  },
+  "V": {
+   "dev": 6,
+   "test": 6,
+   "train": 29
+  },
+  "W": {
+   "dev": 35,
+   "test": 35,
+   "train": 161
+  },
+  "X": {
+   "dev": 123,
+   "test": 123,
+   "train": 574
+  },
+  "Y": {
+   "dev": 21,
+   "test": 21,
+   "train": 96
+  }
+ },
+ "available_per_group": {
+  "A": 2498,
+  "B": 3219,
+  "C": 625,
+  "D": 888,
+  "E": 1040,
+  "F": 561,
+  "G": 364,
+  "H": 174,
+  "I": 362,
+  "J": 301,
+  "K": 477,
+  "L": 748,
+  "M": 572,
+  "N": 2124,
+  "O": 807,
+  "P": 3258,
+  "Q": 578,
+  "R": 238,
+  "S": 1577,
+  "T": 995,
+  "U": 111,
+  "V": 41,
+  "W": 460,
+  "X": 1636,
+  "Y": 275
+ },
+ "groups_under_min": [
+  "V"
+ ],
+ "mission_chars": {
+  "median": 130.0,
+  "p10": 36,
+  "p90": 358
+ },
+ "forms": {
+  "990": 7555,
+  "990EZ": 4523
+ }
+}
