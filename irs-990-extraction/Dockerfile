@@ -2,7 +2,7 @@
 # project's Dockerfile; this image is simpler: no models or index, just the code and the prompts.
 
 # --- Stage 1: install the locked dependencies into a virtualenv ---
-FROM python:3.14-slim@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d AS builder
+FROM python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 AS builder
 
 # uv installs exactly what uv.lock specifies, verifying every package's checksum. Pinned to a version
 # so the build doesn't change when uv releases.
@@ -24,7 +24,7 @@ RUN uv sync --frozen --no-dev
 
 # --- Stage 2: runtime image with only the finished virtualenv and the app ---
 # Same Python image as stage 1: the virtualenv points at this exact interpreter.
-FROM python:3.14-slim@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d
+FROM python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
 
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH=/opt/venv/bin:$PATH \
