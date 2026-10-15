@@ -28,6 +28,8 @@ package = false
 [tool.ruff]
 line-length = 120
 target-version = "py314"
+# The notebook is generated from notebooks/make_finetune_notebook.py (linted) and checked by tests/test_finetuned.py.
+extend-exclude = ["notebooks/*.ipynb"]
 
 [tool.ruff.lint]
 # Same rules as the other projects: E/W style, F real bugs, I import order, B likely bugs, UP modern syntax.
@@ -36,3 +38,5 @@ select = ["E", "W", "F", "I", "B", "UP"]
 [tool.ruff.lint.per-file-ignores]
 # Prompt text: one group description per line reads better than wrapped strings.
 "src/prompts.py" = ["E501"]
+# The notebook cells' code, as text: Colab style, one long line where it reads better.
+"notebooks/make_finetune_notebook.py" = ["E501"]
