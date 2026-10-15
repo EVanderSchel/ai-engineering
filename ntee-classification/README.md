@@ -198,6 +198,33 @@ The small model answers when its top probability is at least a threshold; other 
 
 **Step 5's answer:** fine-tuning pays off from a few thousand labels; prompting wins with none; and here the best design uses both, a cheap fine-tuned model first and Claude as the fallback for what it's unsure of.
 
+## Error analysis (step 6)
+
+[`src/errors.py`](src/errors.py) reads the five final approaches' dev predictions (no model calls) and asks whether the remaining errors come from the models, the taxonomy or the labels. Full tables: [`results/errors_dev.md`](results/errors_dev.md).
+
+![How many approaches are right per mission, and accuracy by mission length](results/errors_dev.png)
+
+**The approaches fail on the same missions.** All five are right on 39.0% of dev missions, and **all five are wrong on 24.6%**. A keyword counter, two prompted frontier models and two fine-tuned models work in very different ways; when all of them miss the same mission, the mission or its label is the likelier cause.
+
+**The labels on those missions are mostly disputed.** A blind check: 25 missions all five got wrong and 15 control missions, shuffled, graded by the user without knowing which was which (same format as step 1's check, key in [`data/error_check_key.json`](data/error_check_key.json)):
+
+| Missions | Agree with IRS | Unsure | Disagree |
+|---|---|---|---|
+| All five approaches wrong (25) | 20% | 8% | **72%** |
+| Controls (15) | 80% | 20% | 0% |
+
+And where the user disagreed with the IRS (18 missions), the group they picked was Sonnet's answer 16 times (Haiku 13, LoRA 1.5B 14, LoRA 0.5B 11, TF-IDF 11). Examples: "TREATMENT OF ALCOHOLISM" coded A (Arts), "RECREATIONAL SOCCER PROGRAM" coded O (Youth Development) rather than N (Sports), "Educating students." coded P (Human Services). A likely reason: an NTEE code describes the organization, usually assigned once when it applied for exemption and rarely updated, while the mission on a recent 990 may describe what it does now.
+
+What that means, roughly: if 72% of the all-wrong missions have a wrong label, about 18% of dev labels are wrong (an interval of roughly 13-21%, given only 25 graded), so no approach can score much above about 80% against the IRS labels, and Sonnet's accuracy against labels a person agrees with is nearer 75-80% than 62.5%. The estimate rests on one non-expert grader and small samples; the grader also saw the IRS label, which if anything pushes toward agreeing with it. The ranking of the approaches doesn't change, since they're all scored against the same labels.
+
+**The confused pairs are overlapping groups.** Every approach mixes up the same pairs: A-B and B-O (arts education, youth programs in schools), N-O (youth sports), B-T and P-T (foundations supporting a school or a service: step 1's convention), E-G (a hospital vs a disease association), L-S and P-S (housing vs community development). These boundaries are blurry in the taxonomy itself. Two model-specific weaknesses: the 0.5B model confuses Human Services and Religion (36 errors, Haiku 14), meaning faith-based services, and the LLMs confuse Education and Human Services more than TF-IDF (28-33 vs 13).
+
+**Mission length barely matters.** Missions of 1-5 words are no harder (57-60%): short missions often name the activity ("HISTORIC PRESERVATION"). Only Sonnet gains clearly from long missions (68% at 41+ words vs 59% for the fine-tuned models); a larger model uses more context, and the notebook's 128-token limit may clip the longest missions (not tested).
+
+**The cascade routes by group, not length.** Missions sent to Sonnet are as long as those kept (median 20 vs 19 words). It sends most of the small, abstract groups (U Science and Technology 93%, R Civil Rights 89%, T Philanthropy 85%, V Social Science 83%) and least of those with distinctive vocabulary (D Animals 13%, M Public Safety 28%, A Arts 31%). On the missions it sends, even Sonnet is right only 47% of the time: many are the disputed labels above.
+
+**Step 6's answer:** most of the remaining error isn't the models. About a quarter of dev missions defeat every approach, and on most of those a person sides with the models, usually with Sonnet, over the IRS label. Better models will gain little against these labels; cleaner labels, or scoring against human-checked ones, would show more.
+
 ## Setup
 
 ```powershell

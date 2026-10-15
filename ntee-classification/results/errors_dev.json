@@ -1,0 +1,343 @@
+{
+ "agreement": {
+  "5 of 5 right": 0.38996138996138996,
+  "4 of 5 right": 0.11638168781025923,
+  "3 of 5 right": 0.09652509652509653,
+  "2 of 5 right": 0.0821842250413679,
+  "1 of 5 right": 0.06894649751792609,
+  "0 of 5 right": 0.2460011031439603
+ },
+ "confusions": [
+  {
+   "pair": "A-B",
+   "TF-IDF": 22,
+   "Haiku": 22,
+   "Sonnet": 18,
+   "LoRA 0.5B": 25,
+   "LoRA 1.5B": 27,
+   "names": "Arts, Culture and Humanities / Education"
+  },
+  {
+   "pair": "B-O",
+   "TF-IDF": 19,
+   "Haiku": 23,
+   "Sonnet": 18,
+   "LoRA 0.5B": 19,
+   "LoRA 1.5B": 25,
+   "names": "Education / Youth Development"
+  },
+  {
+   "pair": "N-O",
+   "TF-IDF": 24,
+   "Haiku": 21,
+   "Sonnet": 18,
+   "LoRA 0.5B": 17,
+   "LoRA 1.5B": 19,
+   "names": "Recreation and Sports / Youth Development"
+  },
+  {
+   "pair": "P-T",
+   "TF-IDF": 24,
+   "Haiku": 16,
+   "Sonnet": 16,
+   "LoRA 0.5B": 22,
+   "LoRA 1.5B": 18,
+   "names": "Human Services / Philanthropy, Voluntarism and Grantmaking Foundations"
+  },
+  {
+   "pair": "P-X",
+   "TF-IDF": 25,
+   "Haiku": 14,
+   "Sonnet": 22,
+   "LoRA 0.5B": 36,
+   "LoRA 1.5B": 26,
+   "names": "Human Services / Religion-Related"
+  },
+  {
+   "pair": "B-T",
+   "TF-IDF": 27,
+   "Haiku": 26,
+   "Sonnet": 19,
+   "LoRA 0.5B": 14,
+   "LoRA 1.5B": 18,
+   "names": "Education / Philanthropy, Voluntarism and Grantmaking Foundations"
+  },
+  {
+   "pair": "B-P",
+   "TF-IDF": 13,
+   "Haiku": 19,
+   "Sonnet": 28,
+   "LoRA 0.5B": 33,
+   "LoRA 1.5B": 32,
+   "names": "Education / Human Services"
+  },
+  {
+   "pair": "E-G",
+   "TF-IDF": 17,
+   "Haiku": 19,
+   "Sonnet": 13,
+   "LoRA 0.5B": 14,
+   "LoRA 1.5B": 14,
+   "names": "Health Care / Diseases, Disorders and Medical Disciplines"
+  },
+  {
+   "pair": "O-P",
+   "TF-IDF": 23,
+   "Haiku": 29,
+   "Sonnet": 19,
+   "LoRA 0.5B": 20,
+   "LoRA 1.5B": 12,
+   "names": "Youth Development / Human Services"
+  },
+  {
+   "pair": "L-P",
+   "TF-IDF": 16,
+   "Haiku": 23,
+   "Sonnet": 14,
+   "LoRA 0.5B": 17,
+   "LoRA 1.5B": 12,
+   "names": "Housing and Shelter / Human Services"
+  },
+  {
+   "pair": "L-S",
+   "TF-IDF": 13,
+   "Haiku": 12,
+   "Sonnet": 13,
+   "LoRA 0.5B": 14,
+   "LoRA 1.5B": 13,
+   "names": "Housing and Shelter / Community Improvement and Capacity Building"
+  },
+  {
+   "pair": "P-S",
+   "TF-IDF": 11,
+   "Haiku": 17,
+   "Sonnet": 22,
+   "LoRA 0.5B": 23,
+   "LoRA 1.5B": 23,
+   "names": "Human Services / Community Improvement and Capacity Building"
+  }
+ ],
+ "length": [
+  {
+   "words": "1-5",
+   "n": 188,
+   "TF-IDF": 0.574468085106383,
+   "Haiku": 0.5797872340425532,
+   "Sonnet": 0.5904255319148937,
+   "LoRA 0.5B": 0.5691489361702128,
+   "LoRA 1.5B": 0.601063829787234
+  },
+  {
+   "words": "6-10",
+   "n": 314,
+   "TF-IDF": 0.5127388535031847,
+   "Haiku": 0.5477707006369427,
+   "Sonnet": 0.5796178343949044,
+   "LoRA 0.5B": 0.554140127388535,
+   "LoRA 1.5B": 0.5573248407643312
+  },
+  {
+   "words": "11-20",
+   "n": 447,
+   "TF-IDF": 0.5257270693512305,
+   "Haiku": 0.5749440715883669,
+   "Sonnet": 0.6331096196868009,
+   "LoRA 0.5B": 0.5771812080536913,
+   "LoRA 1.5B": 0.6152125279642058
+  },
+  {
+   "words": "21-40",
+   "n": 580,
+   "TF-IDF": 0.5396551724137931,
+   "Haiku": 0.596551724137931,
+   "Sonnet": 0.6293103448275862,
+   "LoRA 0.5B": 0.6172413793103448,
+   "LoRA 1.5B": 0.6241379310344828
+  },
+  {
+   "words": "41+",
+   "n": 284,
+   "TF-IDF": 0.5492957746478874,
+   "Haiku": 0.6338028169014085,
+   "Sonnet": 0.6795774647887324,
+   "LoRA 0.5B": 0.5880281690140845,
+   "LoRA 1.5B": 0.5880281690140845
+  }
+ ],
+ "cascade": {
+  "sent_share": 0.5344732487589631,
+  "median_words_sent": 20,
+  "median_words_kept": 19.0,
+  "sonnet_on_sent": 0.47368421052631576,
+  "lora_on_sent": 0.391124871001032,
+  "lora_on_kept": 0.8116113744075829,
+  "most_sent_groups": [
+   {
+    "group": "U",
+    "n": 15,
+    "sent": 0.9333333333333333
+   },
+   {
+    "group": "R",
+    "n": 18,
+    "sent": 0.8888888888888888
+   },
+   {
+    "group": "T",
+    "n": 75,
+    "sent": 0.8533333333333334
+   },
+   {
+    "group": "G",
+    "n": 27,
+    "sent": 0.8518518518518519
+   },
+   {
+    "group": "V",
+    "n": 6,
+    "sent": 0.8333333333333334
+   },
+   {
+    "group": "Y",
+    "n": 21,
+    "sent": 0.8095238095238095
+   }
+  ],
+  "least_sent_groups": [
+   {
+    "group": "N",
+    "n": 160,
+    "sent": 0.325
+   },
+   {
+    "group": "A",
+    "n": 188,
+    "sent": 0.31382978723404253
+   },
+   {
+    "group": "M",
+    "n": 43,
+    "sent": 0.27906976744186046
+   },
+   {
+    "group": "D",
+    "n": 67,
+    "sent": 0.13432835820895522
+   }
+  ]
+ },
+ "hardest": [
+  {
+   "mission": "DOWNTOWN REVITALIZATION.",
+   "irs": "R",
+   "TF-IDF": "S",
+   "Haiku": "S",
+   "Sonnet": "S",
+   "LoRA 0.5B": "S",
+   "LoRA 1.5B": "S"
+  },
+  {
+   "mission": "Educating students.",
+   "irs": "P",
+   "TF-IDF": "B",
+   "Haiku": "B",
+   "Sonnet": "B",
+   "LoRA 0.5B": "B",
+   "LoRA 1.5B": "B"
+  },
+  {
+   "mission": "FUNDS MANAGMENT",
+   "irs": "N",
+   "TF-IDF": "W",
+   "Haiku": "T",
+   "Sonnet": "Y",
+   "LoRA 0.5B": "S",
+   "LoRA 1.5B": "S"
+  },
+  {
+   "mission": "EDUCATIONAL DEMONSTRATIONS",
+   "irs": "P",
+   "TF-IDF": "B",
+   "Haiku": "B",
+   "Sonnet": "B",
+   "LoRA 0.5B": "A",
+   "LoRA 1.5B": "B"
+  },
+  {
+   "mission": "HISTORIC PRESERVATION",
+   "irs": "C",
+   "TF-IDF": "A",
+   "Haiku": "A",
+   "Sonnet": "A",
+   "LoRA 0.5B": "A",
+   "LoRA 1.5B": "A"
+  },
+  {
+   "mission": "PUBLIC ASSISTANCE",
+   "irs": "O",
+   "TF-IDF": "M",
+   "Haiku": "P",
+   "Sonnet": "P",
+   "LoRA 0.5B": "T",
+   "LoRA 1.5B": "P"
+  },
+  {
+   "mission": "TREATMENT OF ALCOHOLISM",
+   "irs": "A",
+   "TF-IDF": "F",
+   "Haiku": "F",
+   "Sonnet": "F",
+   "LoRA 0.5B": "F",
+   "LoRA 1.5B": "F"
+  },
+  {
+   "mission": "RECREATIONAL SOCCER PROGRAM",
+   "irs": "O",
+   "TF-IDF": "N",
+   "Haiku": "N",
+   "Sonnet": "N",
+   "LoRA 0.5B": "N",
+   "LoRA 1.5B": "N"
+  },
+  {
+   "mission": "AVIATION TRADE ASSOCIATION",
+   "irs": "Y",
+   "TF-IDF": "S",
+   "Haiku": "S",
+   "Sonnet": "S",
+   "LoRA 0.5B": "S",
+   "LoRA 1.5B": "S"
+  },
+  {
+   "mission": "Eliminate community violence",
+   "irs": "P",
+   "TF-IDF": "I",
+   "Haiku": "I",
+   "Sonnet": "I",
+   "LoRA 0.5B": "I",
+   "LoRA 1.5B": "I"
+  }
+ ],
+ "graded": {
+  "hard": {
+   "graded": 25,
+   "yes": 5,
+   "unsure": 2,
+   "no": 18
+  },
+  "control": {
+   "graded": 15,
+   "yes": 12,
+   "unsure": 3,
+   "no": 0
+  }
+ },
+ "picks_vs_models": {
+  "n": 18,
+  "TF-IDF": 11,
+  "Haiku": 13,
+  "Sonnet": 16,
+  "LoRA 0.5B": 11,
+  "LoRA 1.5B": 14
+ }
+}
