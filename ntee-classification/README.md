@@ -25,7 +25,7 @@ Plain language: a frontier model like Claude can classify text well with no trai
 | 2 | Classic baseline (TF-IDF + logistic regression) and the eval harness: accuracy, macro-F1, per-class results, confusion matrix, latency, cost | PC |
 | 3 | Prompted Claude: zero-shot and few-shot, structured output, model comparison, batching and caching for cost | Claude API |
 | 4 | LoRA fine-tuning of a small open model | Google Colab |
-| 5 | The comparison: accuracy vs latency vs cost per 1,000 predictions, and how much training data fine-tuning needs to beat prompting | PC + Colab |
+| 5 | The comparison: accuracy vs latency vs cost per 1,000 predictions, how much training data fine-tuning needs to beat prompting, and a cascade of the two | PC + Colab |
 | 6 | Error analysis: label noise, confusable groups, short missions | PC |
 | 7 | Write-up and release (`ntee-classification-v1.0.0`) | |
 
@@ -145,6 +145,58 @@ What the runs showed:
 - **The convention hypothesis was only partly confirmed.** On the 123 support and fundraising organizations, the fine-tuned model mostly stopped calling them philanthropy (7 times, vs 18 for the baseline), but got 67 right against Sonnet's 72 with the rule written in its prompt.
 - **The models make different mistakes**: Sonnet and the 0.5B model are both right on 51.9% of missions, and at least one is right on 69.3%. That points to combining them, step 5's question.
 - **Running it was its own lesson.** Colab's preinstalled packages clashed with the newest PEFT (an old `torchao`), transformers 5 had removed a training argument (`warmup_ratio`), and the 1.5B model ran out of GPU memory at batch size 32. Batches of 8 with gradient accumulation over 4 (updating every 4 batches) behave like 32 without the memory; a first 1.5B run at plain batch 8 scored 61.2%, within noise of the clean 60.2%.
+
+## The comparison (step 5)
+
+Three scripts, all reading saved runs, so none of them calls a model or costs anything: [`src/compare.py`](src/compare.py) (accuracy against cost and speed), [`src/data_size.py`](src/data_size.py) (how much labeled data training needs) and [`src/cascade.py`](src/cascade.py) (the fine-tuned model and Claude combined). The data-size curve needed three more Colab runs of the 0.5B model, on 10%, 25% and 50% of the training missions, and a rerun on all of them that saves the model's probabilities.
+
+### Accuracy, speed and cost
+
+![Accuracy against cost per 1,000 predictions and time per prediction](results/comparison_dev.png)
+
+The table is the one in step 4 ([`results/comparison_dev.md`](results/comparison_dev.md)). The cost axis is logarithmic: Claude and the fine-tuned models are three gridlines, about 1,000 times, apart. Training the 0.5B model ($0.05 of GPU time) pays for itself against Claude Haiku after about 71 predictions, but that leaves out what it took to get there: 8,452 labels (free here only because the IRS assigns them), setting up the training, and serving a model. Prompting has almost no fixed cost. Only Sonnet is clearly more accurate than a $0.05 fine-tune, by 2-4 points.
+
+### How much labeled data does training need?
+
+![Accuracy and macro-F1 against the number of labeled training missions](results/data_size_dev.png)
+
+| Labeled training missions | Baseline accuracy | LoRA 0.5B accuracy | Baseline macro-F1 | LoRA 0.5B macro-F1 |
+|---|---|---|---|---|
+| 844 (10%) | **43.2%** | 30.7% | **0.340** | 0.136 |
+| 2,113 (25%) | **50.5%** | 49.4% | **0.418** | 0.342 |
+| 4,224 (50%) | 51.6% | **56.4%** | 0.441 | **0.470** |
+| 8,452 (100%) | 53.7% | **58.7%** | 0.461 | **0.510** |
+| none: Claude Haiku 4.5 few-shot | 58.7% | | 0.529 | |
+| none: Claude Sonnet 5.5 guided | 62.5% | | 0.558 | |
+
+The baseline is retrained on stratified subsamples of the same sizes; its full-data point reproduces step 2's 53.7%.
+
+- **With little data, the simple model wins.** At 844 labels TF-IDF is 12 points ahead: it learns "church" or "soccer" from a handful of examples, while the small LLM's new classification head needs many examples to learn 25 classes (macro-F1 0.136: most small groups barely predicted).
+- **The crossover is between about 2,000 and 4,000 labels.** Past it, the LLM keeps improving while TF-IDF flattens: understanding language pays off once there are enough examples to attach meaning to the categories.
+- **Prompting needs none of it.** Haiku, with 100 examples in its prompt, matches what fine-tuning reached with 8,452 labels. The curve is slowing (+2.3 points from half the data to all of it), so catching Sonnet would plausibly take tens of thousands of labels, under a label-noise ceiling of roughly 75-90%.
+- Caveats: every size trained for the same 3 epochs, so the 10% run made about 80 weight updates against about 800, and part of its drop is under-training. Each point is one run, and differences of about 2 points are noise.
+
+### A cascade: the fine-tuned model first, Claude for the rest
+
+The small model answers when its top probability is at least a threshold; other missions go to Sonnet. Simulated from the saved predictions with each Sonnet request's real cost and time.
+
+![Accuracy by the small model's confidence, and the cascade's accuracy against the share sent to Sonnet](results/cascade_dev.png)
+
+**Its confidence is meaningful.** Accuracy rises from 33% on missions where the small model's top probability is below 0.5 to 82-100% above 0.8, and there Sonnet is no better (81-100% on the same missions), so paying for Sonnet on them is wasted. Sonnet's advantage is entirely on the low-confidence missions, though even it gets only 44% of the least confident: these are largely the ambiguous missions the label check found.
+
+**The threshold was chosen on a random half of dev and scored on the other half** (907 missions), so the result isn't fitted to the answers it's scored on ([`results/cascade_dev.md`](results/cascade_dev.md)):
+
+| Report half (907) | Accuracy | Sent to Sonnet | Cost per 1,000 | Mean time |
+|---|---|---|---|---|
+| LoRA Qwen2.5-0.5B alone | 59.4% | 0% | $0.001 | 61 ms |
+| Claude Sonnet 5.5 alone | 63.8% | 100% | $0.90 | 1,348 ms |
+| **Cascade, threshold 0.7** (cheapest to match Sonnet on the tune half) | **64.9%** | 53% | **$0.48** | **737 ms** |
+| Cascade, threshold 0.8 (most accurate on the tune half) | 64.6% | 64% | $0.57 | 885 ms |
+
+- **The cascade matched Sonnet at about half the cost and in about half the time**, and was slightly more accurate: +1.1 points, with a 95% paired bootstrap interval of +0.1 to +2.2. Beating Sonnet is possible because on the confident missions the fine-tuned model is slightly better than Sonnet: it learned the IRS's labeling habits from its training data.
+- **There's room left.** At least one model is right on 70.6% of these missions; confidence alone finds only part of that.
+
+**Step 5's answer:** fine-tuning pays off from a few thousand labels; prompting wins with none; and here the best design uses both, a cheap fine-tuned model first and Claude as the fallback for what it's unsure of.
 
 ## Setup
 
