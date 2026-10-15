@@ -163,20 +163,24 @@ print(trainer.evaluate())
     (
         "code",
         """\
-# 8. Predict: a full ranking of the 25 groups per mission, plus speed.
+# 8. Predict: a full ranking of the 25 groups per mission, the top 3 probabilities (the model's confidence,
+#    for step 5's cascade), plus speed.
 import json, statistics
 model.eval()
 
 @torch.no_grad()
 def rank(missions, batch_size=64):
-    ranked = []
+    ranked, top_probs = [], []
     for i in range(0, len(missions), batch_size):
         batch = tokenizer(missions[i:i + batch_size], truncation=True, max_length=MAX_TOKENS, padding=True,
                           return_tensors="pt").to(model.device)
         with torch.autocast("cuda", dtype=torch.float16):
             logits = model(**batch).logits.float()
-        ranked += [[GROUPS[j] for j in row] for row in logits.argsort(dim=-1, descending=True).tolist()]
-    return ranked
+        probs = logits.softmax(dim=-1)
+        order = probs.argsort(dim=-1, descending=True)
+        ranked += [[GROUPS[j] for j in row] for row in order.tolist()]
+        top_probs += [[round(p, 4) for p in row] for row in probs.gather(-1, order[:, :3]).tolist()]
+    return ranked, top_probs
 
 def single_latency_ms(missions, n=200):
     times = []
@@ -193,7 +197,7 @@ def batch_ms_per_mission(missions):
     return (time.perf_counter() - start) * 1000 / len(missions)
 
 dev_missions = list(dev_df["mission"])
-dev_ranked = rank(dev_missions)
+dev_ranked, dev_probs = rank(dev_missions)
 latency = single_latency_ms(dev_missions)
 per_mission = batch_ms_per_mission(dev_missions)
 accuracy = sum(r[0] == g for r, g in zip(dev_ranked, dev_df["group"])) / len(dev_df)
@@ -209,7 +213,7 @@ from google.colab import files
 model.save_pretrained(OUT_DIR / "adapter")
 tokenizer.save_pretrained(OUT_DIR / "adapter")
 
-def predictions_file(split, frame, ranked):
+def predictions_file(split, frame, ranked, probs):
     payload = {
         "approach": "lora_" + RUN_NAME, "split": split, "model": MODEL_NAME,
         "settings": {"train_fraction": TRAIN_FRACTION, "train_examples": len(train_df), "epochs": EPOCHS,
@@ -221,15 +225,15 @@ def predictions_file(split, frame, ranked):
         "latency_ms": round(latency, 3), "batch_ms_per_mission": round(per_mission, 4),
         "gpu_usd_per_hour": GPU_USD_PER_HOUR,
         "versions": {"torch": torch.__version__, "transformers": transformers.__version__, "peft": peft.__version__},
-        "predictions": [{"ein": e, "ranked": r} for e, r in zip(frame["ein"], ranked)],
+        "predictions": [{"ein": e, "ranked": r, "probs": q} for e, r, q in zip(frame["ein"], ranked, probs)],
     }
     path = OUT_DIR / f"lora_{RUN_NAME}_{split}.json"
     path.write_text(json.dumps(payload))
     return path
 
-paths = [predictions_file("dev", dev_df, dev_ranked)]
+paths = [predictions_file("dev", dev_df, dev_ranked, dev_probs)]
 if FINAL:
-    paths.append(predictions_file("test", test_df, rank(list(test_df["mission"]))))
+    paths.append(predictions_file("test", test_df, *rank(list(test_df["mission"]))))
 for path in paths:
     print("saved", path)
     files.download(str(path))

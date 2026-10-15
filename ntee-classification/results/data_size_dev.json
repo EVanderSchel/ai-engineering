@@ -1,0 +1,64 @@
+{
+ "baseline": [
+  {
+   "fraction": 0.1,
+   "train_examples": 844,
+   "accuracy": 0.431880860452289,
+   "macro_f1": 0.34043817758450556
+  },
+  {
+   "fraction": 0.25,
+   "train_examples": 2113,
+   "accuracy": 0.504688361831219,
+   "macro_f1": 0.4181400098735494
+  },
+  {
+   "fraction": 0.5,
+   "train_examples": 4224,
+   "accuracy": 0.5162713734142306,
+   "macro_f1": 0.44141148948893977
+  },
+  {
+   "fraction": 1.0,
+   "train_examples": 8452,
+   "accuracy": 0.5366795366795367,
+   "macro_f1": 0.4610332071955711
+  }
+ ],
+ "lora": [
+  {
+   "fraction": 0.1,
+   "train_examples": 844,
+   "accuracy": 0.3066740209597352,
+   "macro_f1": 0.13615558129755428
+  },
+  {
+   "fraction": 0.25,
+   "train_examples": 2113,
+   "accuracy": 0.4942084942084942,
+   "macro_f1": 0.3420508174135291
+  },
+  {
+   "fraction": 0.5,
+   "train_examples": 4224,
+   "accuracy": 0.5642581356867071,
+   "macro_f1": 0.46986600033201575
+  },
+  {
+   "fraction": 1.0,
+   "train_examples": 8452,
+   "accuracy": 0.5868725868725869,
+   "macro_f1": 0.5096480582639354
+  }
+ ],
+ "references": {
+  "Claude Sonnet 5.5 guided": {
+   "accuracy": 0.6254826254826255,
+   "macro_f1": 0.5580479847824777
+  },
+  "Claude Haiku 4.5 few-shot": {
+   "accuracy": 0.5868725868725869,
+   "macro_f1": 0.5294106333593259
+  }
+ }
+}

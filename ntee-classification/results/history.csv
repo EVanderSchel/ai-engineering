@@ -11,3 +11,7 @@ time,approach,split,n,accuracy,top3,macro_f1,broad_accuracy,latency_ms,cost_per_
 2026-10-15T07:41:57,lora_qwen2.5-0.5b,dev,1813,0.5869,0.8031,0.5096,0.6707,67.237,0.0007,Qwen/Qwen2.5-0.5B LoRA r=16 train_fraction=1.0
 2026-10-15T08:25:17,lora_qwen2.5-1.5b,dev,1813,0.6117,0.8058,0.5124,0.6834,79.435,0.0021,Qwen/Qwen2.5-1.5B LoRA r=16 train_fraction=1.0
 2026-10-15T09:04:55,lora_qwen2.5-1.5b,dev,1813,0.6023,0.8075,0.5156,0.6801,75.224,0.0024,Qwen/Qwen2.5-1.5B LoRA r=16 train_fraction=1.0
+2026-10-15T13:15:14,lora_qwen2.5-0.5b-frac0.1,dev,1813,0.3067,0.5113,0.1362,0.412,68.339,0.0008,Qwen/Qwen2.5-0.5B LoRA r=16 train_fraction=0.1
+2026-10-15T13:15:15,lora_qwen2.5-0.5b-frac0.25,dev,1813,0.4942,0.7198,0.3421,0.5968,62.605,0.0007,Qwen/Qwen2.5-0.5B LoRA r=16 train_fraction=0.25
+2026-10-15T13:15:15,lora_qwen2.5-0.5b-frac0.5,dev,1813,0.5643,0.7849,0.4699,0.6613,61.879,0.0007,Qwen/Qwen2.5-0.5B LoRA r=16 train_fraction=0.5
+2026-10-15T13:15:15,lora_qwen2.5-0.5b,dev,1813,0.5869,0.8031,0.5096,0.6707,61.326,0.0007,Qwen/Qwen2.5-0.5B LoRA r=16 train_fraction=1.0

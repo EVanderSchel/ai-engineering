@@ -1,7 +1,7 @@
 {
  "approach": "lora_qwen2.5-0.5b",
  "split": "dev",
- "time": "2026-10-15T07:41:57",
+ "time": "2026-10-15T13:15:15",
  "metrics": {
   "n": 1813,
   "accuracy": 0.5868725868725869,
@@ -238,8 +238,8 @@
    }
   ]
  },
- "latency_ms": 67.237,
- "cost_per_1k_usd": 0.0007345625,
+ "latency_ms": 61.326,
+ "cost_per_1k_usd": 0.0007451791666666666,
  "notes": "Qwen/Qwen2.5-0.5B LoRA r=16 train_fraction=1.0",
  "details": {
   "model": "Qwen/Qwen2.5-0.5B",
@@ -250,14 +250,15 @@
    "learning_rate": 0.0002,
    "lora_rank": 16,
    "batch_size": 32,
+   "gradient_accumulation": 1,
    "max_tokens": 128,
    "seed": 2026
   },
   "trainable_parameters": 2185088,
   "gpu": "Tesla T4",
-  "train_minutes": 8.78,
-  "train_cost_usd": 0.0512,
-  "batch_ms_per_mission": 7.5555,
+  "train_minutes": 8.6,
+  "train_cost_usd": 0.0502,
+  "batch_ms_per_mission": 7.6647,
   "versions": {
    "torch": "2.11.0+cu130",
    "transformers": "5.18.0",
