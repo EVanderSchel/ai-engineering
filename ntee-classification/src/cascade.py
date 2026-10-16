@@ -1,6 +1,7 @@
 """Step 5's hybrid: the fine-tuned model answers when it's confident, and Claude Sonnet takes the rest.
 
-    python src/cascade.py     # writes results/cascade_dev.md, .json and .png
+    python src/cascade.py           # writes results/cascade_dev.md, .json and .png
+    python src/cascade.py --final   # also the held-out test split, once, with the threshold chosen on dev
 
 Simulated from saved predictions, so it costs nothing: the Qwen2.5-0.5B LoRA run's probabilities
 (results/finetuned/, from the notebook) and Sonnet guided's answers with each request's real cost and time
@@ -14,8 +15,12 @@ Two questions:
 2. The threshold: chosen on a random half of dev (tune) and reported on the other half (report), so the
    reported score isn't fitted to the answers it's scored on. Two rules: the cheapest threshold that matches
    Sonnet's accuracy on the tune half, and the most accurate one.
+
+With --final, the "match Sonnet" threshold chosen on dev is applied unchanged to the test split and the
+cascade is recorded like the other approaches (src/evaluate.py), so it appears in the final comparison.
 """
 
+import argparse
 import json
 import random
 import statistics
@@ -26,37 +31,39 @@ matplotlib.use("Agg")  # files only, no window
 import matplotlib.pyplot as plt
 
 import data
+import evaluate
 from paths import ROOT
 
 RESULTS_DIR = ROOT / "results"
-LORA_FILE = RESULTS_DIR / "finetuned" / "lora_qwen2.5-0.5b_dev.json"
-SONNET_FILE = RESULTS_DIR / "claude" / "claude_sonnet_guided_dev.jsonl"
+APPROACH = "cascade_lora0.5b_sonnet"
 THRESHOLDS = (0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 0.97, 0.98, 0.99, 0.995, 0.999)
 BANDS = ((0.0, 0.5), (0.5, 0.8), (0.8, 0.95), (0.95, 0.99), (0.99, 1.01))
 SEED = 2026
 
 
-def load_missions() -> list[dict]:
-    """One record per dev mission: gold group, each model's answer, the small model's confidence, and the
-    cost and time of each."""
-    lora = json.loads(LORA_FILE.read_text(encoding="utf-8"))
+def load_missions(split: str = "dev") -> list[dict]:
+    """One record per mission of the split: gold group, each model's ranking, the small model's confidence,
+    and the cost and time of each."""
+    lora_file = RESULTS_DIR / "finetuned" / f"lora_qwen2.5-0.5b_{split}.json"
+    sonnet_file = RESULTS_DIR / "claude" / f"claude_sonnet_guided_{split}.jsonl"
+    lora = json.loads(lora_file.read_text(encoding="utf-8"))
     if "probs" not in lora["predictions"][0]:
-        raise ValueError(f"{LORA_FILE.name} has no probabilities: rerun it with the current notebook")
+        raise ValueError(f"{lora_file.name} has no probabilities: rerun it with the current notebook")
     lora_cost = lora["batch_ms_per_mission"] / 1000 / 3600 * lora["gpu_usd_per_hour"]
     small = {p["ein"]: p for p in lora["predictions"]}
     sonnet = {}
-    for line in SONNET_FILE.read_text(encoding="utf-8").splitlines():
+    for line in sonnet_file.read_text(encoding="utf-8").splitlines():
         if line.strip():
             answer = json.loads(line)
             sonnet[answer["ein"]] = answer
     missions = []
-    for row in data.load("dev"):
+    for row in data.load(split, final=split == "test"):
         s, b = small[row["ein"]], sonnet[row["ein"]]
         missions.append({
             "ein": row["ein"], "gold": row["group"],
-            "small": s["ranked"][0], "confidence": s["probs"][0], "small_cost": lora_cost,
+            "small": s["ranked"][0], "small_ranked": s["ranked"], "confidence": s["probs"][0], "small_cost": lora_cost,
             "small_ms": lora["latency_ms"],
-            "sonnet": b["ranked"][0] if b["ranked"] else "", "sonnet_cost": b["cost_usd"],
+            "sonnet": b["ranked"][0] if b["ranked"] else "", "sonnet_ranked": b["ranked"], "sonnet_cost": b["cost_usd"],
             "sonnet_ms": b["seconds"] * 1000,
         })  # fmt: skip
     return missions
@@ -213,7 +220,44 @@ def chart(result: dict, missions: list[dict], path) -> None:
     plt.close(fig)
 
 
+def final(dev: list[dict]) -> str:
+    """The test split, once: the threshold chosen on dev's tune half, applied unchanged and recorded."""
+    threshold = choose(halves(dev)[0])["match_sonnet"]
+    test = load_missions("test")
+    rows = data.load("test", final=True)
+    by_ein = {m["ein"]: m for m in test}
+    answered = [by_ein[r["ein"]] for r in rows]
+    ranked = [m["small_ranked"] if m["confidence"] >= threshold else m["sonnet_ranked"] for m in answered]
+    result = cascade(test, threshold)
+    low, high = paired_interval(test, threshold)
+    lora = json.loads((RESULTS_DIR / "finetuned" / "lora_qwen2.5-0.5b_test.json").read_text(encoding="utf-8"))
+    train_cost = round(lora["train_minutes"] / 60 * lora["gpu_usd_per_hour"], 4)  # the small model's training
+    evaluate.record(
+        APPROACH, "test", rows, ranked, latency_ms=result["mean_ms"], cost_per_1k_usd=result["cost_per_1k_usd"],
+        notes=f"LoRA Qwen2.5-0.5B, below confidence {threshold} sent to Claude Sonnet 5.5 guided (threshold from dev)",
+        details={"threshold": threshold, "escalated": result["escalated"], "vs_sonnet_95pct": [low, high],
+                 "train_cost_usd": train_cost},
+    )  # fmt: skip
+    lines = [
+        f"Test split (n={len(test):,}), threshold {threshold} chosen on dev",
+        "",
+        "| Approach | Accuracy | Sent to Sonnet | Cost per 1,000 | Mean time |",
+        "|---|---|---|---|---|",
+    ]
+    for name, r in (("small model alone", cascade(test, 0.0)), ("Sonnet alone", sonnet_alone(test)),
+                    (f"cascade (t={threshold})", result)):  # fmt: skip
+        lines.append(
+            f"| {name} | {r['accuracy']:.1%} | {r['escalated']:.0%} | ${r['cost_per_1k_usd']:.3f} | "
+            f"{r['mean_ms']:,.0f} ms |"
+        )
+    lines += ["", f"- cascade minus Sonnet, 95% paired bootstrap interval {low:+.1%} to {high:+.1%}"]
+    return "\n".join(lines) + "\n"
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--final", action="store_true", help="also the held-out test split (once)")
+    args = parser.parse_args()
     missions = load_missions()
     result = report(missions)
     text = markdown(result)
@@ -222,6 +266,11 @@ def main() -> None:
     (RESULTS_DIR / "cascade_dev.json").write_text(json.dumps(result, indent=1))
     chart(result, missions, RESULTS_DIR / "cascade_dev.png")
     print("wrote results/cascade_dev.md, .json and .png")
+    if args.final:
+        text = final(missions)
+        print(text)
+        (RESULTS_DIR / "cascade_test.md").write_text(text, encoding="utf-8")
+        print("wrote results/cascade_test.md")
 
 
 if __name__ == "__main__":

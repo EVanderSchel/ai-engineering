@@ -15,3 +15,16 @@ time,approach,split,n,accuracy,top3,macro_f1,broad_accuracy,latency_ms,cost_per_
 2026-10-15T13:15:15,lora_qwen2.5-0.5b-frac0.25,dev,1813,0.4942,0.7198,0.3421,0.5968,62.605,0.0007,Qwen/Qwen2.5-0.5B LoRA r=16 train_fraction=0.25
 2026-10-15T13:15:15,lora_qwen2.5-0.5b-frac0.5,dev,1813,0.5643,0.7849,0.4699,0.6613,61.879,0.0007,Qwen/Qwen2.5-0.5B LoRA r=16 train_fraction=0.5
 2026-10-15T13:15:15,lora_qwen2.5-0.5b,dev,1813,0.5869,0.8031,0.5096,0.6707,61.326,0.0007,Qwen/Qwen2.5-0.5B LoRA r=16 train_fraction=1.0
+2026-10-15T14:11:46,baseline,dev,1813,0.5367,0.754,0.461,0.6393,1.881,0.0,word+char C=1.0 weight=balanced
+2026-10-15T14:11:47,baseline,test,1813,0.5185,0.7391,0.4486,0.6321,1.881,0.0,word+char C=1.0 weight=balanced
+2026-10-15T14:15:57,claude_sonnet_guided,dev,1813,0.6255,0.8307,0.558,0.7082,1149.0,0.9039,claude-sonnet-5-5 guided
+2026-10-15T14:20:57,claude_sonnet_guided,test,1813,0.6145,0.8301,0.5472,0.7066,1214.0,0.8736,claude-sonnet-5-5 guided
+2026-10-15T14:21:04,claude_haiku_fewshot,dev,1813,0.5869,0.8025,0.5294,0.6977,984.0,0.7222,claude-haiku-4-5 fewshot
+2026-10-15T14:24:47,claude_haiku_fewshot,test,1813,0.5648,0.7876,0.5133,0.6823,1012.0,0.6944,claude-haiku-4-5 fewshot
+2026-10-15T17:30:37,claude_sonnet_guided,dev,1813,0.6255,0.8307,0.558,0.7082,1149.0,0.9039,claude-sonnet-5-5 guided
+2026-10-15T17:30:38,claude_sonnet_guided,test,1813,0.6145,0.8301,0.5472,0.7066,1214.0,0.8736,claude-sonnet-5-5 guided
+2026-10-15T17:30:44,claude_haiku_fewshot,dev,1813,0.5869,0.8025,0.5294,0.6977,984.0,0.7222,claude-haiku-4-5 fewshot
+2026-10-15T17:30:44,claude_haiku_fewshot,test,1813,0.5648,0.7876,0.5133,0.6823,1012.0,0.6944,claude-haiku-4-5 fewshot
+2026-10-16T08:36:05,lora_qwen2.5-0.5b,test,1813,0.5731,0.8047,0.4897,0.668,62.135,0.0007,Qwen/Qwen2.5-0.5B LoRA r=16 train_fraction=1.0
+2026-10-16T08:36:33,lora_qwen2.5-1.5b,test,1813,0.6078,0.8229,0.5315,0.6917,74.464,0.0022,Qwen/Qwen2.5-1.5B LoRA r=16 train_fraction=1.0
+2026-10-16T08:37:34,cascade_lora0.5b_sonnet,test,1813,0.6122,0.8185,0.5442,0.7027,799.096,0.4896,"LoRA Qwen2.5-0.5B, below confidence 0.7 sent to Claude Sonnet 5.5 guided (threshold from dev)"
