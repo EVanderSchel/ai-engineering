@@ -30,7 +30,9 @@ APPROACHES = {
     "claude_haiku_fewshot": "Claude Haiku 4.5 few-shot",
     "claude_sonnet_guided": "Claude Sonnet 5.5 guided",
 }
-KIND_COLORS = {"baseline": "tab:gray", "lora": "tab:blue", "claude": "tab:orange"}
+# Included when its run exists: the step 5 cascade is recorded on the test split only (src/cascade.py --final).
+OPTIONAL = {"cascade_lora0.5b_sonnet": "Cascade: LoRA 0.5B, then Sonnet"}
+KIND_COLORS = {"baseline": "tab:gray", "lora": "tab:blue", "claude": "tab:orange", "cascade": "tab:purple"}
 FREE = 1e-5  # where a ~$0 cost sits on the chart's log scale
 
 
@@ -49,7 +51,7 @@ def row(approach: str, run: dict) -> dict:
     details = run.get("details") or {}
     return {
         "approach": approach,
-        "label": APPROACHES.get(approach, approach),
+        "label": (APPROACHES | OPTIONAL).get(approach, approach),
         "kind": kind(approach),
         **{k: run["metrics"][k] for k in ("accuracy", "top3", "macro_f1", "broad_accuracy")},
         "latency_ms": run["latency_ms"],
@@ -95,8 +97,10 @@ def chart(rows: list[dict], path, split: str) -> None:
         for r in rows:
             x = max(r[field], FREE)
             ax.scatter(x, r["accuracy"] * 100, s=70, color=KIND_COLORS[r["kind"]], zorder=3)
-            ax.annotate(r["label"], (x, r["accuracy"] * 100), textcoords="offset points", xytext=(6, 5), fontsize=8)
+            offset = (6, -12) if r["kind"] == "cascade" else (6, 5)  # below its point: it sits next to Sonnet
+            ax.annotate(r["label"], (x, r["accuracy"] * 100), textcoords="offset points", xytext=offset, fontsize=8)
         ax.set_xscale("log")
+        ax.margins(y=0.08)
         ax.set_xlim(right=ax.get_xlim()[1] * 15)  # room for the labels of the rightmost points
         ax.set_xlabel(xlabel)
         ax.grid(True, which="major", alpha=0.3)
@@ -114,6 +118,7 @@ def main() -> None:
     args = parser.parse_args()
 
     runs = {a: load(a, args.split) for a in APPROACHES}
+    runs |= {a: load(a, args.split) for a in OPTIONAL if (RESULTS_DIR / f"{a}_{args.split}.json").exists()}
     rows = [row(a, run) | {"n": run["metrics"]["n"]} for a, run in runs.items()]
     text = table(rows)
     rival = min((r for r in rows if r["kind"] == "claude"), key=lambda r: r["cost_per_1k_usd"])

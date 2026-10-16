@@ -7,7 +7,7 @@ Hands-on projects built while upskilling toward an AI Engineer role. Each folder
 | [rag](rag/) | A retrieval-augmented generation service built from scratch and run in production (released as `rag-v1.0.0`): hybrid search with reranking, a streaming FastAPI API with API-key auth and rate limiting, retrieval and LLM-as-judge evals that gate every pull request plus a weekly generation eval, versioned prompts, per-request cost/latency logging and tracing, health probes and alerts, and approval-gated deploys to Azure | Python 3.14, uv, ChromaDB, Claude API, FastAPI, Docker, GitHub Actions, Azure Container Apps, Key Vault, Langfuse |
 | [irs-990-extraction](irs-990-extraction/) | Structured data from charities' IRS Form 990 filings (page images only) with Claude's vision input, released as `irs-990-extraction-v1.0.0`: scored field by field against the IRS's own e-file XML (99.2% on held-out filings), multi-page table extraction, simulated scans, review rules and a review queue, batch and parallel processing, a model comparison, and an authenticated API deployed to Azure | Python 3.14, uv, Claude API (vision, structured outputs, Message Batches), Pydantic, FastAPI, Docker, GitHub Actions, Azure Container Apps |
 | [nonprofit-agent](nonprofit-agent/) | A tool-using agent that researches US charities from public IRS data, released as `nonprofit-agent-v1.0.0`: an agent loop built by hand and compared with the SDK's Tool Runner, tools served over MCP, trajectory evals with a validated LLM judge (98.5% correct, 100% grounded), a code-level grounding guardrail, prompt-injection testing and defenses (0 of 60 attacks followed), and an authenticated, spend-capped API deployed to Azure | Python 3.14, uv, Claude API (tool use), MCP, FastAPI, Docker, GitHub Actions, Azure Container Apps, Key Vault |
-| [ntee-classification](ntee-classification/) | *In progress.* Fine-tune vs. prompt: classifying nonprofit mission statements into NTEE categories with a classic baseline (TF-IDF + logistic regression), prompted Claude, and a LoRA fine-tuned small open model, compared on accuracy, latency and cost | Python 3.14, uv, scikit-learn, Claude API, Hugging Face (PEFT/LoRA), Google Colab, GitHub Actions |
+| [ntee-classification](ntee-classification/) | Fine-tune vs. prompt on one task, nonprofit mission statement to NTEE category, released as `ntee-classification-v1.0.0`: a TF-IDF baseline, prompted Claude and LoRA fine-tuned Qwen2.5 models compared on held-out accuracy, latency and cost (a 1.5B model within a point of Claude Sonnet at 1/400th the cost), plus a data-size curve, a confidence cascade that matched Sonnet at 56% of its cost, and an error analysis with a blind label check | Python 3.14, uv, scikit-learn, Claude API, Hugging Face (PEFT/LoRA), Google Colab, matplotlib, GitHub Actions |
 | [ci-cd-workflow](ci-cd-workflow/) | A complete CI/CD pipeline built one stage at a time around a small FastAPI service: tests, lint gates, Docker, container registry, staged deployments with approval, and versioned releases | GitHub Actions, Docker, GHCR, Render, pytest, ruff |
 | [skills-training](skills-training/) | Guided notebooks learning deep-learning frameworks side by side, from tensors and autograd to an MNIST classifier | TensorFlow, Keras, PyTorch, Jupyter |
 
@@ -32,6 +32,14 @@ Hands-on projects built while upskilling toward an AI Engineer role. Each folder
 - **Prompt injection was tested, not assumed away.** Planted instructions were ignored from the start, but a plausible false footnote got through a third of the time, passed on as "ProPublica's data indicates...", while accuracy metrics stayed at 100%. Marking outside text as unverified and a rule on how to report it took attacks followed from 7% to 0%, with no false alarms on normal data.
 - **A framework compared on evidence.** The same agent on the SDK's Tool Runner behaved identically on the eval (same calls and cost within noise) but needed more code, because the cost limit, the guardrail and the trajectory had to be built around it.
 - **Shipped with spending controls.** The public API checks its key, question length, a rate limit, a daily spend cap that can't be exceeded, and one question at a time, all before Claude is called, with a dedicated Anthropic workspace's spend limit as the backstop. The tools are also served over MCP and were used from Claude Code.
+
+## Highlights from `ntee-classification`
+
+- **One task, three approaches, the same yardstick.** A shared scorer measures every approach on accuracy, top-3, macro-F1, latency and cost per 1,000 predictions; all choices were made on a dev split and a held-out test split was scored once at the end.
+- **Fine-tuning a small model nearly matched a frontier model.** Qwen2.5-1.5B with LoRA (trained on 0.4% of its parameters, 21 minutes on a free Colab T4) scored 60.8% against Claude Sonnet's 61.4% on test, at about 1/400th of the cost per prediction and 16 times faster; the 0.5B model matched Claude Haiku at a thousandth of the cost.
+- **When fine-tuning pays off was measured.** A data-size curve showed the TF-IDF baseline winning below about 2,000 labels and the fine-tuned model ahead from about 4,000, while prompting needed none.
+- **The two combined.** The small model's confidence turned out meaningful, so a cascade sent only its unsure missions to Sonnet: the same accuracy at 56% of the cost. Its threshold was chosen on half of dev; a small lead on dev didn't replicate on test, and the write-up says so.
+- **Errors were traced to the labels.** A quarter of missions defeat every approach; a blind check found the IRS label disputed on 72% of those and none of the controls, putting the reachable accuracy near 80%.
 
 ## Layout
 
@@ -63,7 +71,7 @@ Deployments to production environments additionally wait for manual approval.
 1. ~~**Productionize RAG**~~: done (`rag-v1.0.0`, see above).
 2. ~~**Document extraction**~~: done (`irs-990-extraction-v1.0.0`, see above).
 3. ~~**Tool-using agent**~~: done (`nonprofit-agent-v1.0.0`, see above).
-4. **Fine-tune vs. prompt** (in progress, [`ntee-classification`](ntee-classification/)): LoRA fine-tuning of a small open model, compared with a prompted frontier model and a classic baseline on accuracy, latency, and cost.
+4. ~~**Fine-tune vs. prompt**~~: done (`ntee-classification-v1.0.0`, see above).
 
 ## License
 

@@ -4,6 +4,12 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 ## [Unreleased]
 
+Add entries here as you make notable changes. Move them under a new version heading when you cut a release.
+
+## [1.0.0] - 2026-10-16
+
+First release: one classification task (nonprofit mission statement to NTEE major group) solved by a TF-IDF baseline, prompted Claude and LoRA fine-tuned small open models, compared on accuracy, latency and cost, with a data-size curve, a cascade, an error analysis and held-out test scores.
+
 ### Added
 
 - Project scaffolding: uv project on Python 3.14, ruff, pytest, CI workflow with change detection, lint, test, and vulnerability-audit checks
@@ -17,3 +23,4 @@ All notable changes to this project are documented here, following [Keep a Chang
 - The comparison (step 5), from saved runs at no cost: `src/compare.py` (accuracy against cost and speed, training payback; table and chart), `src/data_size.py` (fine-tuned 0.5B and baseline at 10/25/50/100% of the training data; crossover between about 2,000 and 4,000 labels) and `src/cascade.py` (calibration of the fine-tuned model's confidence; a confidence-threshold cascade to Claude Sonnet, threshold chosen on half of dev: 64.9% vs Sonnet's 63.8% at $0.48 vs $0.90 per 1,000, with a paired bootstrap interval)
 - The fine-tuning notebook saves each mission's top-3 probabilities; matplotlib added for charts
 - Error analysis (step 6, `src/errors.py`, no model calls): agreement across the five approaches (all wrong on 24.6% of dev), group pairs every approach confuses, accuracy by mission length, the cascade's routing, and a blind label check of 25 all-wrong vs 15 control missions graded by the user (`data/error_check.md`; disagreed with the IRS on 72% vs 0%, and picked Sonnet's answer on 16 of those 18)
+- Held-out test scores, once per approach with the settings chosen on dev: baseline 51.8%, LoRA Qwen2.5-0.5B 57.3%, Qwen2.5-1.5B 60.8%, Claude Haiku 4.5 few-shot 56.5%, Claude Sonnet 5.5 guided 61.4%, cascade 61.2% at $0.49 per 1,000 (`src/cascade.py --final` applies dev's threshold; `src/compare.py --split test` includes the cascade)
