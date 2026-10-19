@@ -1,0 +1,15 @@
+{
+  "packet_id": "gp-034",
+  "object_id": "202440899349300944",
+  "mission": "THE ORGANIZATION SERVES HOMELESS LOW INCOME AND DISPLACED PERSONS WITH HOUSING FOOD CLOTHING AND TRANSPORTATION EXPENSES. OUR ADVOCATES ALSO ASSIST PERSONS WHO ARE VICTIMS OF DOMESTIC VIOLENCE ABUSE OR GENERAL CRIME.",
+  "ntee_code": null,
+  "focus_area": "housing",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 879000,
+    "staff": 13
+  },
+  "plant": "budget_mismatch",
+  "near_miss": null,
+  "injection": null
+}

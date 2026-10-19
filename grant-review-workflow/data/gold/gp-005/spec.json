@@ -1,0 +1,15 @@
+{
+  "packet_id": "gp-005",
+  "object_id": "202401289349300015",
+  "mission": "PROVISION OF LONG TERM CARE AND REHABILITATIVE SERVICES.",
+  "ntee_code": "E91Z",
+  "focus_area": "health",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": null,
+    "staff": null
+  },
+  "plant": null,
+  "near_miss": null,
+  "injection": null
+}

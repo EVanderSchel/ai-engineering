@@ -17,7 +17,7 @@ Rules: only public IRS data and ProPublica's JSON API (as in Project 3). Applica
 | Step | What | Concept |
 |---|---|---|
 | 0 | AWS foundations (sign-in, Region, free plan, budget, Bedrock model access and quotas, a first Converse call) and scaffolding: uv project, ruff, pytest, CI with change detection, dependency audit | Calling Claude through Bedrock vs. the Anthropic API |
-| 1 | Design doc: state diagram (steps, branches, where a human decides) and state schema; gold set of about 40 packets with known correct outcomes | Workflow vs. agent: fixed steps where possible, model judgment where needed |
+| 1 | Design doc ([docs/design.md](docs/design.md)): state diagram (steps, branches, where a human decides) and state schema; gold set of about 40 packets with known correct outcomes | Workflow vs. agent: fixed steps where possible, model judgment where needed |
 | 2 | Each step as a plain, tested function on Bedrock: extract, classify, research, score, draft | Steps testable and swappable on their own |
 | 3 | Orchestration with LangGraph: shared state, conditional routing, parallel research, the tool-using agent as one step | Graph orchestration; what a framework adds over a hand-built loop |
 | 4 | Durability and human-in-the-loop: checkpoints in DynamoDB, pause and resume on a reviewer's decision, idempotent steps, a kill-and-resume test | Durable execution |

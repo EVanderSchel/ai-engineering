@@ -1,0 +1,15 @@
+{
+  "packet_id": "gp-027",
+  "object_id": "202432819349301973",
+  "mission": "Provide Service Dogs for Disabled",
+  "ntee_code": "P20",
+  "focus_area": "human_services",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 712000,
+    "staff": null
+  },
+  "plant": null,
+  "near_miss": null,
+  "injection": null
+}

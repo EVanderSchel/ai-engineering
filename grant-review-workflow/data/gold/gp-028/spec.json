@@ -1,0 +1,15 @@
+{
+  "packet_id": "gp-028",
+  "object_id": "202433029349302103",
+  "mission": "The mission to financially support the staff and students at the New Prairie United School Corporation. Our 2 standing programs are students scholarships and teacher grants.",
+  "ntee_code": "B90",
+  "focus_area": "education",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 303000,
+    "staff": null
+  },
+  "plant": null,
+  "near_miss": null,
+  "injection": null
+}

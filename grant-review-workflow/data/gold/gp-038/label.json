@@ -1,0 +1,13 @@
+{
+  "packet_id": "gp-038",
+  "split": "dev",
+  "category": "planted",
+  "route": "review",
+  "failed_rules": [],
+  "flags": [
+    "out_of_focus"
+  ],
+  "focus_area": null,
+  "injection": null,
+  "near_miss": null
+}

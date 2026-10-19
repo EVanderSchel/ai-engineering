@@ -1,0 +1,13 @@
+{
+  "packet_id": "gp-036",
+  "split": "dev",
+  "category": "ineligible_request",
+  "route": "decline_ineligible",
+  "failed_rules": [
+    "request_share"
+  ],
+  "flags": [],
+  "focus_area": "human_services",
+  "injection": null,
+  "near_miss": null
+}

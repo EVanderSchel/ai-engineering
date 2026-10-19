@@ -1,0 +1,14 @@
+{
+  "packet_id": "gp-022",
+  "split": "dev",
+  "category": "ineligible_return",
+  "route": "decline_ineligible",
+  "failed_rules": [
+    "revenue_range",
+    "net_assets"
+  ],
+  "flags": [],
+  "focus_area": "human_services",
+  "injection": null,
+  "near_miss": null
+}

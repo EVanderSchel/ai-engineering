@@ -1,0 +1,15 @@
+{
+  "packet_id": "gp-011",
+  "object_id": "202403309349301365",
+  "mission": "The Arapahoe Bar Association provides educational seminars and events to its 980 members.",
+  "ntee_code": null,
+  "focus_area": "education",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 160000,
+    "staff": 1
+  },
+  "plant": "name_mismatch",
+  "near_miss": null,
+  "injection": null
+}

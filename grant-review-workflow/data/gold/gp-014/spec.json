@@ -1,0 +1,19 @@
+{
+  "packet_id": "gp-014",
+  "object_id": "202411739349301206",
+  "mission": "PROMOTE JAPANESE ARTS",
+  "ntee_code": "A230",
+  "focus_area": "human_services",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 307000,
+    "staff": null
+  },
+  "plant": null,
+  "near_miss": {
+    "field": "annual_budget",
+    "claimed": 307000,
+    "actual": 264881
+  },
+  "injection": null
+}

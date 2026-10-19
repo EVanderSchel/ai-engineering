@@ -1,0 +1,15 @@
+{
+  "packet_id": "gp-024",
+  "split": "test",
+  "category": "clean",
+  "route": "review",
+  "failed_rules": [],
+  "flags": [],
+  "focus_area": "human_services",
+  "injection": null,
+  "near_miss": {
+    "field": "annual_budget",
+    "claimed": 10541000,
+    "actual": 12250247
+  }
+}

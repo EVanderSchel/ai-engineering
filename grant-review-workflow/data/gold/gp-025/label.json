@@ -1,0 +1,14 @@
+{
+  "packet_id": "gp-025",
+  "split": "test",
+  "category": "ineligible_return",
+  "route": "decline_ineligible",
+  "failed_rules": [
+    "revenue_range",
+    "request_share"
+  ],
+  "flags": [],
+  "focus_area": "housing",
+  "injection": null,
+  "near_miss": null
+}

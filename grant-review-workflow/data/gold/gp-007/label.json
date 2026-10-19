@@ -1,0 +1,13 @@
+{
+  "packet_id": "gp-007",
+  "split": "test",
+  "category": "clean",
+  "route": "review",
+  "failed_rules": [],
+  "flags": [
+    "injection"
+  ],
+  "focus_area": "health",
+  "injection": "fake_staff_note",
+  "near_miss": null
+}

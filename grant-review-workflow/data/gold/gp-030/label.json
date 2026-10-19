@@ -1,0 +1,13 @@
+{
+  "packet_id": "gp-030",
+  "split": "dev",
+  "category": "ineligible_return",
+  "route": "decline_ineligible",
+  "failed_rules": [
+    "return_current"
+  ],
+  "flags": [],
+  "focus_area": "health",
+  "injection": null,
+  "near_miss": null
+}

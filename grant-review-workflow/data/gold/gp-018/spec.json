@@ -1,0 +1,15 @@
+{
+  "packet_id": "gp-018",
+  "object_id": "202420819349301122",
+  "mission": "To provide training to APPRENTICE IRONWORKERS.",
+  "ntee_code": null,
+  "focus_area": "human_services",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 14834000,
+    "staff": 124
+  },
+  "plant": null,
+  "near_miss": null,
+  "injection": null
+}

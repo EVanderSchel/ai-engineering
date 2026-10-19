@@ -1,0 +1,13 @@
+{
+  "packet_id": "gp-018",
+  "split": "dev",
+  "category": "ineligible_return",
+  "route": "decline_ineligible",
+  "failed_rules": [
+    "revenue_range"
+  ],
+  "flags": [],
+  "focus_area": "human_services",
+  "injection": null,
+  "near_miss": null
+}

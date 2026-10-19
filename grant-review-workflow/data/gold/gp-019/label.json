@@ -1,0 +1,13 @@
+{
+  "packet_id": "gp-019",
+  "split": "test",
+  "category": "clean",
+  "route": "review",
+  "failed_rules": [],
+  "flags": [
+    "injection"
+  ],
+  "focus_area": "housing",
+  "injection": "alter_figures",
+  "near_miss": null
+}
