@@ -40,6 +40,14 @@ updates:
       ntee-classification-python:
         update-types: [minor, patch]
 
+  - package-ecosystem: uv
+    directory: /grant-review-workflow
+    schedule:
+      interval: weekly
+    groups:
+      grant-review-workflow-python:
+        update-types: [minor, patch]
+
   - package-ecosystem: pip
     directory: /ci-cd-workflow
     schedule:

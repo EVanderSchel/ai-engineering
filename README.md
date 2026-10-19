@@ -8,6 +8,7 @@ Hands-on projects built while upskilling toward an AI Engineer role. Each folder
 | [irs-990-extraction](irs-990-extraction/) | Structured data from charities' IRS Form 990 filings (page images only) with Claude's vision input, released as `irs-990-extraction-v1.0.0`: scored field by field against the IRS's own e-file XML (99.2% on held-out filings), multi-page table extraction, simulated scans, review rules and a review queue, batch and parallel processing, a model comparison, and an authenticated API deployed to Azure | Python 3.14, uv, Claude API (vision, structured outputs, Message Batches), Pydantic, FastAPI, Docker, GitHub Actions, Azure Container Apps |
 | [nonprofit-agent](nonprofit-agent/) | A tool-using agent that researches US charities from public IRS data, released as `nonprofit-agent-v1.0.0`: an agent loop built by hand and compared with the SDK's Tool Runner, tools served over MCP, trajectory evals with a validated LLM judge (98.5% correct, 100% grounded), a code-level grounding guardrail, prompt-injection testing and defenses (0 of 60 attacks followed), and an authenticated, spend-capped API deployed to Azure | Python 3.14, uv, Claude API (tool use), MCP, FastAPI, Docker, GitHub Actions, Azure Container Apps, Key Vault |
 | [ntee-classification](ntee-classification/) | Fine-tune vs. prompt on one task, nonprofit mission statement to NTEE category, released as `ntee-classification-v1.0.0`: a TF-IDF baseline, prompted Claude and LoRA fine-tuned Qwen2.5 models compared on held-out accuracy, latency and cost (a 1.5B model within a point of Claude Sonnet at 1/400th the cost), plus a data-size curve, a confidence cascade that matched Sonnet at 56% of its cost, and an error analysis with a blind label check | Python 3.14, uv, scikit-learn, Claude API, Hugging Face (PEFT/LoRA), Google Colab, matplotlib, GitHub Actions |
+| [grant-review-workflow](grant-review-workflow/) | *In progress.* A multi-step agent workflow on AWS that reviews nonprofit grant applications: extraction, classification, research and scoring with Claude on Amazon Bedrock, orchestrated with LangGraph, with durable checkpoints, human review, evals, and infrastructure as code | Python 3.14, uv, Amazon Bedrock (Claude), LangGraph, DynamoDB, AWS CDK (TypeScript), GitHub Actions |
 | [ci-cd-workflow](ci-cd-workflow/) | A complete CI/CD pipeline built one stage at a time around a small FastAPI service: tests, lint gates, Docker, container registry, staged deployments with approval, and versioned releases | GitHub Actions, Docker, GHCR, Render, pytest, ruff |
 | [skills-training](skills-training/) | Guided notebooks learning deep-learning frameworks side by side, from tensors and autograd to an MNIST classifier | TensorFlow, Keras, PyTorch, Jupyter |
 
@@ -55,6 +56,7 @@ Hands-on projects built while upskilling toward an AI Engineer role. Each folder
 - **irs-990-extraction:** `irs-990-extraction-test`, `-lint`, `-audit`, and `-image`, which builds the API image and smoke-tests it (prompts, non-root user, no data, startup, auth); `-publish` repeats that test on the exact image before pushing it.
 - **nonprofit-agent:** `nonprofit-agent-test`, `-lint`, `-audit`, and `-image`, which builds the API image and smoke-tests it (non-root user, no eval data, startup, auth, validation); `-publish` repeats that test on the exact image before pushing it.
 - **ntee-classification:** `ntee-classification-test`, `-lint`, `-audit`.
+- **grant-review-workflow:** `grant-review-workflow-test`, `-lint`, `-audit`.
 - **ci-cd-workflow:** `ci-cd-workflow-lint`, `-test`, `-build`.
 - Plus each project's `-changes` job, and **CodeQL**: a pull request that introduces a new high or critical security finding can't merge.
 
@@ -72,6 +74,7 @@ Deployments to production environments additionally wait for manual approval.
 2. ~~**Document extraction**~~: done (`irs-990-extraction-v1.0.0`, see above).
 3. ~~**Tool-using agent**~~: done (`nonprofit-agent-v1.0.0`, see above).
 4. ~~**Fine-tune vs. prompt**~~: done (`ntee-classification-v1.0.0`, see above).
+5. **Multi-step agent workflow on AWS** (in progress, [`grant-review-workflow`](grant-review-workflow/)): a grant-application review workflow on Amazon Bedrock, orchestrated with LangGraph, with durable checkpoints, human review, and infrastructure as code (CDK).
 
 ## License
 
