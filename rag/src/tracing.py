@@ -38,9 +38,6 @@ class _NoOp:
     def update(self, **kwargs):
         return self
 
-    def set_trace_io(self, **kwargs):
-        return self
-
     def end(self, **kwargs):
         return self
 
@@ -51,12 +48,11 @@ def enabled() -> bool:
 
 def start_trace(request_id: str, name: str, input, metadata: dict):
     """Open the root observation of a new trace. Its trace ID is the request ID from our logs,
-    so a log line can be looked up in Langfuse directly."""
+    so a log line can be looked up in Langfuse directly. The trace's input and output are the root
+    observation's (Langfuse SDK v5 has no separate trace-level input/output)."""
     if _client is None:
         return _NoOp()
-    root = _client.start_observation(trace_context={"trace_id": request_id}, name=name, input=input, metadata=metadata)
-    root.set_trace_io(input=input)
-    return root
+    return _client.start_observation(trace_context={"trace_id": request_id}, name=name, input=input, metadata=metadata)
 
 
 def flush() -> None:

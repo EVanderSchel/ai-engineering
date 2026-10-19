@@ -188,7 +188,7 @@ def test_ask_trace_records_retrieval_and_generation_with_cost(http, fake_client,
     answer = assert_trace_shape(root, resp.headers["X-Request-ID"])
     assert answer.fields["usage_details"] == {"input": 100, "output": 5}
     assert answer.fields["cost_details"] == {"total": 0.00025}
-    assert root.fields["trace_output"] == "The tanker Trend was struck."
+    assert root.fields["output"] == "The tanker Trend was struck."  # Langfuse shows it as the trace's output
 
 
 def test_stream_trace_records_time_to_first_token(http, fake_client, fake_retrieve, fake_traces):
