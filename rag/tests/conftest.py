@@ -142,10 +142,6 @@ class FakeObservation:
         self.fields.update(kwargs)
         return self
 
-    def set_trace_io(self, **kwargs):
-        self.fields.update({f"trace_{k}": v for k, v in kwargs.items()})
-        return self
-
     def end(self, **kwargs):
         self.end_calls += 1
         return self

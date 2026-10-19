@@ -250,8 +250,8 @@ def _finish_generation(gen, root, record: dict, message) -> str:
         cost_details={"total": record["cost_usd"]} if record["cost_usd"] is not None else None,
     )
     gen.end()
+    # Langfuse takes a trace's output from its root observation's output.
     root.update(output=answer)
-    root.set_trace_io(output=answer)
     return answer
 
 
