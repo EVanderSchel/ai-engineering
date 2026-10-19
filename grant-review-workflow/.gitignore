@@ -1,0 +1,12 @@
+.venv/
+venv*/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.env
+# Downloaded IRS files (index, XML batch ZIPs, page-image PDFs): large and re-downloadable, so never committed.
+data/raw/
+# CDK (step 7): installed packages and the synthesized CloudFormation templates are rebuilt, never committed.
+node_modules/
+cdk.out/
