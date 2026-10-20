@@ -55,5 +55,6 @@ to 14") or places.
    make with the fund, not a tuning knob.
 6. **Checkpoints expire.** 30 days covers a review round; nothing else keeps the narrative. A decided application's
    letter is the record (step 7 decides where letters are kept, and for how long).
-7. **Least privilege.** The workflow's role may call only the two model profiles, this guardrail and this table
-   (step 6d).
+7. **Least privilege.** The workflow's role may call only the two model profiles (and their models only through
+   them) and read and write this table: `src/iam_policy.py`, checked with IAM's policy simulator (step 6d). The
+   guardrail isn't in it: the workflow doesn't call it.
