@@ -40,7 +40,7 @@ Rules: only public IRS data and ProPublica's JSON API (as in Project 3). Applica
 - **Project and Region:** one AWS project in `us-east-2` (confirmed in AWS Settings). Every Regional resource is created there.
 - **CLI profile:** `agent-toolkit`. Sign in with `aws login --profile agent-toolkit`; sessions expire, so sign in again when a command says so.
 - **Plan and spending:** free plan with credits; a monthly AWS Budget emails at 50%, 80% and 100%; a spend limit in AWS Settings is the hard stop.
-- **Models:** every Claude model on Bedrock here is called through a `us.` inference profile (for example `us.anthropic.claude-sonnet-4-6`), which keeps requests within US Regions. Claude 5.5 models need a token-per-minute quota above the account's starting value of 0 (requested on 2026-10-16); until then development uses Sonnet 4.6 and Haiku 4.5. The model ID is a setting, so switching is a one-line change that the evals then judge.
+- **Models:** every Claude model on Bedrock here is called through a `us.` inference profile (for example `us.anthropic.claude-sonnet-4-6`), which keeps requests within US Regions. The account can use Claude Sonnet 4.6, Haiku 4.5 and Opus 4.6 (plus older 4.5 models); Claude 5.x models have a token-per-minute quota of 0, and AWS declined increases for Sonnet 5.5 and Haiku 5.5 on 2026-10-16 (access "may depend on factors such as regional availability, account history, and usage patterns"). The workflow uses Sonnet 4.6 and Haiku 4.5, with Opus 4.6 as the eval judge. The model ID is a setting per step, so moving to a newer model later is a one-line change that the evals then judge.
 
 ## Setup
 
@@ -50,12 +50,18 @@ uv sync            # creates .venv with the locked dependencies
 uv run pytest      # tests
 uv run ruff check . ; uv run ruff format --check .
 bash security/audit.sh   # known vulnerabilities in locked dependencies (Git Bash)
+
+# Calls to Bedrock (need `aws login --profile agent-toolkit` first)
+$env:AWS_PROFILE = "agent-toolkit"
+uv run python src/bedrock.py   # one small call per model: access, structured output, cost
 ```
+
+`src/bedrock.py` is the only place the workflow calls a model: Bedrock's Converse API with an explicit `maxTokens`, adaptive retries, structured output through a forced tool, and a cost and latency record for every call. First live calls (2026-10-20): a structured one-sentence answer cost $0.0039 on Sonnet 4.6 (2.0 s in the model) and $0.0012 on Haiku 4.5 (0.9 s). Each used about 727 input tokens for a 15-word question: defining a tool adds about 600 tokens of instructions to every structured call.
 
 ## Layout
 
 - `src/`: flat modules (`pytest.ini` puts `src` on the import path).
-- `tests/`: unit tests, no network and no AWS calls.
+- `tests/`: unit tests, no network and no AWS calls (Bedrock calls are checked against Bedrock's API definition with botocore's Stubber).
 - `docs/design.md`: the design: fund rules, steps, state, principles, metrics, gold set plan.
 - `data/filings/`: answer keys of the 60 real Form 990s, copied from Project 2 by `src/import_filings.py`.
 - `data/gold/`: the 40 application packets (`src/build_gold.py` writes forms, specs and labels; narratives are written and approved separately). See its README.

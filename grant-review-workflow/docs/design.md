@@ -151,8 +151,11 @@ Parallel steps write separate fields, except `flags` and `steps`, which they app
 
 Multiple funders or programs; applicants uploading documents themselves (packets are given); reviewer accounts and permissions beyond one sign-in (step 8); Schedule and Part VII data; older paper-filed returns.
 
-## Decisions (2026-10-19)
+## Decisions
+
+Decisions 1-3 were made on 2026-10-19, decision 4 on 2026-10-20.
 
 1. **No fast track.** Every eligible application gets the same human review, sorted by priority. A lighter queue for strong, unflagged applications can come later, once the evals show the flags are reliable enough to lean on.
 2. **No "request more information" in v1.** Reviewers approve, decline, or correct a figure. The only pause is waiting for the reviewer.
 3. **Gold set: 40 packets** from Project 2's 60 filings, split 15 dev / 25 test: 15 ineligible (13 by the return's figures, 2 by the request), 13 clean, 12 with planted inconsistencies, and 8 injections placed inside those (see Gold set plan). The rules above were checked against those 60 filings: 47 are eligible and 13 fail (revenue 7, net assets 3, minimum request over 25% of expenses 3, stale return 2; 2 fail more than one), so every rule is exercised by real figures, and more declines can be planted through the requested amount.
+4. **Claude is called through Bedrock's Converse API** (boto3), not the Anthropic SDK's Bedrock client. Converse is AWS's own model-independent API: it's what AWS-focused roles expect, and the same code can call other Bedrock models for a later comparison. The cost: Projects 1-4's Messages API code doesn't carry over directly, and structured output goes through Converse's tool configuration.

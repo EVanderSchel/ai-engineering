@@ -6,13 +6,18 @@ requires-python = ">=3.14,<3.15"
 # Direct dependencies; exact versions with checksums live in uv.lock. Install with `uv sync`.
 # Added by the steps that need them (boto3 for Bedrock in step 2, LangGraph in step 3, ...). The AWS
 # infrastructure (step 7) is CDK in TypeScript, with its own package.json, not here.
-dependencies = []
+dependencies = [
+    "boto3>=1.40",
+    "pydantic>=2.11",
+]
 
 [dependency-groups]
 lint = [
     "ruff>=0.16",
 ]
 dev = [
+    # Reads the credentials `aws login` stores locally; deployed code uses an IAM role and doesn't need it.
+    "botocore[crt]>=1.43.115",
     "pytest>=9.0",
     { include-group = "lint" },
 ]
