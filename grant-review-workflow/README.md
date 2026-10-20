@@ -56,6 +56,15 @@ $env:AWS_PROFILE = "agent-toolkit"
 uv run python src/bedrock.py   # one small call per model: access, structured output, cost
 ```
 
+**extract (step 2c)** reads page 1 of each return at 1568 px and transcribes the 12 Part I figures the workflow uses (prompt `prompts/extract/v1.txt`, adapted from Project 2's measured prompt). On the 15 dev packets, scored against the IRS answer keys (`uv run python src/extract.py --model sonnet|haiku`, results in `results/`):
+
+| Model | Fields right | Same eligibility verdict | Revenue not adding up | Cost per return | Median time in model |
+|---|---|---|---|---|---|
+| Sonnet 4.6 | **165/165** | 15/15 | 0 | $0.017 | 3.4 s |
+| Haiku 4.5 | 164/165 | 15/15 | 1 | $0.0056 | 2.5 s |
+
+Haiku's one error (gp-036's total revenue read as $51,306, not $51,308) was caught by the form's own arithmetic, the only return where revenue didn't add up, so it would reach a reviewer as a flag. It also sat $1,306 above the fund's $50,000 revenue minimum: a digit misread near a threshold is how a wrong automatic decline would happen. **Extract uses Sonnet 4.6**: the saving from Haiku is about a cent per application. One run on 15 returns is a small sample; step 5 repeats it.
+
 `src/bedrock.py` is the only place the workflow calls a model: Bedrock's Converse API with an explicit `maxTokens`, adaptive retries, structured output through a forced tool, and a cost and latency record for every call. First live calls (2026-10-20): a structured one-sentence answer cost $0.0039 on Sonnet 4.6 (2.0 s in the model) and $0.0012 on Haiku 4.5 (0.9 s). Each used about 727 input tokens for a 15-word question: defining a tool adds about 600 tokens of instructions to every structured call.
 
 ## Layout
