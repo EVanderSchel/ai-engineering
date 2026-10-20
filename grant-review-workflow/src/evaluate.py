@@ -139,6 +139,7 @@ def run_case(app, packet_id: str, rep: int, run_id: str, sleep=time.sleep) -> di
         "failed_rules": state.eligibility.failed_rules,
         "flags": sorted(f.kind for f in state.flags),
         "wrong_fields": extract.compare(state.extraction, key),
+        "return_name_read": extract.name_read_right(state.extraction, key),
         "focus_area": proposal.focus_area,
         "claims": proposal.claims.model_dump(),
         "rubric": {s.criterion: s.score for s in proposal.rubric},
@@ -218,6 +219,8 @@ def score(rows: list[dict]) -> dict:
 
     fields = len(extract.COMPARED)
     out["extraction_field_accuracy"] = _ratio(n * fields - sum(len(r["wrong_fields"]) for r in rows), n * fields)
+    named = [r for r in rows if "return_name_read" in r]  # scored from step 6.5 on
+    out["return_name_accuracy"] = _ratio(sum(r["return_name_read"] for r in named), len(named))
     out["focus_accuracy"] = _ratio(sum(r["focus_area"] == label(r)["focus_area"] for r in rows), n)
     out["claims_accuracy"] = _ratio(sum(r["claims"] == spec(r)["claims"] for r in rows), n)
     out["letters_with_problems"] = sum(bool(r["letter_problems"]) for r in rows)
@@ -310,6 +313,7 @@ def report(result: dict) -> str:
         f"| Failed-rules accuracy | {p['failed_rules_accuracy']} | {spread('failed_rules_accuracy')} |",
         f"| Flags exactly as labeled | {p['flags_exact']} | {spread('flags_exact')} |",
         f"| Extraction field accuracy | {p['extraction_field_accuracy']} | {spread('extraction_field_accuracy')} |",
+        f"| Return name read (box C) | {p['return_name_accuracy']} | {spread('return_name_accuracy')} |",
         f"| Focus-area accuracy | {p['focus_accuracy']} | {spread('focus_accuracy')} |",
         f"| Stated-figure accuracy | {p['claims_accuracy']} | {spread('claims_accuracy')} |",
         f"| Injections caught | {p['injections_caught']}/{p['injections']} | {spread('injections_caught')} |",

@@ -98,8 +98,24 @@ def test_name_mismatch_carries_the_agents_finding():
         form_name_belongs_to="11-2223333",
         name_explanation="The form's name is a different organization's.",
     )
-    [flag] = checks.cross_check(state(research=research))
+    elsewhere = FIGURES.model_copy(update={"organization_name": "ARAPAHOE COUNTY BAR ASSOCIATION"})
+    [flag] = checks.cross_check(state(figures=elsewhere, research=research))
     assert flag.kind == "name_mismatch" and "11-2223333" in flag.evidence and "different organization" in flag.evidence
+    assert "its return says 'ARAPAHOE COUNTY BAR ASSOCIATION'" in flag.evidence
+
+
+def test_a_registered_name_that_differs_from_the_applicants_own_return_isnt_a_mismatch():
+    """gp-015's case: the form and the return agree; only the public record's name differs (group exemption)."""
+    lodge = FIGURES.model_copy(update={"organization_name": "ORG LODGE 2439"})
+    research = Research(found=True, registered_name="BENEVOLENT ORDER OF ORGS", name_matches_form=False)
+    form = ApplicationForm(ein="123456789", organization_name="Org Lodge 2439", amount_requested=20_000)
+    assert checks.cross_check(state(figures=lodge, research=research).model_copy(update={"form": form})) == []
+
+
+def test_without_a_return_name_the_public_record_decides():
+    blank = FIGURES.model_copy(update={"organization_name": None})
+    research = Research(found=True, registered_name="SOMEONE ELSE", name_matches_form=False)
+    assert kinds(checks.cross_check(state(figures=blank, research=research))) == ["name_mismatch"]
 
 
 def test_out_of_focus_injection_and_not_found_are_flagged():

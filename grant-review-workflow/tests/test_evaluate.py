@@ -151,6 +151,7 @@ def test_an_outage_that_clears_is_survived_without_paying_twice(placeholder_pdfs
     assert waits == [30, 90]
     assert calls.count("extract") == 1 and calls.count("research") == 1  # not rerun after the outages
     assert row["route"] == "review" and row["flags"] == ["injection"]
+    assert row["return_name_read"]  # the stand-in extract reads the answer key's name
 
 
 def test_an_outage_that_doesnt_clear_becomes_a_recorded_failure(placeholder_pdfs):
