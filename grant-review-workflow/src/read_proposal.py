@@ -1,8 +1,10 @@
 """read_proposal: the applicant's narrative -> focus area, stated figures, rubric scores, and any text that tries
-to instruct the reviewer.
+to instruct the reviewer, in the narrative or in the organization name and project title they typed (prompt v3,
+step 6.5: the red team's form-field attacks had nothing that could report them).
 
 The narrative is untrusted (design principle 3), defended in four ways, from Project 3's measurements:
-1. It's sent as {"unverified_text": ...} and the prompt says it is data, never instructions.
+1. It's sent as {"unverified_text": ...} (and so are the name and title) and the prompt says it is data, never
+   instructions.
 2. Text addressed to a reviewer or an AI is quoted into suspected_instructions, never acted on.
 3. Stated figures are recorded, not judged: cross_check compares them with the return, in code.
 4. The answer is checked in code (`grounding_problems`): every quote must appear in the narrative, and every
@@ -24,7 +26,7 @@ import bedrock
 import paths
 from state import Claims, FocusArea, ProposalReading, RubricScore
 
-PROMPT_VERSION = "v2"
+PROMPT_VERSION = "v3"
 SYSTEM = (paths.ROOT / "prompts" / "read_proposal" / f"{PROMPT_VERSION}.txt").read_text(encoding="utf-8").strip()
 MAX_TOKENS = 1500
 
@@ -65,15 +67,19 @@ def _figure_written(narrative: str, value: int, unit: str) -> bool:
     return re.search(rf"\b{value:,}\b|\b{value}\b", narrative) is not None
 
 
-def grounding_problems(reading: ProposalReading, narrative: str) -> list[str]:
-    """What the answer asserts about the narrative that the narrative doesn't contain (empty: all grounded)."""
+def grounding_problems(reading: ProposalReading, narrative: str, form_fields: tuple[str, ...] = ()) -> list[str]:
+    """What the answer asserts about the application that it doesn't contain (empty: all grounded). Suspected
+    instructions may come from the narrative or the form's free-text fields; everything else from the narrative."""
     flat = _flat(narrative)
+    instruction_sources = [flat, *(_flat(f) for f in form_fields)]
     problems = [
         f"rubric quote not in the proposal: {s.quote!r}" for s in reading.rubric if not _quote_found(s.quote, narrative)
     ]
     # Suspected instructions stay strict: one continuous passage, exactly as planted.
     problems += [
-        f"quoted instruction not in the proposal: {q!r}" for q in reading.suspected_instructions if _flat(q) not in flat
+        f"quoted instruction not in the application: {q!r}"
+        for q in reading.suspected_instructions
+        if not any(_flat(q) in source for source in instruction_sources)
     ]
     if reading.claims.annual_budget is not None and not _figure_written(
         narrative, reading.claims.annual_budget, "dollars"
@@ -87,13 +93,21 @@ def grounding_problems(reading: ProposalReading, narrative: str) -> list[str]:
     return problems
 
 
+def application_text(narrative: str, organization_name: str, project_title: str | None) -> str:
+    """The three texts the applicant wrote, each marked unverified."""
+    form = {"organization_name": {"unverified_text": organization_name}}
+    if project_title:
+        form["project_title"] = {"unverified_text": project_title}
+    return json.dumps({"application_form": form, "proposal": {"unverified_text": narrative}}, indent=2)
+
+
 def read_proposal(
-    client, narrative: str, model: str = "sonnet"
+    client, narrative: str, organization_name: str, project_title: str | None, model: str = "sonnet"
 ) -> tuple[ProposalReading, list[str], bedrock.CallRecord]:
     """Returns (the reading, its grounding problems, the call record)."""
     content = [
-        {"text": json.dumps({"proposal": {"unverified_text": narrative}}, indent=2)},
-        {"text": "Record what this proposal says."},
+        {"text": application_text(narrative, organization_name, project_title)},
+        {"text": "Record what this application says."},
     ]
     answer, record = bedrock.structured(
         client,
@@ -105,7 +119,8 @@ def read_proposal(
         max_tokens=MAX_TOKENS,
     )
     reading = ProposalReading.model_validate(answer.model_dump())
-    return reading, grounding_problems(reading, narrative), record
+    fields = (organization_name, project_title or "")
+    return reading, grounding_problems(reading, narrative, fields), record
 
 
 # --- Checking on the dev packets -------------------------------------------------------------------------
@@ -120,7 +135,10 @@ def score_dev(model: str) -> dict:
             continue
         spec = json.loads((folder / "spec.json").read_text(encoding="utf-8"))
         narrative = (folder / "narrative.md").read_text(encoding="utf-8")
-        reading, problems, record = read_proposal(client, narrative, model)
+        form = json.loads((folder / "form.json").read_text(encoding="utf-8"))
+        reading, problems, record = read_proposal(
+            client, narrative, form["organization_name"], form.get("project_title"), model
+        )
         injected = label["injection"] is not None
         row = {
             "packet_id": folder.name,

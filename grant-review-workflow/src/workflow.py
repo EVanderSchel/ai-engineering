@@ -83,7 +83,11 @@ def bedrock_steps(client) -> Steps:
 
     def read_proposal_node(state: ApplicationState) -> dict:
         reading, problems, call = read_proposal.read_proposal(
-            client, state.narrative, model=STEP_MODELS["read_proposal"]
+            client,
+            state.narrative,
+            state.form.organization_name,
+            state.form.project_title,
+            model=STEP_MODELS["read_proposal"],
         )
         # A reading that quotes or states something the narrative doesn't contain isn't trusted silently.
         flags = [Flag(step="read_proposal", kind="unverified_reading", evidence=p) for p in problems]
