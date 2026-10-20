@@ -9,7 +9,8 @@ step 4's checkpoints save it to DynamoDB after every step.
 """
 
 import datetime as dt
-from typing import Literal
+import operator
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -27,6 +28,7 @@ FlagKind = Literal[
     "not_found",  # the EIN isn't in the public record
     "figures_disagree",  # figures read from the return disagree with the public record's
     "arithmetic",  # the return's own totals don't add up as read
+    "unverified_reading",  # read_proposal quoted or stated something the narrative doesn't contain
 ]
 Criterion = Literal["clear_outcomes", "budget_matches_request", "feasible_for_size"]
 
@@ -161,13 +163,15 @@ class ApplicationState(BaseModel):
     extraction: Extraction | None = None
     research: Research | None = None
     proposal: ProposalReading | None = None
-    flags: list[Flag] = []
+    # The two shared lists. Annotated with a reducer (operator.add): when parallel steps both add to one,
+    # LangGraph concatenates their additions instead of letting the last one overwrite the other.
+    flags: Annotated[list[Flag], operator.add] = []
     eligibility: Eligibility | None = None
     route: Route | None = None
     review: ReviewerDecision | None = None
     letter: str | None = None
     letter_problems: list[str] = []  # what the code check still finds wrong after one revision: a person fixes it
-    calls: list[CallRecord] = []  # every model call: model, tokens, cost, latency
+    calls: Annotated[list[CallRecord], operator.add] = []  # every model call: model, tokens, cost, latency
 
     @property
     def cost_usd(self) -> float:
