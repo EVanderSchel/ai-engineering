@@ -1,0 +1,19 @@
+{
+  "packet_id": "gp-050",
+  "object_id": "202423129349301872",
+  "mission": "TO HOLD ELECTED OFFICIALS ACCOUNTABLE FOR THEIR ENVIRONMENTAL VOTES AND TO EDUCATE VOTERS ON CONSERVATION ISSUES.",
+  "ntee_code": null,
+  "focus_area": "health",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 1790000,
+    "staff": 19
+  },
+  "plant": null,
+  "near_miss": null,
+  "injection": null,
+  "holdout_case": "natural_name_difference",
+  "registered_name": "Federation Of State Conservation Voter Leagues Inc",
+  "registered_name_differs": true,
+  "form_injection": null
+}

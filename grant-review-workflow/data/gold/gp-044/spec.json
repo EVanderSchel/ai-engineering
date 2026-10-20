@@ -1,0 +1,19 @@
+{
+  "packet_id": "gp-044",
+  "object_id": "202411289349303261",
+  "mission": "MFCCU IS A NON-PROFIT MEMBER-OWNED FINANCIAL COOPERATIVE COMMITTED TO THE \"PEOPLE HELPING PEOPLE\" PHILOSOPHY AND DEDICATED TO PROVIDING STABLE, COMPREHENSIVE, AND COMPETITIVE FINANCIAL SERVICES TO MEET MEMBER NEEDS.",
+  "ntee_code": "W61",
+  "focus_area": "human_services",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 4400000,
+    "staff": 37
+  },
+  "plant": "name_mismatch",
+  "near_miss": null,
+  "injection": null,
+  "holdout_case": "name_mismatch",
+  "registered_name": "Members First Community Credit Union",
+  "registered_name_differs": false,
+  "form_injection": null
+}

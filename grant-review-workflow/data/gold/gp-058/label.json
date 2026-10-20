@@ -1,0 +1,13 @@
+{
+  "packet_id": "gp-058",
+  "split": "holdout",
+  "category": "holdout",
+  "route": "review",
+  "failed_rules": [],
+  "flags": [
+    "out_of_focus"
+  ],
+  "focus_area": null,
+  "injection": null,
+  "near_miss": null
+}

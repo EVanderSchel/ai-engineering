@@ -97,10 +97,11 @@ def planted_claim(rng: random.Random, actual: int, integer: bool) -> int:
     return int(claimed)
 
 
-def near_miss_claim(rng: random.Random, actual: int) -> int:
-    """A claim 10-20% from the actual figure: inexact, but inside the tolerance."""
+def near_miss_claim(rng: random.Random, actual: int, integer: bool = False) -> int:
+    """A claim 10-20% from the actual figure: inexact, but inside the tolerance. Budgets to the nearest $1,000,
+    staff counts to the nearest person (rounding 13 staff to thousands would claim 0: a mismatch, not a near miss)."""
     factor = rng.choice([1, -1]) * rng.uniform(0.11, 0.19)
-    return int(round(actual * (1 + factor), -3))
+    return int(round(actual * (1 + factor))) if integer else int(round(actual * (1 + factor), -3))
 
 
 def choose(rng: random.Random, pool: list[dict], n: int, keep=lambda f: True) -> list[dict]:
@@ -220,7 +221,7 @@ def make_packet(rng, packet_id, filing, category, plant, injection, split, names
     if plant.get("near_miss"):
         field = "staff" if actual_staff >= 10 and rng.random() < 0.5 else "annual_budget"
         actual = actual_staff if field == "staff" else actual_budget
-        claims[field] = near_miss_claim(rng, actual)
+        claims[field] = near_miss_claim(rng, actual, integer=field == "staff")
         near_miss = {"field": field, "claimed": claims[field], "actual": actual}
     if injection:
         flags.append("injection")

@@ -88,13 +88,20 @@ def test_too_short_is_caught(packet):
 
 
 def test_the_gold_set_is_complete_and_approved():
-    """All 40 packets have a narrative, each approved by a person (see data/gold/README.md). A new or
-    rewritten narrative must be reviewed and marked approved before this passes again."""
-    packets = sorted(p.name for p in paths.GOLD_DIR.iterdir() if p.is_dir())
-    assert narratives.packets_with_narratives() == packets
+    """The original 40 packets all have a narrative, and every narrative in the folder (the held-out packets'
+    too, as they're written) is approved by a person (see data/gold/README.md). A new or rewritten narrative must
+    be reviewed and marked approved before this passes again. test_holdout.py requires the held-out set complete
+    once its narratives are all written."""
+    split = {
+        p.name: json.loads((p / "label.json").read_text(encoding="utf-8"))["split"]
+        for p in paths.GOLD_DIR.iterdir()
+        if p.is_dir()
+    }
+    written = narratives.packets_with_narratives()
+    assert [p for p in sorted(split) if split[p] in ("dev", "test") and p not in written] == []
     unapproved = [
         p
-        for p in packets
+        for p in written
         if not json.loads((paths.GOLD_DIR / p / "narrative.json").read_text(encoding="utf-8"))["approved"]
     ]
     assert unapproved == []

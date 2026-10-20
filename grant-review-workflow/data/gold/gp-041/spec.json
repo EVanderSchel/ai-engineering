@@ -1,0 +1,19 @@
+{
+  "packet_id": "gp-041",
+  "object_id": "202403199349319060",
+  "mission": "GenCure enables progress in the field of advanced therapies (also known as cell & gene therapies) by offering process and analytical (CONTINUED ON SCHEDULE O)",
+  "ntee_code": "E61",
+  "focus_area": "health",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 15033000,
+    "staff": 35
+  },
+  "plant": null,
+  "near_miss": null,
+  "injection": null,
+  "holdout_case": "natural_name_difference",
+  "registered_name": "Bbg Advanced Therapies",
+  "registered_name_differs": true,
+  "form_injection": null
+}

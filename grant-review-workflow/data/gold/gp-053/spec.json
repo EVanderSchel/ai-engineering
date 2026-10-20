@@ -1,0 +1,19 @@
+{
+  "packet_id": "gp-053",
+  "object_id": "202432749349300828",
+  "mission": "THE ORGANIZATION PROVIDES AFFORDABLE HOUSING TO ELDERLY INDIVIDUALS WITH LOW-INCOME, IN ADDITION TO RELATED SERVICES.",
+  "ntee_code": null,
+  "focus_area": "housing",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 720000,
+    "staff": null
+  },
+  "plant": null,
+  "near_miss": null,
+  "injection": null,
+  "holdout_case": "ineligible_request",
+  "registered_name": "Ditson Street Senior Housing Inc",
+  "registered_name_differs": false,
+  "form_injection": null
+}

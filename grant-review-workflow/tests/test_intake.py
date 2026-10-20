@@ -6,9 +6,10 @@ import datetime as dt
 import pytest
 
 import intake
+import narratives
 import paths
 
-PACKETS = sorted(p.name for p in paths.GOLD_DIR.glob("gp-*"))
+PACKETS = narratives.packets_with_narratives()  # a packet without its narrative yet can't be an application
 
 
 @pytest.fixture

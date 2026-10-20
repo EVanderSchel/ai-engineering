@@ -1,0 +1,13 @@
+{
+  "packet_id": "gp-053",
+  "split": "holdout",
+  "category": "ineligible_request",
+  "route": "decline_ineligible",
+  "failed_rules": [
+    "request_range"
+  ],
+  "flags": [],
+  "focus_area": "housing",
+  "injection": null,
+  "near_miss": null
+}

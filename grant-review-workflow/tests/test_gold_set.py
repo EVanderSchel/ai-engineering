@@ -1,6 +1,7 @@
 """Checks on the committed gold set (data/gold/): it matches the plan in docs/design.md, and every label
 follows from the real figures and the spec. A label edited by hand, or a builder change that breaks a
-plant, fails here."""
+plant, fails here. The held-out packets added in step 6.5 (split "holdout") have their own checks in
+test_holdout.py."""
 
 import json
 from collections import Counter
@@ -10,7 +11,11 @@ import pytest
 import fund_rules
 import paths
 
-PACKETS = sorted(p.name for p in paths.GOLD_DIR.iterdir() if p.is_dir())
+PACKETS = sorted(
+    p.name
+    for p in paths.GOLD_DIR.iterdir()
+    if p.is_dir() and json.loads((p / "label.json").read_text(encoding="utf-8"))["split"] in ("dev", "test")
+)
 
 
 def load(packet_id: str) -> dict:

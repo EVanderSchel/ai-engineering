@@ -1,0 +1,23 @@
+{
+  "packet_id": "gp-060",
+  "object_id": "202443189349300149",
+  "mission": "CAPITAL REGION MINORITY SUPPLIER DEVELOPMENT COUNCILS (THE COUNCIL) MISSION IS TO PROVIDE A DIRECT LINK BETWEEN CORPORATE AMERICA AND MINORITY-OWNED BUSINESSES FOR THE PURPOSE OF INCREASING PROCUREMENT OPPORTUNITIES.",
+  "ntee_code": null,
+  "focus_area": "human_services",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 2156000,
+    "staff": 15
+  },
+  "plant": null,
+  "near_miss": {
+    "field": "staff",
+    "claimed": 15,
+    "actual": 13
+  },
+  "injection": null,
+  "holdout_case": "clean",
+  "registered_name": "Capital Region Minority Supplier Development Council Inc",
+  "registered_name_differs": false,
+  "form_injection": null
+}
