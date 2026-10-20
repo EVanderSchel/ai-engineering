@@ -178,3 +178,12 @@ def test_an_answer_that_breaks_the_schema_is_asked_for_once_more(stubbed):
     assert verdict.reason == "It matches." and record.attempts == 2
     assert (record.input_tokens, record.output_tokens) == (2000, 200)
     assert record.cost_usd == pytest.approx(2 * (1000 * 1.10 + 100 * 5.50) / 1_000_000)
+
+
+def test_retries_boto3_makes_on_its_own_are_recorded(stubbed):
+    client, stubber = stubbed
+    response = reply([{"text": "ok"}])
+    response["ResponseMetadata"] = {"RetryAttempts": 2, "HTTPStatusCode": 200}
+    stubber.add_response("converse", response)
+    _, record = bedrock.converse(client, step="t", model="haiku", system="s", content=[{"text": "q"}], max_tokens=10)
+    assert record.sdk_retries == 2

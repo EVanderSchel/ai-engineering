@@ -1,0 +1,569 @@
+{
+  "date": "2026-10-20",
+  "run_id": "20261020153749",
+  "packets": 15,
+  "route_right": 15,
+  "wrong_declines": 0,
+  "rules_right": 15,
+  "flags_exact": 15,
+  "cost_usd": 0.4569,
+  "median_seconds": 6.3,
+  "rows": [
+    {
+      "packet_id": "gp-002",
+      "route": "review",
+      "label_route": "review",
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "flags": [
+        "staff_mismatch"
+      ],
+      "label_flags": [
+        "staff_mismatch"
+      ],
+      "letter_problems": [],
+      "cost_usd": 0.03112,
+      "model_calls": 3,
+      "seconds": 6.3,
+      "application_id": "gp-002-20261020153749",
+      "stages": [
+        {
+          "stage": "extract+research+read_proposal",
+          "seconds": 5.544
+        },
+        {
+          "stage": "cross_check",
+          "seconds": 0.001
+        },
+        {
+          "stage": "eligibility",
+          "seconds": 0.002
+        },
+        {
+          "stage": "route",
+          "seconds": 0.002
+        }
+      ]
+    },
+    {
+      "packet_id": "gp-003",
+      "route": "review",
+      "label_route": "review",
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "flags": [],
+      "label_flags": [],
+      "letter_problems": [],
+      "cost_usd": 0.03073,
+      "model_calls": 3,
+      "seconds": 19.5,
+      "application_id": "gp-003-20261020153749",
+      "stages": [
+        {
+          "stage": "extract+research+read_proposal",
+          "seconds": 19.046
+        },
+        {
+          "stage": "cross_check",
+          "seconds": 0.001
+        },
+        {
+          "stage": "eligibility",
+          "seconds": 0.001
+        },
+        {
+          "stage": "route",
+          "seconds": 0.003
+        }
+      ]
+    },
+    {
+      "packet_id": "gp-009",
+      "route": "review",
+      "label_route": "review",
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "flags": [
+        "budget_mismatch"
+      ],
+      "label_flags": [
+        "budget_mismatch"
+      ],
+      "letter_problems": [],
+      "cost_usd": 0.02898,
+      "model_calls": 2,
+      "seconds": 7.9,
+      "application_id": "gp-009-20261020153749",
+      "stages": [
+        {
+          "stage": "extract+research+read_proposal",
+          "seconds": 7.449
+        },
+        {
+          "stage": "cross_check",
+          "seconds": 0.001
+        },
+        {
+          "stage": "eligibility",
+          "seconds": 0.001
+        },
+        {
+          "stage": "route",
+          "seconds": 0.001
+        }
+      ]
+    },
+    {
+      "packet_id": "gp-018",
+      "route": "decline_ineligible",
+      "label_route": "decline_ineligible",
+      "failed_rules": [
+        "revenue_range"
+      ],
+      "label_failed_rules": [
+        "revenue_range"
+      ],
+      "flags": [],
+      "label_flags": [],
+      "letter_problems": [],
+      "cost_usd": 0.033,
+      "model_calls": 4,
+      "seconds": 9.1,
+      "application_id": "gp-018-20261020153749",
+      "stages": [
+        {
+          "stage": "extract+research+read_proposal",
+          "seconds": 6.678
+        },
+        {
+          "stage": "cross_check",
+          "seconds": 0.002
+        },
+        {
+          "stage": "eligibility",
+          "seconds": 0.002
+        },
+        {
+          "stage": "route",
+          "seconds": 0.003
+        },
+        {
+          "stage": "draft_letter",
+          "seconds": 2.066
+        }
+      ]
+    },
+    {
+      "packet_id": "gp-022",
+      "route": "decline_ineligible",
+      "label_route": "decline_ineligible",
+      "failed_rules": [
+        "revenue_range",
+        "net_assets"
+      ],
+      "label_failed_rules": [
+        "revenue_range",
+        "net_assets"
+      ],
+      "flags": [],
+      "label_flags": [],
+      "letter_problems": [],
+      "cost_usd": 0.03177,
+      "model_calls": 3,
+      "seconds": 6.3,
+      "application_id": "gp-022-20261020153749",
+      "stages": [
+        {
+          "stage": "extract+research+read_proposal",
+          "seconds": 3.961
+        },
+        {
+          "stage": "cross_check",
+          "seconds": 0.002
+        },
+        {
+          "stage": "eligibility",
+          "seconds": 0.002
+        },
+        {
+          "stage": "route",
+          "seconds": 0.002
+        },
+        {
+          "stage": "draft_letter",
+          "seconds": 1.982
+        }
+      ]
+    },
+    {
+      "packet_id": "gp-023",
+      "route": "decline_ineligible",
+      "label_route": "decline_ineligible",
+      "failed_rules": [
+        "revenue_range"
+      ],
+      "label_failed_rules": [
+        "revenue_range"
+      ],
+      "flags": [
+        "injection"
+      ],
+      "label_flags": [
+        "injection"
+      ],
+      "letter_problems": [],
+      "cost_usd": 0.03212,
+      "model_calls": 3,
+      "seconds": 6.5,
+      "application_id": "gp-023-20261020153749",
+      "stages": [
+        {
+          "stage": "extract+research+read_proposal",
+          "seconds": 3.89
+        },
+        {
+          "stage": "cross_check",
+          "seconds": 0.001
+        },
+        {
+          "stage": "eligibility",
+          "seconds": 0.001
+        },
+        {
+          "stage": "route",
+          "seconds": 0.001
+        },
+        {
+          "stage": "draft_letter",
+          "seconds": 2.238
+        }
+      ]
+    },
+    {
+      "packet_id": "gp-026",
+      "route": "review",
+      "label_route": "review",
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "flags": [
+        "injection",
+        "staff_mismatch"
+      ],
+      "label_flags": [
+        "injection",
+        "staff_mismatch"
+      ],
+      "letter_problems": [],
+      "cost_usd": 0.02966,
+      "model_calls": 2,
+      "seconds": 4.8,
+      "application_id": "gp-026-20261020153749",
+      "stages": [
+        {
+          "stage": "extract+research+read_proposal",
+          "seconds": 4.355
+        },
+        {
+          "stage": "cross_check",
+          "seconds": 0.001
+        },
+        {
+          "stage": "eligibility",
+          "seconds": 0.001
+        },
+        {
+          "stage": "route",
+          "seconds": 0.001
+        }
+      ]
+    },
+    {
+      "packet_id": "gp-027",
+      "route": "review",
+      "label_route": "review",
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "flags": [],
+      "label_flags": [],
+      "letter_problems": [],
+      "cost_usd": 0.02876,
+      "model_calls": 2,
+      "seconds": 4.4,
+      "application_id": "gp-027-20261020153749",
+      "stages": [
+        {
+          "stage": "extract+research+read_proposal",
+          "seconds": 3.916
+        },
+        {
+          "stage": "cross_check",
+          "seconds": 0.001
+        },
+        {
+          "stage": "eligibility",
+          "seconds": 0.001
+        },
+        {
+          "stage": "route",
+          "seconds": 0.001
+        }
+      ]
+    },
+    {
+      "packet_id": "gp-028",
+      "route": "review",
+      "label_route": "review",
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "flags": [],
+      "label_flags": [],
+      "letter_problems": [],
+      "cost_usd": 0.02813,
+      "model_calls": 2,
+      "seconds": 4.2,
+      "application_id": "gp-028-20261020153749",
+      "stages": [
+        {
+          "stage": "extract+research+read_proposal",
+          "seconds": 3.743
+        },
+        {
+          "stage": "cross_check",
+          "seconds": 0.001
+        },
+        {
+          "stage": "eligibility",
+          "seconds": 0.001
+        },
+        {
+          "stage": "route",
+          "seconds": 0.001
+        }
+      ]
+    },
+    {
+      "packet_id": "gp-030",
+      "route": "decline_ineligible",
+      "label_route": "decline_ineligible",
+      "failed_rules": [
+        "return_current"
+      ],
+      "label_failed_rules": [
+        "return_current"
+      ],
+      "flags": [],
+      "label_flags": [],
+      "letter_problems": [],
+      "cost_usd": 0.03157,
+      "model_calls": 3,
+      "seconds": 6.0,
+      "application_id": "gp-030-20261020153749",
+      "stages": [
+        {
+          "stage": "extract+research+read_proposal",
+          "seconds": 3.759
+        },
+        {
+          "stage": "cross_check",
+          "seconds": 0.001
+        },
+        {
+          "stage": "eligibility",
+          "seconds": 0.001
+        },
+        {
+          "stage": "route",
+          "seconds": 0.001
+        },
+        {
+          "stage": "draft_letter",
+          "seconds": 1.878
+        }
+      ]
+    },
+    {
+      "packet_id": "gp-033",
+      "route": "review",
+      "label_route": "review",
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "flags": [],
+      "label_flags": [],
+      "letter_problems": [],
+      "cost_usd": 0.03091,
+      "model_calls": 3,
+      "seconds": 5.3,
+      "application_id": "gp-033-20261020153749",
+      "stages": [
+        {
+          "stage": "extract+research+read_proposal",
+          "seconds": 4.782
+        },
+        {
+          "stage": "cross_check",
+          "seconds": 0.001
+        },
+        {
+          "stage": "eligibility",
+          "seconds": 0.001
+        },
+        {
+          "stage": "route",
+          "seconds": 0.003
+        }
+      ]
+    },
+    {
+      "packet_id": "gp-036",
+      "route": "decline_ineligible",
+      "label_route": "decline_ineligible",
+      "failed_rules": [
+        "request_share"
+      ],
+      "label_failed_rules": [
+        "request_share"
+      ],
+      "flags": [],
+      "label_flags": [],
+      "letter_problems": [],
+      "cost_usd": 0.03108,
+      "model_calls": 3,
+      "seconds": 6.3,
+      "application_id": "gp-036-20261020153749",
+      "stages": [
+        {
+          "stage": "extract+research+read_proposal",
+          "seconds": 4.147
+        },
+        {
+          "stage": "cross_check",
+          "seconds": 0.001
+        },
+        {
+          "stage": "eligibility",
+          "seconds": 0.001
+        },
+        {
+          "stage": "route",
+          "seconds": 0.002
+        },
+        {
+          "stage": "draft_letter",
+          "seconds": 1.784
+        }
+      ]
+    },
+    {
+      "packet_id": "gp-038",
+      "route": "review",
+      "label_route": "review",
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "flags": [
+        "out_of_focus"
+      ],
+      "label_flags": [
+        "out_of_focus"
+      ],
+      "letter_problems": [],
+      "cost_usd": 0.02836,
+      "model_calls": 2,
+      "seconds": 4.5,
+      "application_id": "gp-038-20261020153749",
+      "stages": [
+        {
+          "stage": "extract+research+read_proposal",
+          "seconds": 4.091
+        },
+        {
+          "stage": "cross_check",
+          "seconds": 0.001
+        },
+        {
+          "stage": "eligibility",
+          "seconds": 0.001
+        },
+        {
+          "stage": "route",
+          "seconds": 0.001
+        }
+      ]
+    },
+    {
+      "packet_id": "gp-039",
+      "route": "review",
+      "label_route": "review",
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "flags": [
+        "injection"
+      ],
+      "label_flags": [
+        "injection"
+      ],
+      "letter_problems": [],
+      "cost_usd": 0.0301,
+      "model_calls": 2,
+      "seconds": 16.1,
+      "application_id": "gp-039-20261020153749",
+      "stages": [
+        {
+          "stage": "extract+research+read_proposal",
+          "seconds": 15.616
+        },
+        {
+          "stage": "cross_check",
+          "seconds": 0.001
+        },
+        {
+          "stage": "eligibility",
+          "seconds": 0.001
+        },
+        {
+          "stage": "route",
+          "seconds": 0.001
+        }
+      ]
+    },
+    {
+      "packet_id": "gp-040",
+      "route": "decline_ineligible",
+      "label_route": "decline_ineligible",
+      "failed_rules": [
+        "net_assets"
+      ],
+      "label_failed_rules": [
+        "net_assets"
+      ],
+      "flags": [],
+      "label_flags": [],
+      "letter_problems": [],
+      "cost_usd": 0.0306,
+      "model_calls": 3,
+      "seconds": 8.0,
+      "application_id": "gp-040-20261020153749",
+      "stages": [
+        {
+          "stage": "extract+research+read_proposal",
+          "seconds": 5.706
+        },
+        {
+          "stage": "cross_check",
+          "seconds": 0.001
+        },
+        {
+          "stage": "eligibility",
+          "seconds": 0.001
+        },
+        {
+          "stage": "route",
+          "seconds": 0.001
+        },
+        {
+          "stage": "draft_letter",
+          "seconds": 1.947
+        }
+      ]
+    }
+  ]
+}

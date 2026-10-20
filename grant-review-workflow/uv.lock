@@ -180,6 +180,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "boto3" },
     { name = "langgraph" },
+    { name = "langgraph-checkpoint-aws" },
     { name = "pydantic" },
     { name = "pymupdf" },
     { name = "requests" },
@@ -199,6 +200,7 @@ lint = [
 requires-dist = [
     { name = "boto3", specifier = ">=1.40" },
     { name = "langgraph", specifier = ">=1.0" },
+    { name = "langgraph-checkpoint-aws", specifier = ">=1.2" },
     { name = "pydantic", specifier = ">=2.11" },
     { name = "pymupdf", specifier = ">=1.26,<2" },
     { name = "requests", specifier = ">=2.32" },
@@ -396,6 +398,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/0f/69/31fdbdc65a85bbd6178afa193c772bb926620f47b4869638bc2bc80afaaa/langgraph_checkpoint-4.3.0.tar.gz", hash = "sha256:c75965d84cc2c1d549163e910a15bcb577758001b141619d05297c463280b018", size = 182652, upload-time = "2026-10-12T22:26:31.478Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1f/0c/84747e340bf4f29291c84cdd5733fc8d0a822f3d33bb24e664a18afa4a7c/langgraph_checkpoint-4.3.0-py3-none-any.whl", hash = "sha256:bedfafe2f997ded60e4fa593e79f56f436a6e45586392dc382aa810d0c751c64", size = 58063, upload-time = "2026-10-12T22:26:30.429Z" },
+]
+
+[[package]]
+name = "langgraph-checkpoint-aws"
+version = "1.2.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "boto3" },
+    { name = "langgraph" },
+    { name = "langgraph-checkpoint" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/cb/9f/d7035d6513a66bf299e5c2a806f22a72a87f5b4fbb141d719a1eb848faf0/langgraph_checkpoint_aws-1.2.5.tar.gz", hash = "sha256:e6b1a9908041ad480c33c61274ccce25acf3831d1ae0fe1044863defbe564a1f", size = 347114, upload-time = "2026-10-08T00:19:39.741Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d0/b2/8b178d96ae66196374ea1b8b7eed86319db4309df6db2e3908fdec2ac82d/langgraph_checkpoint_aws-1.2.5-py3-none-any.whl", hash = "sha256:328493c5695c607513559cce3c17210919a60d6999ad8816470cb44b1045e463", size = 186418, upload-time = "2026-10-08T00:19:38.663Z" },
 ]
 
 [[package]]
