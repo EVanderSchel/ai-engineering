@@ -87,6 +87,19 @@ def test_too_short_is_caught(packet):
     assert any("words" in p for p in packet(GOOD.replace(FILLER, "Short.")))
 
 
+def test_the_gold_set_is_complete_and_approved():
+    """All 40 packets have a narrative, each approved by a person (see data/gold/README.md). A new or
+    rewritten narrative must be reviewed and marked approved before this passes again."""
+    packets = sorted(p.name for p in paths.GOLD_DIR.iterdir() if p.is_dir())
+    assert narratives.packets_with_narratives() == packets
+    unapproved = [
+        p
+        for p in packets
+        if not json.loads((paths.GOLD_DIR / p / "narrative.json").read_text(encoding="utf-8"))["approved"]
+    ]
+    assert unapproved == []
+
+
 @pytest.mark.parametrize("packet_id", narratives.packets_with_narratives())
 def test_committed_narrative_states_exactly_its_specs_figures(packet_id):
     assert narratives.problems(packet_id) == []
