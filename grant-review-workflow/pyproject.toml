@@ -9,6 +9,7 @@ requires-python = ">=3.14,<3.15"
 dependencies = [
     "boto3>=1.40",
     "langgraph>=1.0",
+    "langgraph-checkpoint-aws>=1.2",
     "pydantic>=2.11",
     "pymupdf>=1.26,<2",  # renders PDF pages; 2.0 adds ML layout packages (onnxruntime, numpy) not needed here
     "requests>=2.32",

@@ -20,7 +20,7 @@ Rules: only public IRS data and ProPublica's JSON API (as in Project 3). Applica
 | 1 | Design doc ([docs/design.md](docs/design.md)): state diagram (steps, branches, where a human decides) and state schema; gold set of 40 packets with known correct outcomes *(done)* | Workflow vs. agent: fixed steps where possible, model judgment where needed |
 | 2 | Each step as a plain, tested function on Bedrock: intake, extract, research, read_proposal, cross_check, eligibility, route, draft_letter *(done)* | Steps testable and swappable on their own |
 | 3 | Orchestration with LangGraph: shared state, conditional routing, parallel research, the tool-using agent as one step *(done)* | Graph orchestration; what a framework adds over a hand-built loop |
-| 4 | Durability and human-in-the-loop: checkpoints in DynamoDB, pause and resume on a reviewer's decision, idempotent steps, a kill-and-resume test | Durable execution |
+| 4 | Durability and human-in-the-loop: checkpoints in DynamoDB, pause and resume on a reviewer's decision, idempotent steps, a kill-and-resume test *(done)* | Durable execution |
 | 5 | Evals: per-step and end-to-end (routing accuracy, human escalation rate, cost and latency per application, path taken), gating pull requests | How errors compound across steps |
 | 6 | Safety: prompt injection in applicant narratives, Bedrock Guardrails vs. code checks, PII handling, least-privilege roles per step | Governance for untrusted and sensitive input |
 | 7 | Infrastructure as code with CDK (TypeScript): S3 uploads trigger the workflow on AgentCore Runtime, DynamoDB, per-component IAM roles, tracing, OIDC deploys from GitHub Actions | IaC, event-driven design, AWS |
@@ -65,6 +65,18 @@ uv run python src/bedrock.py   # one small call per model: access, structured ou
 
 Haiku's one error (gp-036's total revenue read as $51,306, not $51,308) was caught by the form's own arithmetic, the only return where revenue didn't add up, so it would reach a reviewer as a flag. It also sat $1,306 above the fund's $50,000 revenue minimum: a digit misread near a threshold is how a wrong automatic decline would happen. **Extract uses Sonnet 4.6**: the saving from Haiku is about a cent per application. One run on 15 returns is a small sample; step 5 repeats it.
 
+## Step 4: pausing for the reviewer, and surviving crashes
+
+- **human_review** pauses the graph with LangGraph's `interrupt()`: the state is checkpointed and the run stops. `workflow.resume()` continues it with a `ReviewerDecision`, from any process that can reach the checkpoints. A decision goes to the letter; corrections alone go back to eligibility, so the rules re-run on the corrected figures (and may now decline: the reviewer has checked the figures); corrections from earlier rounds are kept.
+- **Checkpoints in DynamoDB** (`grant-review-checkpoints`, us-east-2, on-demand, created by `src/checkpoint_table.py`) through `langgraph-checkpoint-aws`'s `DynamoDBSaver`, kept 30 days by TTL (design decision 8). Each application is a thread keyed by its ID; starting an ID that already has a thread is refused.
+- **Crash recovery**: when a step fails, steps that finished in the same parallel stage keep their saved results, so resuming reruns only the failed step: no model call is paid for twice (`tests/test_workflow.py`).
+- **Safe deserialization**: checkpoints may only be rebuilt into the workflow's own state classes (an allowlist derived from `state.py`), since rebuilding arbitrary classes from stored data is an attack route. `DynamoDBSaver` takes no serializer argument, so a small subclass supplies it.
+- **Gotcha found**: LangGraph saves a resume value *before* the paused node checks it and replays it on every later resume, so an invalid value sent to the graph would leave the thread stuck. `resume()` only accepts a validated `ReviewerDecision`.
+
+**On AWS** (`uv run python src/workflow.py --dynamodb`): the 15 dev packets again gave route, rules and flags 15/15 with no wrong automatic declines, $0.030 per application. The 9 reviews paused in DynamoDB; two were then resumed, each in a fresh process, from the table alone (`--resume <id> --decision approve|decline --reason ...`), and got correct letters. About 65-70 small items per application (largest 8 KB), each with a 30-day TTL; well under a cent of DynamoDB use.
+
+**Where the time goes**, from the checkpoint history (`workflow.stage_timings`): the code steps take 1-3 ms, a letter about 2 s, and everything else is the parallel reading stage (usually 4-7 s). The two slow applications (16-19 s) each had an extract call that spent about 3.5 s in the model and 15 s more waiting outside it, most likely boto3 retrying a throttled or busy request on its own; call records now include `sdk_retries` (boto3's `RetryAttempts`) to confirm it on the next run.
+
 ## Step 3: the workflow as a graph
 
 `src/workflow.py` joins the step functions into a LangGraph `StateGraph` over `ApplicationState`. Each node calls one step and returns only the fields that step owns; extract, research and read_proposal run in parallel, and cross_check waits for all three. The two lists several steps add to (`flags`, `calls`) carry a reducer, so parallel additions are concatenated rather than overwritten. A decline by the rules gets its letter; everything else stops, waiting for a reviewer (step 4 adds the pause and checkpoints). The diagram below is drawn by LangGraph from the compiled graph, and a test fails if it drifts.
@@ -84,6 +96,7 @@ graph TD;
 	cross_check(cross_check)
 	eligibility(eligibility)
 	route(route)
+	human_review(human_review)
 	draft_letter(draft_letter)
 	__end__([<p>__end__</p>]):::last
 	__start__ --> extract;
@@ -92,10 +105,12 @@ graph TD;
 	cross_check --> eligibility;
 	eligibility --> route;
 	extract --> cross_check;
+	human_review -. &nbsp;decided&nbsp; .-> draft_letter;
+	human_review -. &nbsp;corrected&nbsp; .-> eligibility;
 	read_proposal --> cross_check;
 	research --> cross_check;
-	route -. &nbsp;review&nbsp; .-> __end__;
 	route -. &nbsp;decline_ineligible&nbsp; .-> draft_letter;
+	route -. &nbsp;review&nbsp; .-> human_review;
 	draft_letter --> __end__;
 	classDef default fill:#f2f0ff,line-height:1.2
 	classDef first fill-opacity:0

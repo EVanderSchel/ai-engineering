@@ -2,16 +2,23 @@
 
     START -> extract --------\
     START -> research -------+-> cross_check -> eligibility -> route -+-> draft_letter -> END  (declined by rules)
-    START -> read_proposal --/                                         +-> END                  (waits for reviewer)
+    START -> read_proposal --/                     ^                  +-> human_review -+-> draft_letter -> END
+                                                   +-------- corrections only ---------+
 
 Each node calls one step and returns only the fields that step owns; LangGraph merges the returns into the
 state. extract, research and read_proposal start together and run in parallel; cross_check waits for all three.
 The two lists more than one step adds to (`flags`, `calls`) have a reducer in the state, so parallel additions
-are concatenated rather than overwritten. Step 4 adds the pause for the reviewer and checkpoints.
+are concatenated rather than overwritten.
+
+human_review pauses the graph with interrupt(): the state is saved by the checkpointer and the run stops,
+possibly for days. resume() continues it with the reviewer's decision. A decision goes to the letter;
+corrections alone go back to eligibility, so the rules re-run on the corrected figures. Each application is a
+thread (thread_id = application_id), so any process with the same checkpointer can resume it.
 
     $env:AWS_PROFILE = "agent-toolkit"; uv run python src/workflow.py   # every dev packet, end to end
 """
 
+import argparse
 import dataclasses
 import datetime as dt
 import json
@@ -20,17 +27,25 @@ import time
 from collections.abc import Callable
 
 from botocore.exceptions import ClientError
+from langgraph.checkpoint.base import BaseCheckpointSaver
+from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.graph import END, START, StateGraph
+from langgraph.types import Command, interrupt
+from langgraph_checkpoint_aws import DynamoDBSaver
+from pydantic import BaseModel
 
 import bedrock
+import checkpoint_table
 import checks
 import draft_letter
 import extract
 import paths
 import read_proposal
 import research
+import state as state_models
 from intake import gold_packet, intake
-from state import ApplicationState, Flag
+from state import ApplicationState, Flag, ReviewerDecision
 
 Node = Callable[[ApplicationState], dict]
 
@@ -69,7 +84,75 @@ def bedrock_steps(client) -> Steps:
     return Steps(extract_node, research_node, read_proposal_node, draft_letter_node)
 
 
-def build(steps: Steps):
+def checkpoint_classes() -> list[tuple[str, str]]:
+    """The only classes a checkpoint may be rebuilt into: our state models. Rebuilding arbitrary classes from
+    stored data is an attack route (whoever can write the checkpoint table could choose what gets
+    instantiated), so LangGraph is moving to an allowlist. It's derived from the state module, so it can't go
+    stale when a model is added."""
+    models = [
+        cls
+        for cls in vars(state_models).values()
+        if isinstance(cls, type) and issubclass(cls, BaseModel) and cls.__module__ == state_models.__name__
+    ]
+    return sorted({(cls.__module__, cls.__name__) for cls in [*models, bedrock.CallRecord]})
+
+
+def serializer() -> JsonPlusSerializer:
+    """The checkpoint serializer for every checkpointer this workflow uses: our classes only."""
+    return JsonPlusSerializer(allowed_msgpack_modules=checkpoint_classes())
+
+
+def memory_checkpointer() -> InMemorySaver:
+    """Checkpoints in this process's memory: for tests and local runs (DynamoDB once deployed)."""
+    return InMemorySaver(serde=serializer())
+
+
+CHECKPOINT_TTL_SECONDS = 30 * 24 * 3600  # 30 days (design decision 8)
+
+
+class _AllowlistedDynamoDBSaver(DynamoDBSaver):
+    """DynamoDBSaver takes no serializer argument; it builds its own from self.serde, which LangGraph's base class
+    sets from this class attribute during __init__. So this subclass gives it ours before anything uses it."""
+
+    serde = serializer()
+
+
+def dynamodb_checkpointer(session=None) -> DynamoDBSaver:
+    """Checkpoints in the DynamoDB table (src/checkpoint_table.py), kept 30 days."""
+    return _AllowlistedDynamoDBSaver(
+        table_name=checkpoint_table.TABLE,
+        session=session,
+        region_name=bedrock.REGION,
+        ttl_seconds=CHECKPOINT_TTL_SECONDS,
+    )
+
+
+def review_request(state: ApplicationState) -> dict:
+    """What the reviewer is shown when the graph pauses: the flags with their evidence, the rules' result, and
+    the figures read from the return (which a reviewer may correct)."""
+    return {
+        "application_id": state.application_id,
+        "organization_name": state.form.organization_name,
+        "project_title": state.form.project_title,
+        "amount_requested": state.form.amount_requested,
+        "failed_rules": state.eligibility.failed_rules if state.eligibility else [],
+        "flags": [{"kind": f.kind, "evidence": f.evidence} for f in state.flags],
+        "figures": state.extraction.figures.model_dump(mode="json") if state.extraction else None,
+        "focus_area": state.proposal.focus_area if state.proposal else None,
+    }
+
+
+def human_review(state: ApplicationState) -> dict:
+    """Pause for the reviewer. interrupt() saves the state and stops the run here; resuming with
+    Command(resume=decision) makes interrupt() return that decision, and this node finishes. (On resume the
+    node runs again from its start, so nothing before interrupt() may have side effects.)"""
+    decision = ReviewerDecision.model_validate(interrupt(review_request(state)))
+    if state.review is not None:  # a later round keeps the corrections made in earlier ones
+        decision = decision.model_copy(update={"corrections": {**state.review.corrections, **decision.corrections}})
+    return {"review": decision}
+
+
+def build(steps: Steps, checkpointer: BaseCheckpointSaver | None = None):
     graph = StateGraph(ApplicationState)
     graph.add_node("extract", steps.extract)
     graph.add_node("research", steps.research)
@@ -77,6 +160,7 @@ def build(steps: Steps):
     graph.add_node("cross_check", lambda state: {"flags": checks.cross_check(state)})
     graph.add_node("eligibility", lambda state: {"eligibility": checks.eligibility(state)})
     graph.add_node("route", lambda state: {"route": checks.route(state)})
+    graph.add_node("human_review", human_review)
     graph.add_node("draft_letter", steps.draft_letter)
 
     for parallel in ("extract", "research", "read_proposal"):
@@ -84,12 +168,16 @@ def build(steps: Steps):
     graph.add_edge(["extract", "research", "read_proposal"], "cross_check")  # waits for all three
     graph.add_edge("cross_check", "eligibility")
     graph.add_edge("eligibility", "route")
-    # Only a decline by the rules gets a letter now; everything else waits for a reviewer (step 4).
     graph.add_conditional_edges(
-        "route", lambda state: state.route, {"decline_ineligible": "draft_letter", "review": END}
+        "route", lambda state: state.route, {"decline_ineligible": "draft_letter", "review": "human_review"}
+    )
+    graph.add_conditional_edges(
+        "human_review",
+        lambda state: "decided" if state.review.decision else "corrected",
+        {"decided": "draft_letter", "corrected": "eligibility"},
     )
     graph.add_edge("draft_letter", END)
-    return graph.compile()
+    return graph.compile(checkpointer=checkpointer)
 
 
 def diagram() -> str:
@@ -98,17 +186,68 @@ def diagram() -> str:
     return build(shape_only).get_graph().draw_mermaid().strip()
 
 
-def run(app, application: ApplicationState) -> ApplicationState:
-    """Run one application through the graph. LangGraph returns the final state as a dict; validating it back
-    into ApplicationState re-checks every value."""
-    return ApplicationState.model_validate(app.invoke(application))
+@dataclasses.dataclass(frozen=True)
+class Outcome:
+    """Where an application stands after start() or resume()."""
+
+    state: ApplicationState
+    waiting_for_review: bool
+    review_request: dict | None  # what the reviewer is shown, while waiting
+
+
+def thread(application_id: str) -> dict:
+    return {"configurable": {"thread_id": application_id}}
+
+
+def outcome(app, application_id: str) -> Outcome:
+    """The saved state of an application's thread, validated back into ApplicationState."""
+    snapshot = app.get_state(thread(application_id))
+    waiting = [i.value for task in snapshot.tasks for i in task.interrupts]
+    return Outcome(ApplicationState.model_validate(snapshot.values), bool(waiting), waiting[0] if waiting else None)
+
+
+def stage_timings(app, application_id: str) -> list[dict]:
+    """How long each stage took, from the thread's checkpoint history: a checkpoint records what runs next and
+    when it was saved, so the gap to the following checkpoint is that stage's duration. Parallel steps form one
+    stage. A gap at human_review is the reviewer's time, not the system's."""
+    history = list(reversed(list(app.get_state_history(thread(application_id)))))
+    timings = []
+    for before, after in zip(history, history[1:], strict=False):
+        if before.next and before.next != ("__start__",):
+            seconds = (
+                dt.datetime.fromisoformat(after.created_at) - dt.datetime.fromisoformat(before.created_at)
+            ).total_seconds()
+            timings.append({"stage": "+".join(before.next), "seconds": round(seconds, 3)})
+    return timings
+
+
+class ApplicationExists(ValueError):
+    """The application ID already has a saved thread: starting it again would feed new input into the old run,
+    and the reducers would append to its flags and calls."""
+
+
+def start(app, application: ApplicationState) -> Outcome:
+    """Run a new application until it finishes or pauses for its reviewer."""
+    if app.get_state(thread(application.application_id)).values:
+        raise ApplicationExists(f"application {application.application_id} already has a saved thread")
+    app.invoke(application, thread(application.application_id))
+    return outcome(app, application.application_id)
+
+
+def resume(app, application_id: str, decision: ReviewerDecision) -> Outcome:
+    """Continue a paused application with the reviewer's decision (or corrections).
+
+    The decision is a ReviewerDecision, so it's valid before the graph sees it. That matters: LangGraph saves a
+    resume value before the paused node checks it, and replays it on every later resume, so an invalid value
+    sent to the graph would leave the thread stuck."""
+    app.invoke(Command(resume=decision.model_dump(mode="json")), thread(application_id))
+    return outcome(app, application_id)
 
 
 # --- End to end on the dev packets -----------------------------------------------------------------------
 
 
-def run_dev() -> dict:
-    app = build(bedrock_steps(bedrock.make_client()))
+def run_dev(app, run_id: str) -> dict:
     rows = []
     for folder in sorted(paths.GOLD_DIR.glob("gp-*")):
         label = json.loads((folder / "label.json").read_text(encoding="utf-8"))
@@ -116,7 +255,8 @@ def run_dev() -> dict:
             continue
         form, narrative, pdf = gold_packet(folder.name)
         started = time.perf_counter()
-        final = run(app, intake(form, narrative, pdf, application_id=folder.name))
+        application_id = f"{folder.name}-{run_id}"  # unique per run: a thread can't be started twice
+        final = start(app, intake(form, narrative, pdf, application_id=application_id)).state
         seconds = time.perf_counter() - started
         flags = sorted(f.kind for f in final.flags)
         row = {
@@ -131,6 +271,8 @@ def run_dev() -> dict:
             "cost_usd": round(final.cost_usd, 5),
             "model_calls": len(final.calls),
             "seconds": round(seconds, 1),
+            "application_id": application_id,
+            "stages": stage_timings(app, application_id),
         }
         rows.append(row)
         notes = []
@@ -146,6 +288,7 @@ def run_dev() -> dict:
     n = len(rows)
     return {
         "date": dt.date.today().isoformat(),
+        "run_id": run_id,
         "packets": n,
         "route_right": sum(r["route"] == r["label_route"] for r in rows),
         "wrong_declines": sum(r["route"] == "decline_ineligible" != r["label_route"] for r in rows),
@@ -158,20 +301,53 @@ def run_dev() -> dict:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Run the dev packets end to end, or resume a paused application.")
+    parser.add_argument("--dynamodb", action="store_true", help="checkpoints in DynamoDB (default: in memory)")
+    parser.add_argument("--resume", metavar="APPLICATION_ID", help="resume a paused application (needs --dynamodb)")
+    parser.add_argument("--decision", choices=["approve", "decline"], help="the reviewer's decision, with --resume")
+    parser.add_argument("--reason", help="the reviewer's reason, quoted in the letter, with --resume")
+    args = parser.parse_args()
+    checkpointer = dynamodb_checkpointer() if args.dynamodb else memory_checkpointer()
+    app = build(bedrock_steps(bedrock.make_client()), checkpointer=checkpointer)
     try:
-        summary = run_dev()
+        if args.resume:
+            if not (args.dynamodb and args.decision and args.reason):
+                parser.error("--resume needs --dynamodb, --decision and --reason")
+            return resume_one(app, args.resume, args.decision, args.reason)
+        summary = run_dev(app, run_id=dt.datetime.now(dt.UTC).strftime("%Y%m%d%H%M%S"))
     except ClientError as e:
-        print(f"Bedrock error: {e}", file=sys.stderr)
+        print(f"AWS error: {e}", file=sys.stderr)
         return 1
-    out = paths.ROOT / "results" / "workflow-dev.json"
+    name = "workflow-dev-dynamodb.json" if args.dynamodb else "workflow-dev.json"
+    out = paths.ROOT / "results" / name
     out.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     s = summary
+    print()
     print(
-        f"\nroute {s['route_right']}/{s['packets']} (wrong automatic declines: {s['wrong_declines']}), "
+        f"route {s['route_right']}/{s['packets']} (wrong automatic declines: {s['wrong_declines']}), "
         f"rules {s['rules_right']}/{s['packets']}, flags exactly right {s['flags_exact']}/{s['packets']}, "
         f"${s['cost_usd']:.4f} total, median {s['median_seconds']} s per application. "
         f"Saved {out.relative_to(paths.ROOT)}"
     )
+    return 0
+
+
+def resume_one(app, application_id: str, decision: str, reason: str) -> int:
+    """Resume one paused application, in this process, from its checkpoints alone."""
+    paused = outcome(app, application_id)
+    if not paused.waiting_for_review:
+        print(f"{application_id} isn't waiting for a review (route: {paused.state.route})", file=sys.stderr)
+        return 1
+    review = ReviewerDecision(decision=decision, reason=reason, reviewer="dev", decided_at=dt.datetime.now(dt.UTC))
+    done = resume(app, application_id, review)
+    print(f"{application_id}: {done.state.review.decision}d, letter problems: {done.state.letter_problems or 'none'}")
+    print(f"cost so far ${done.state.cost_usd:.4f} over {len(done.state.calls)} model calls")
+    print()
+    print(done.state.letter)
+    print()
+    print("Stages:")
+    for stage in stage_timings(app, application_id):
+        print(f"  {stage['stage']}: {stage['seconds']} s")
     return 0
 
 

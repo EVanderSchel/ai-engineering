@@ -6,6 +6,7 @@ import json
 import time
 
 import pytest
+from pydantic import ValidationError
 
 import extract
 import paths
@@ -13,7 +14,7 @@ import read_proposal
 import workflow
 from bedrock import CallRecord
 from intake import gold_packet, intake
-from state import ApplicationState, Claims, PeriodFigures, ProposalReading, Research, ReturnFigures
+from state import ApplicationState, Claims, PeriodFigures, ProposalReading, Research, ReturnFigures, ReviewerDecision
 
 DEV = sorted(
     p.name
@@ -93,30 +94,38 @@ def application(packet_id: str, tmp_path) -> ApplicationState:
     return intake(form, narrative, pdf, application_id=packet_id, received_at=dt.datetime(2025, 6, 1, tzinfo=dt.UTC))
 
 
+def app(steps=None):
+    return workflow.build(steps or right_answers(), checkpointer=workflow.memory_checkpointer())
+
+
+def run_until_pause(application: ApplicationState, steps=None) -> ApplicationState:
+    return workflow.start(app(steps), application).state
+
+
 @pytest.mark.parametrize("packet_id", DEV)
 def test_with_right_answers_each_dev_packet_ends_as_labeled(packet_id, tmp_path):
     label = json.loads((paths.GOLD_DIR / packet_id / "label.json").read_text(encoding="utf-8"))
-    final = workflow.run(workflow.build(right_answers()), application(packet_id, tmp_path))
+    final = run_until_pause(application(packet_id, tmp_path))
     assert final.route == label["route"]
     assert final.eligibility.failed_rules == label["failed_rules"]
     assert sorted(f.kind for f in final.flags) == label["flags"]
-    # Only a decline by the rules gets a letter now; a review waits for a person (step 4).
+    # A decline by the rules gets its letter; a review pauses for a person, with no letter yet.
     assert (final.letter is not None) == (label["route"] == "decline_ineligible")
 
 
 def test_the_three_reading_steps_run_in_parallel(tmp_path):
-    app = workflow.build(right_answers(delay=0.4))
+    slow = app(right_answers(delay=0.4))
     started = time.perf_counter()
-    workflow.run(app, application("gp-027", tmp_path))
+    workflow.start(slow, application("gp-027", tmp_path))
     assert time.perf_counter() - started < 0.8  # one after another would take 1.2 s
 
 
 def test_parallel_additions_to_shared_lists_are_merged(tmp_path):
     """read_proposal and cross_check both add flags, and three steps add call records: all must survive."""
-    final = workflow.run(workflow.build(right_answers()), application("gp-039", tmp_path))  # injected, reviewed
+    final = run_until_pause(application("gp-039", tmp_path))  # injected, reviewed
     assert sorted(c.step for c in final.calls) == ["extract", "read_proposal"]
     assert [f.kind for f in final.flags] == ["injection"]
-    declined = workflow.run(workflow.build(right_answers()), application("gp-023", tmp_path))  # injected, declined
+    declined = run_until_pause(application("gp-023", tmp_path))  # injected, declined
     assert sorted(c.step for c in declined.calls) == ["draft_letter", "extract", "read_proposal"]
     assert declined.cost_usd == pytest.approx(0.003)
 
@@ -143,7 +152,9 @@ def test_the_graph_has_the_designed_shape():
         ("cross_check", "eligibility"),
         ("eligibility", "route"),
         ("route", "draft_letter"),
-        ("route", "__end__"),
+        ("route", "human_review"),
+        ("human_review", "draft_letter"),
+        ("human_review", "eligibility"),
     } <= edges
 
 
@@ -153,3 +164,175 @@ def test_the_readme_diagram_is_the_compiled_graph():
     assert drawn.strip() == workflow.diagram(), (
         'redraw it: uv run python -c "import workflow; print(workflow.diagram())"'
     )
+
+
+# --- Pausing for the reviewer (step 4a) --------------------------------------------------------------------
+
+NOW = dt.datetime(2025, 7, 1, tzinfo=dt.UTC)
+
+
+def decision(kind=None, corrections=None, reason="Checked the return."):
+    return ReviewerDecision(decision=kind, corrections=corrections or {}, reason=reason, reviewer="me", decided_at=NOW)
+
+
+def test_a_reviewed_application_pauses_with_what_the_reviewer_needs(tmp_path):
+    outcome = workflow.start(app(), application("gp-039", tmp_path))  # eligible, injection flagged
+    assert outcome.waiting_for_review and outcome.state.letter is None and outcome.state.review is None
+    request = outcome.review_request
+    assert request["application_id"] == "gp-039" and request["failed_rules"] == []
+    assert [f["kind"] for f in request["flags"]] == ["injection"]
+    assert request["figures"]["total_revenue_current_year"] == 441406
+
+
+def test_a_decline_by_the_rules_never_pauses(tmp_path):
+    outcome = workflow.start(app(), application("gp-023", tmp_path))
+    assert not outcome.waiting_for_review and outcome.state.letter is not None and outcome.state.review is None
+
+
+def test_resuming_with_a_decision_finishes_with_a_letter(tmp_path):
+    graph = app()
+    workflow.start(graph, application("gp-039", tmp_path))
+    done = workflow.resume(graph, "gp-039", decision("approve", reason="Strong plan."))
+    assert not done.waiting_for_review
+    assert done.state.review.decision == "approve" and done.state.letter == "Letter for gp-039"
+
+
+def test_corrections_rerun_the_rules_and_can_decline(tmp_path):
+    """A reviewer finds revenue was misread: the corrected figure fails the revenue rule, so the rules decline,
+    which they may, since the reviewer has now checked the figures."""
+    graph = app()
+    workflow.start(graph, application("gp-039", tmp_path))
+    done = workflow.resume(graph, "gp-039", decision(corrections={"total_revenue_current_year": 41_406}))
+    assert not done.waiting_for_review
+    assert done.state.eligibility.failed_rules == ["revenue_range"] and done.state.route == "decline_ineligible"
+    assert done.state.letter is not None
+
+
+def test_corrections_that_keep_it_eligible_pause_again_and_are_kept(tmp_path):
+    graph = app()
+    workflow.start(graph, application("gp-039", tmp_path))
+    again = workflow.resume(graph, "gp-039", decision(corrections={"total_revenue_current_year": 450_000}))
+    assert again.waiting_for_review and again.review_request["figures"]["total_revenue_current_year"] == 441406
+    done = workflow.resume(graph, "gp-039", decision("approve", reason="Strong plan."))
+    assert done.state.review.corrections == {"total_revenue_current_year": 450_000}  # kept from the first round
+    assert done.state.review.decision == "approve" and done.state.letter is not None
+
+
+def test_a_paused_application_survives_a_new_process(tmp_path):
+    """The checkpointer, not the running program, holds the paused state: a fresh graph over the same saver
+    (a restart, or another server) resumes it, and no reading step runs again."""
+    saver = workflow.memory_checkpointer()
+    calls = []
+
+    def counting(steps):
+        def wrap(name, node):
+            def run(state):
+                calls.append(name)
+                return node(state)
+
+            return run
+
+        return workflow.Steps(
+            *(wrap(n, getattr(steps, n)) for n in ("extract", "research", "read_proposal", "draft_letter"))
+        )
+
+    workflow.start(workflow.build(counting(right_answers()), checkpointer=saver), application("gp-039", tmp_path))
+    restarted = workflow.build(counting(right_answers()), checkpointer=saver)
+    done = workflow.resume(restarted, "gp-039", decision("approve", reason="Strong plan."))
+    assert done.state.letter is not None
+    assert sorted(calls) == ["draft_letter", "extract", "read_proposal", "research"]  # each exactly once
+
+
+def test_an_invalid_decision_is_rejected_before_it_reaches_the_graph(tmp_path):
+    """LangGraph saves a resume value before the node checks it, so a bad value sent to the graph would be
+    replayed on every later resume and the thread would be stuck. resume() only takes a ReviewerDecision, which
+    can't be built from invalid input: the graph never sees it, and the application stays cleanly paused."""
+    graph = app()
+    workflow.start(graph, application("gp-039", tmp_path))
+    with pytest.raises(ValidationError):
+        workflow.resume(graph, "gp-039", ReviewerDecision.model_validate({"decision": "maybe"}))
+    still = workflow.outcome(graph, "gp-039")
+    assert still.waiting_for_review and still.state.review is None
+    assert workflow.resume(graph, "gp-039", decision("decline", reason="Out of focus.")).state.letter is not None
+
+
+# --- Durability: a crash mid-run (step 4b) -------------------------------------------------------------------
+
+
+def test_after_a_crash_finished_steps_are_not_run_again(tmp_path):
+    """read_proposal fails (a crash, an outage) while extract and research succeed in the same parallel step.
+    LangGraph saved their results as pending writes, so resuming the thread reruns only read_proposal: the model
+    calls already paid for aren't paid for twice."""
+    saver = workflow.memory_checkpointer()
+    steps = right_answers()
+    calls = []
+    failures = iter([True])  # read_proposal fails once, then works
+
+    def counted(name, node):
+        def run(state):
+            calls.append(name)
+            if name == "read_proposal" and next(failures, False):
+                raise ConnectionError("Bedrock unreachable")
+            return node(state)
+
+        return run
+
+    counting = workflow.Steps(
+        *(counted(n, getattr(steps, n)) for n in ("extract", "research", "read_proposal", "draft_letter"))
+    )
+    graph = workflow.build(counting, checkpointer=saver)
+    with pytest.raises(ConnectionError):
+        workflow.start(graph, application("gp-023", tmp_path))  # declined by the rules: runs to its letter
+    assert sorted(calls) == ["extract", "read_proposal", "research"]
+
+    graph.invoke(None, workflow.thread("gp-023"))  # resume from the last checkpoint
+    done = workflow.outcome(graph, "gp-023")
+    assert done.state.letter is not None and done.state.route == "decline_ineligible"
+    assert sorted(calls) == ["draft_letter", "extract", "read_proposal", "read_proposal", "research"]
+    assert sorted(c.step for c in done.state.calls) == ["draft_letter", "extract", "read_proposal"]  # no duplicates
+
+
+def test_checkpoints_may_only_be_rebuilt_into_our_state_classes():
+    allowed = dict(workflow.checkpoint_classes())
+    assert ("state", "ApplicationState") in workflow.checkpoint_classes() and allowed["bedrock"] == "CallRecord"
+    for name in ("ReviewerDecision", "Flag", "PeriodFigures", "ProposalReading"):
+        assert ("state", name) in workflow.checkpoint_classes()
+
+
+def test_a_full_run_round_trips_through_the_checkpoints_without_warnings(tmp_path, recwarn):
+    graph = app()
+    workflow.start(graph, application("gp-039", tmp_path))
+    workflow.resume(graph, "gp-039", decision("approve", reason="Strong plan."))
+    assert not [w for w in recwarn if "unregistered type" in str(w.message)]
+
+
+def test_stage_timings_come_from_the_checkpoint_history(tmp_path):
+    graph = app(right_answers(delay=0.2))
+    workflow.start(graph, application("gp-023", tmp_path))
+    stages = workflow.stage_timings(graph, "gp-023")
+    assert [s["stage"] for s in stages] == [
+        "extract+research+read_proposal",
+        "cross_check",
+        "eligibility",
+        "route",
+        "draft_letter",
+    ]
+    assert 0.2 <= stages[0]["seconds"] < 0.4  # the three steps ran together
+
+
+def test_the_dynamodb_checkpointer_uses_the_allowlist_and_the_ttl(monkeypatch):
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "test")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "test")
+    monkeypatch.delenv("AWS_PROFILE", raising=False)
+    saver = workflow.dynamodb_checkpointer()  # builds clients only: no AWS call
+    assert saver.table_name == "grant-review-checkpoints" and saver.client.meta.region_name == "us-east-2"
+    assert saver.repo.ttl_seconds == 30 * 24 * 3600
+    blocked = workflow.serializer()._allowed_msgpack_modules
+    assert ("state", "ApplicationState") in blocked and saver.serde._allowed_msgpack_modules == blocked
+
+
+def test_an_application_id_cant_be_started_twice(tmp_path):
+    graph = app()
+    workflow.start(graph, application("gp-039", tmp_path))
+    with pytest.raises(workflow.ApplicationExists):
+        workflow.start(graph, application("gp-039", tmp_path))

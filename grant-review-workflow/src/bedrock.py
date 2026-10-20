@@ -62,6 +62,9 @@ class CallRecord(BaseModel, frozen=True):
     wall_ms: int  # measured here: includes network and any retries
     stop_reason: str
     attempts: int = 1  # more than 1: the first answer didn't fit the schema; tokens and cost cover every attempt
+    sdk_retries: int = (
+        0  # retries boto3 made on its own (throttling, busy service): the gap between wall_ms and latency_ms
+    )
 
     def plus(self, other: CallRecord) -> CallRecord:
         """This call and a retry of it, as one record."""
@@ -76,6 +79,7 @@ class CallRecord(BaseModel, frozen=True):
                 "wall_ms": self.wall_ms + other.wall_ms,
                 "stop_reason": other.stop_reason,
                 "attempts": self.attempts + other.attempts,
+                "sdk_retries": self.sdk_retries + other.sdk_retries,
             }
         )
 
@@ -133,6 +137,7 @@ def _call(client, *, step: str, model: str, system: str, messages: list[dict], m
         latency_ms=response["metrics"]["latencyMs"],
         wall_ms=round((time.perf_counter() - started) * 1000),
         stop_reason=response["stopReason"],
+        sdk_retries=response.get("ResponseMetadata", {}).get("RetryAttempts", 0),
     )
     if response["stopReason"] == "max_tokens":
         raise TruncatedOutput(f"{step}: output reached max_tokens={max_tokens}")
