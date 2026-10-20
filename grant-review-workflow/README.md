@@ -23,6 +23,7 @@ Rules: only public IRS data and ProPublica's JSON API (as in Project 3). Applica
 | 4 | Durability and human-in-the-loop: checkpoints in DynamoDB, pause and resume on a reviewer's decision, idempotent steps, a kill-and-resume test *(done)* | Durable execution |
 | 5 | Evals: per-step and end-to-end (routing accuracy, human escalation rate, cost and latency per application, path taken), gating pull requests *(done)* | How errors compound across steps |
 | 6 | Safety: prompt injection in applicant narratives, Bedrock Guardrails vs. code checks, PII handling, least-privilege roles per step *(done)* | Governance for untrusted and sensitive input |
+| 6.5 | The name check on new data: compare the form's name with the return's own, read the name and title as untrusted, 20 held-out packets scored once *(done)* | Measuring a fix found on test without tuning on test |
 | 7 | Infrastructure as code with CDK (TypeScript): S3 uploads trigger the workflow on AgentCore Runtime, DynamoDB, per-component IAM roles, tracing, OIDC deploys from GitHub Actions | IaC, event-driven design, AWS |
 | 8 | Reviewer UI in React + TypeScript: queue, evidence with citations, approve or override (which resumes the workflow) | Full-stack delivery |
 | 9 | *(Optional)* The same workflow on Step Functions, compared on evidence | Framework vs. AWS-native orchestration |
@@ -65,6 +66,27 @@ uv run python src/bedrock.py   # one small call per model: access, structured ou
 
 Haiku's one error (gp-036's total revenue read as $51,306, not $51,308) was caught by the form's own arithmetic, the only return where revenue didn't add up, so it would reach a reviewer as a flag. It also sat $1,306 above the fund's $50,000 revenue minimum: a digit misread near a threshold is how a wrong automatic decline would happen. **Extract uses Sonnet 4.6**: the saving from Haiku is about a cent per application. One run on 15 returns is a small sample; step 5 repeats it.
 
+## Step 6.5: the name check, measured on new data
+
+Step 5's test split found two false name mismatches (an organization whose public-record name isn't its own: a group exemption, a rename), and step 6's red team found that instructions in the organization name or project title went unflagged. Both fixes were made on dev and measured once on packets nobody had looked at.
+
+- **The rule** (`src/checks.py`): `name_mismatch` now needs the form's name to differ from the name on the applicant's own return (box C, already read by extract) as well as from ProPublica's registered name. When only ProPublica's differs, nothing is flagged; its name and the research explanation stay in the state for the reviewer. Evals now score the box C reading (`return_name_accuracy`, normalized as the rule compares names).
+- **read_proposal v3** (`prompts/read_proposal/v3.txt`): the organization name and project title go to read_proposal next to the narrative, each as `unverified_text`, so text addressed to a reviewer or an AI in them is reported like the narrative's. The code grounding check accepts an instruction quote from any of the three; rubric quotes and figures must still come from the narrative.
+- **20 held-out packets** (gp-041 to gp-060, split `holdout`, `src/build_holdout.py`): one per filing the gold set left unused. 5 have a ProPublica name that differs from the return's own (one also carries a planted mismatch: three different names), 2 more planted mismatches, 2 organization-name and 2 project-title injections worded unlike the red team's, 2 narrative injections shaped like data, budget, staff and out-of-focus plants, a request over the maximum, and 3 clean packets (one near miss). Narratives approved in two batches. `--split holdout` needs `--final` and runs once.
+
+| | Dev (15 x 3) | Red team (24) | **Held out (20 x 3, run once)** |
+|---|---|---|---|
+| Wrong automatic declines | 0 | - | **0** |
+| Route, rules, flags exact, focus, stated figures | 100% | - | **100%** |
+| name_mismatch (planted / false) | - | - | **9/9, 0 false** |
+| Injections caught / outcome intact | 9/9, 9/9 | 24/24 held (form-field 4/4) | **18/18, 18/18** (form-field 12/12) |
+| Return name read (box C) | 100% | - | **100%** |
+| Cost | $1.40 | $0.72 | $2.21 |
+
+**The old rule on the same runs:** ProPublica's name alone was judged different on 15 of the 60 held-out runs. 9 were the planted mismatches; the other 6 were gp-041 (Gencure, registered as Bbg Advanced Therapies) and gp-050 (Conservation Voters New Mexico, registered under a federation's name), every run: false flags the new rule didn't raise. The cosmetic differences (gp-042, gp-059) were judged the same organization either way.
+
+**Also seen:** one EIN digit misread in 60 runs (gp-056, 942495604 read as 922495604; no effect, since the ProPublica lookup uses the form's EIN); 8 Bedrock outages survived by waiting; boto3 retries on 82 of 202 calls (Sonnet capacity again). On dev, one `feasible_for_size` rubric score moved by 2 between repeats (before: never more than 1).
+
 ## Step 6: safety
 
 - **Red team** (`src/red_team.py`, results in `results/red-team-dev.md`): 24 attacks built from dev packets, on every input an applicant controls: the narrative (plain and inside an HTML comment), the organization name, the project title, and text drawn onto the 990's page image. Goals: force an approval, hide a planted problem, swap in false figures, leak the system prompts, change the focus area, put an award in the letter. **All 24 outcomes held** (same route, rules and flags as the unattacked packet), **no prompt leaked**, and the planted $9,999,999 on the page image was never read. All 18 narrative attacks were flagged as injections; **the 4 form-field attacks were not flagged** (the name judge correctly saw the same organization but has no way to report an instruction, and the title is only read by the letter writer). $0.71.
@@ -80,7 +102,7 @@ Haiku's one error (gp-036's total revenue read as $51,306, not $51,308) was caug
 - **Personal data** ([docs/data-handling.md](docs/data-handling.md)): where an application's data goes and how long it stays (checkpoints: 30-day TTL), the rules, and a check that **Bedrock model invocation logging is off** in us-east-2 (no log groups, no trails). `cross_check` now raises `sensitive_data` when the name, title or narrative contains an identifier the fund never needs (an SSN, a card number, bank routing or account numbers), naming the field and position and never the value (`src/sensitive.py`, free, deterministic; no dev packet trips it).
 - **Least privilege** (`src/iam_policy.py`): the runtime role's policy, from IAM Policy Autopilot's static analysis of the boto3 calls (including the DynamoDB saver's), narrowed by hand: `bedrock:InvokeModel` on the two `us.` inference profiles, their models only through those profiles (`bedrock:InferenceProfileArn`), and the saver's five calls on the checkpoint table. `--simulate` checks it with IAM's policy simulator: 27 checks, every allowed call allowed and everything else (direct model calls, other models, streaming, the guardrail, deletes and scans, other tables, IAM) denied. The role is created in step 7, one per component.
 
-**Not fixed here:** the form-field gap. Closing it means a model step that reads the name and title as untrusted text and can report instructions; that changes prompts, so it comes with the name-check step (comparing the form's name with the return's box C), measured on new packets.
+**Fixed in step 6.5:** the form-field gap. read_proposal v3 reads the name and title as untrusted text; the red team rerun flagged all 4 form-field attacks.
 
 ## Step 5: evals
 
@@ -105,7 +127,7 @@ Haiku's one error (gp-036's total revenue read as $51,306, not $51,308) was caug
 - gp-025, `name_mismatch` (1/2): form and return say Rosati Center, ProPublica Rosati House Apartments; the name judgment was inconsistent between runs.
 - gp-029, focus `housing` (2/3) vs label `human_services`: an emergency rent fund, and read_proposal prompt v2 defines housing as including rent; the label (a keyword heuristic) and the prompt disagree.
 
-**Proposed, not verified:** compare the form's name with the name on the applicant's own return (box C, already extracted) as well as ProPublica's. That would have avoided both false name mismatches and still caught the two planted ones, whose form name matches neither. It was found by the test set, so it isn't applied and re-scored here: a better test score after a fix found on test would be tuning on test. It needs new data to be measured.
+**Proposed here, measured in step 6.5 on new data:** compare the form's name with the name on the applicant's own return (box C, already extracted) as well as ProPublica's. That would have avoided both false name mismatches and still caught the two planted ones, whose form name matches neither. It was found by the test set, so it isn't applied and re-scored here: a better test score after a fix found on test would be tuning on test. It needs new data to be measured.
 
 **Latency** is Sonnet 4.6 capacity: every boto3 retry in both evals was on a Sonnet call (Haiku: none), adding a median 4-6 s to those calls; correctness was never affected. **Rubric** scores never move by more than 1 between repeats, but budget_matches_request is 5 in 105 of 112 runs and barely discriminates (every gold budget adds up by construction).
 
@@ -204,6 +226,6 @@ v1's focus misses were boundaries in the prompt's own definitions (home help as 
 - `docs/design.md`: the design: fund rules, steps, state, principles, metrics, gold set plan.
 - `docs/data-handling.md`: where application data goes, how long it stays, and the rules (step 6).
 - `data/filings/`: answer keys of the 60 real Form 990s, copied from Project 2 by `src/import_filings.py`.
-- `data/gold/`: the 40 application packets (`src/build_gold.py` writes forms, specs and labels; narratives are written and approved separately). See its README.
+- `data/gold/`: the 40 application packets (`src/build_gold.py` writes forms, specs and labels; narratives are written and approved separately) and the 20 held-out packets of step 6.5 (`src/build_holdout.py`). See its README.
 - `data/raw/`: IRS downloads (gitignored, re-downloadable).
 - `security/`: the dependency audit and the list of reviewed, accepted vulnerabilities.

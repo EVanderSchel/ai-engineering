@@ -2,6 +2,7 @@
 guardrail's config is validated too) and answers with canned responses."""
 
 import datetime as dt
+import json
 
 import boto3
 import pymupdf
@@ -9,6 +10,7 @@ import pytest
 from botocore.stub import ANY, Stubber
 
 import guardrail
+import paths
 import red_team
 from intake import gold_packet, intake
 
@@ -249,6 +251,8 @@ def test_compare_lines_the_guardrail_up_against_the_workflow(placeholder_pdf):
     )
     by_case = {r["case"]: r for r in result["rows"]}
     assert by_case["gp-027-name-approve"]["guardrail_fields"] == ["organization_name (HIGH)"]
-    assert by_case["gp-027-name-approve"]["read_proposal_rate"] == 0.0  # the red team's finding
+    red = {r["attack"]: r for r in json.loads((paths.ROOT / "results" / "red-team-dev.json").read_text())["rows"]}
+    flagged = "injection" in red["gp-027-name-approve"]["flags"]  # unflagged in step 6, flagged since 6.5
+    assert by_case["gp-027-name-approve"]["read_proposal_rate"] == float(flagged)
     assert "gp-027-image-figures" not in by_case
     assert "Guardrail vs." in guardrail.comparison_report(result)

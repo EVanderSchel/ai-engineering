@@ -153,7 +153,7 @@ Multiple funders or programs; applicants uploading documents themselves (packets
 
 ## Decisions
 
-Decisions 1-3 were made on 2026-10-19, decisions 4-12 on 2026-10-20.
+Decisions 1-3 were made on 2026-10-19, decisions 4-15 on 2026-10-20.
 
 1. **No fast track.** Every eligible application gets the same human review, sorted by priority. A lighter queue for strong, unflagged applications can come later, once the evals show the flags are reliable enough to lean on.
 2. **No "request more information" in v1.** Reviewers approve, decline, or correct a figure. The only pause is waiting for the reviewer.
@@ -167,6 +167,9 @@ Decisions 1-3 were made on 2026-10-19, decisions 4-12 on 2026-10-20.
 10. **`sensitive_data` flags identifiers, not contact details.** SSNs, card numbers and bank numbers never belong in an application, so code flags them (narrow patterns with checksums, never repeating the value). Names, emails, phones, addresses and ages appear in ordinary narratives ("children between the ages of 8 and 14") and aren't flagged: the guardrail's contact-detail findings on dev were all of that kind.
 11. **One runtime policy, generated then narrowed, built from the code.** The policy (`src/iam_policy.py`) starts from IAM Policy Autopilot's static analysis of the boto3 calls, is narrowed to the step models' inference profiles (their models only through those profiles) and the checkpoint table, and is checked with IAM's policy simulator. Building it from `STEP_MODELS` and the table name keeps it in step with the code. Step 7 splits it into a role per component.
 12. **Bedrock model invocation logging stays off.** It would copy every narrative (and any identifier in it) into CloudWatch or S3; the call records already hold tokens, cost and latency. If it's ever needed for debugging: a dedicated, encrypted log group with a short retention, turned off afterwards ([data-handling.md](data-handling.md)).
+13. **A name mismatch needs the applicant's own return to disagree too.** cross_check flags `name_mismatch` only when the form's name differs (normalized) from the return's box C name as well as from the public record's. A public-record name can belong to a parent organization or an old name; the return is the applicant's own filing. Proposed from the test split's findings, so it was built on dev and measured on 20 new held-out packets, run once: 9/9 planted mismatches flagged, no false ones, where the old rule would have added 6.
+14. **read_proposal reads every text the applicant typed.** Prompt v3 sends the organization name and project title as `unverified_text` beside the narrative, so instructions in them are reported like the narrative's (decision 9's guardrail missed these too). Red team 4/4 form-field attacks flagged; held out 12/12.
+15. **New data for fixes found on held-out data.** A fix suggested by the test split is measured on packets built from unused filings (split `holdout`, `--final`, run once), never by re-scoring test.
 
 ## Eval findings (step 5, 2026-10-20)
 
@@ -176,10 +179,10 @@ The test split, run once: no wrong automatic declines; route, rules, extraction 
 2. **The registered name can differ from the return's own name** (gp-015: a lodge under its national order's group exemption; gp-025: a renamed organization), and the name judgment was inconsistent on gp-025. Proposed (unverified): compare the form's name with box C of the applicant's own return first, and only consult ProPublica's name when those differ.
 3. **A label can contradict the prompt** (gp-029: rent assistance is housing under read_proposal v2's definition, human services in the label). Labels for borderline focus areas need the same definitions the prompt uses.
 
-None of these is fixed in response to the test set: each needs new data to be measured.
+None of these is fixed in response to the test set: each needs new data to be measured. Finding 2's fix was measured that way in step 6.5 (decisions 13 and 15).
 
 ## Safety findings (step 6, 2026-10-20, dev packets only)
 
 1. **Outcomes held against every attack** (24, on all four applicant inputs): no route, rule or expected flag changed, no system prompt leaked, and text drawn on the page image was never read as a figure. The defenses that held are structural: figures come from the return, rules and routes are code, and the letter's content is checked by code.
-2. **Attacks in the organization name or project title go unflagged.** The name judge sees the same organization (correctly) but can't report an instruction, and the title is read only by the letter writer, whose output is checked. Nothing bad happened, but the reviewer isn't told. Closing it changes prompts, so it belongs with the name-check step (box C) and new packets.
+2. **Attacks in the organization name or project title went unflagged** (fixed in step 6.5, decision 14). The name judge sees the same organization (correctly) but can't report an instruction, and the title is read only by the letter writer, whose output is checked. Nothing bad happened, but the reviewer isn't told. Closing it changes prompts, so it belongs with the name-check step (box C) and new packets.
 3. **A prompt-attack filter isn't an injection detector for documents.** The guardrail caught instructions shaped like jailbreaks and missed ones shaped like data, which is how an applicant would write them; a model reading the narrative as untrusted text, with its findings checked by code, caught all 21 narrative cases.
