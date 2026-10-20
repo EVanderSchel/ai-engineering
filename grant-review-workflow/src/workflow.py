@@ -60,11 +60,21 @@ class Steps:
     draft_letter: Node
 
 
+# The model each step uses (design decision 7), in one place: the eval fingerprint covers it.
+STEP_MODELS = {
+    "extract": "sonnet",
+    "research_judge": research.JUDGE_MODEL,
+    "research_agent": research.AGENT_MODEL,
+    "read_proposal": "sonnet",
+    "draft_letter": "haiku",
+}
+
+
 def bedrock_steps(client) -> Steps:
     """The real steps, on Bedrock, with the models chosen in step 2 (design decision 7)."""
 
     def extract_node(state: ApplicationState) -> dict:
-        extraction, call = extract.extract(client, state.return_pdf, model="sonnet")
+        extraction, call = extract.extract(client, state.return_pdf, model=STEP_MODELS["extract"])
         return {"extraction": extraction, "calls": [call]}
 
     def research_node(state: ApplicationState) -> dict:
@@ -72,13 +82,15 @@ def bedrock_steps(client) -> Steps:
         return {"research": result, "calls": calls}
 
     def read_proposal_node(state: ApplicationState) -> dict:
-        reading, problems, call = read_proposal.read_proposal(client, state.narrative, model="sonnet")
+        reading, problems, call = read_proposal.read_proposal(
+            client, state.narrative, model=STEP_MODELS["read_proposal"]
+        )
         # A reading that quotes or states something the narrative doesn't contain isn't trusted silently.
         flags = [Flag(step="read_proposal", kind="unverified_reading", evidence=p) for p in problems]
         return {"proposal": reading, "flags": flags, "calls": [call]}
 
     def draft_letter_node(state: ApplicationState) -> dict:
-        letter, problems, call = draft_letter.draft_letter(client, state, model="haiku")
+        letter, problems, call = draft_letter.draft_letter(client, state, model=STEP_MODELS["draft_letter"])
         return {"letter": letter, "letter_problems": problems, "calls": [call]}
 
     return Steps(extract_node, research_node, read_proposal_node, draft_letter_node)
@@ -232,6 +244,13 @@ def start(app, application: ApplicationState) -> Outcome:
         raise ApplicationExists(f"application {application.application_id} already has a saved thread")
     app.invoke(application, thread(application.application_id))
     return outcome(app, application.application_id)
+
+
+def carry_on(app, application_id: str) -> Outcome:
+    """Continue a run that stopped on an error (an outage, a crash) from its last checkpoint. Steps that had
+    finished keep their results, so only what failed runs again (step 4's crash test)."""
+    app.invoke(None, thread(application_id))
+    return outcome(app, application_id)
 
 
 def resume(app, application_id: str, decision: ReviewerDecision) -> Outcome:
