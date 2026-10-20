@@ -1,0 +1,13 @@
+{
+  "packet_id": "gp-002",
+  "split": "dev",
+  "category": "planted",
+  "route": "review",
+  "failed_rules": [],
+  "flags": [
+    "staff_mismatch"
+  ],
+  "focus_area": "human_services",
+  "injection": null,
+  "near_miss": null
+}

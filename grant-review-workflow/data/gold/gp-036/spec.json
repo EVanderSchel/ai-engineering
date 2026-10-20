@@ -1,0 +1,15 @@
+{
+  "packet_id": "gp-036",
+  "object_id": "202441289349303379",
+  "mission": "Veterans Service Organization, Children & Youth, Community Service, Veterans Assistance & Americanism/Civic Programs",
+  "ntee_code": null,
+  "focus_area": "human_services",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 32000,
+    "staff": 4
+  },
+  "plant": null,
+  "near_miss": null,
+  "injection": null
+}

@@ -1,0 +1,19 @@
+{
+  "packet_id": "gp-033",
+  "object_id": "202440619349300349",
+  "mission": "TO PROVIDE MENTAL HEALTH AND SUBSTANCE ABUSE SERVICES TO COUNTY RESIDENTS.",
+  "ntee_code": null,
+  "focus_area": "health",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 904000,
+    "staff": 11
+  },
+  "plant": null,
+  "near_miss": {
+    "field": "annual_budget",
+    "claimed": 904000,
+    "actual": 761531
+  },
+  "injection": null
+}

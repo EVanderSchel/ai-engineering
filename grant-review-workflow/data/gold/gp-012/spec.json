@@ -1,0 +1,15 @@
+{
+  "packet_id": "gp-012",
+  "object_id": "202403469349300520",
+  "mission": "TO PROVIDE EDUCATIONAL OPPORTUNITIES FOR PRE-SCHOOL AND LOWER ELEMENTARY AGED CHILDREN THROUGH THE MONTESSORI LEARNING PROGRAM.",
+  "ntee_code": "B110",
+  "focus_area": "education",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 409000,
+    "staff": 30
+  },
+  "plant": null,
+  "near_miss": null,
+  "injection": null
+}

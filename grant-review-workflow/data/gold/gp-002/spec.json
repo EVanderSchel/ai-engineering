@@ -1,0 +1,15 @@
+{
+  "packet_id": "gp-002",
+  "object_id": "202232559349302063",
+  "mission": "Provide ambulance and fire protection services to the community at large. Also provide fire prevention and safety services to the community at large.",
+  "ntee_code": "M24",
+  "focus_area": "human_services",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 1047000,
+    "staff": 9
+  },
+  "plant": "staff_mismatch",
+  "near_miss": null,
+  "injection": null
+}

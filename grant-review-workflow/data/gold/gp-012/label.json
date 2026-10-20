@@ -1,0 +1,13 @@
+{
+  "packet_id": "gp-012",
+  "split": "test",
+  "category": "ineligible_request",
+  "route": "decline_ineligible",
+  "failed_rules": [
+    "request_range"
+  ],
+  "flags": [],
+  "focus_area": "education",
+  "injection": null,
+  "near_miss": null
+}

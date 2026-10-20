@@ -1,0 +1,15 @@
+{
+  "packet_id": "gp-009",
+  "object_id": "202402229349301705",
+  "mission": "PROVIDING ACADEMICALLY CHALLENGING AND SPIRITUALLY NURTURING EDUCATION.",
+  "ntee_code": "B21",
+  "focus_area": "education",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 51000,
+    "staff": 2
+  },
+  "plant": "budget_mismatch",
+  "near_miss": null,
+  "injection": null
+}

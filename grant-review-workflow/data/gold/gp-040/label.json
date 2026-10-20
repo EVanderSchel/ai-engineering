@@ -1,0 +1,13 @@
+{
+  "packet_id": "gp-040",
+  "split": "dev",
+  "category": "ineligible_return",
+  "route": "decline_ineligible",
+  "failed_rules": [
+    "net_assets"
+  ],
+  "flags": [],
+  "focus_area": "education",
+  "injection": null,
+  "near_miss": null
+}

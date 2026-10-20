@@ -1,0 +1,15 @@
+{
+  "packet_id": "gp-015",
+  "object_id": "202412229349300711",
+  "mission": "BROTHERHOOD AND CHARITABLE ACTIVITIES",
+  "ntee_code": "Y40Z",
+  "focus_area": "human_services",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 192000,
+    "staff": 2
+  },
+  "plant": "staff_mismatch",
+  "near_miss": null,
+  "injection": null
+}

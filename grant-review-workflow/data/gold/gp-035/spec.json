@@ -1,0 +1,15 @@
+{
+  "packet_id": "gp-035",
+  "object_id": "202441109349300914",
+  "mission": "To provide resources for foster care youth, caregivers, and organizations",
+  "ntee_code": "P30",
+  "focus_area": "human_services",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 5569000,
+    "staff": 231
+  },
+  "plant": "name_mismatch",
+  "near_miss": null,
+  "injection": null
+}

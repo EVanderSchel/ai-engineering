@@ -1,0 +1,15 @@
+{
+  "packet_id": "gp-032",
+  "object_id": "202440509349300719",
+  "mission": "WAKE CHRISTIAN ACADEMY, INC. IS A SCHOOL WHOSE MISSION IS TO PARTNER WITH THE CHRISTIAN HOME AND THE CHURCH TO PROVIDE A CHRIST-CENTERED, QUALITY EDUCATION AND TO PROCLAIM THE GOOD NEWS OF JESUS CHRIST.",
+  "ntee_code": "B24Z",
+  "focus_area": "education",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 14385000,
+    "staff": 216
+  },
+  "plant": "budget_mismatch",
+  "near_miss": null,
+  "injection": null
+}

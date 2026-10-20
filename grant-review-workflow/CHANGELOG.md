@@ -7,3 +7,7 @@ All notable changes to this project are documented here, following [Keep a Chang
 ### Added
 
 - Project scaffolding: uv project on Python 3.14, ruff, pytest, CI workflow with change detection, lint, test, and vulnerability-audit checks
+- Design doc (`docs/design.md`): the fictional fund's rules, the workflow's steps and state, principles, metrics, and the gold set plan
+- The fund's eligibility rules as code (`src/fund_rules.py`), tested at every boundary
+- The 60 real Form 990 answer keys, copied from Project 2 (`data/filings/`)
+- Gold set of 40 application packets (`data/gold/`): forms, specs and computed labels; narratives for all 40, checked by code for their stated figures and approved in three batches; a test keeps the set complete and approved

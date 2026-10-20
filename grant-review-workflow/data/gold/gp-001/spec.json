@@ -1,0 +1,15 @@
+{
+  "packet_id": "gp-001",
+  "object_id": "202222569349300112",
+  "mission": "Public Trail Maintenance. To Maintain, build, 65 miles of snowmobile trails for the outdoor enjoyment of individuals and for the economic benefit of the community.",
+  "ntee_code": "N68",
+  "focus_area": "human_services",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 104000,
+    "staff": 1
+  },
+  "plant": null,
+  "near_miss": null,
+  "injection": null
+}

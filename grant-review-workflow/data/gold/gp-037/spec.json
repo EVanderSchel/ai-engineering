@@ -1,0 +1,15 @@
+{
+  "packet_id": "gp-037",
+  "object_id": "202441369349315989",
+  "mission": "PROVIDE HEALTH BENEFITS TO UNION EMPLOYEES COVERED BY A COLLECTIVE BARGAINING AGREEMENT.",
+  "ntee_code": null,
+  "focus_area": null,
+  "out_of_focus_project": "renovating the organization's own clubhouse and meeting hall",
+  "claims": {
+    "annual_budget": 19629000,
+    "staff": null
+  },
+  "plant": "out_of_focus",
+  "near_miss": null,
+  "injection": null
+}

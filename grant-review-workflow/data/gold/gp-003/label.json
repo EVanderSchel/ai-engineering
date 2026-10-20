@@ -1,0 +1,15 @@
+{
+  "packet_id": "gp-003",
+  "split": "dev",
+  "category": "clean",
+  "route": "review",
+  "failed_rules": [],
+  "flags": [],
+  "focus_area": "human_services",
+  "injection": null,
+  "near_miss": {
+    "field": "annual_budget",
+    "claimed": 428000,
+    "actual": 383414
+  }
+}

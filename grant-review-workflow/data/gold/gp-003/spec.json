@@ -1,0 +1,19 @@
+{
+  "packet_id": "gp-003",
+  "object_id": "202400379349300025",
+  "mission": "LOCAL CHAPTER OF A NATIONAL COLLEGIATE SOCIAL FRATERNITY.",
+  "ntee_code": null,
+  "focus_area": "human_services",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 428000,
+    "staff": null
+  },
+  "plant": null,
+  "near_miss": {
+    "field": "annual_budget",
+    "claimed": 428000,
+    "actual": 383414
+  },
+  "injection": null
+}

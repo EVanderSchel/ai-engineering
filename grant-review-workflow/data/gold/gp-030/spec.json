@@ -1,0 +1,15 @@
+{
+  "packet_id": "gp-030",
+  "object_id": "202440199349300504",
+  "mission": "Education and Research in Cardiovascular Medicine",
+  "ntee_code": "H03",
+  "focus_area": "health",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 263000,
+    "staff": null
+  },
+  "plant": null,
+  "near_miss": null,
+  "injection": null
+}

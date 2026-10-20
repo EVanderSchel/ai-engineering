@@ -1,0 +1,15 @@
+{
+  "packet_id": "gp-006",
+  "object_id": "202401309349301820",
+  "mission": "OPERATION OF A POST-SECONDARY INSTITUTION OFFERING ADVANCED RABBINICAL EDUCATION AS WELL AS A HIGH-SCHOOL PREPARATORY PROGRAM.",
+  "ntee_code": null,
+  "focus_area": "education",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 5408000,
+    "staff": 143
+  },
+  "plant": null,
+  "near_miss": null,
+  "injection": null
+}
