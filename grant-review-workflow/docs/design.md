@@ -102,10 +102,10 @@ ApplicationState
   route:         "decline_ineligible" | "review" | None
   review:        ReviewerDecision | None (decision, corrections, reason, reviewer, at)
   letter:        str | None
-  steps:         list[StepRecord]     (step, model, tokens, cost, ms, error)
+  calls:         list[CallRecord]     (step, model, tokens, cost, latency, stop reason)
 ```
 
-Parallel steps write separate fields, except `flags` and `steps`, which they append to (in LangGraph, a list "reducer" that merges instead of overwriting).
+Parallel steps write separate fields, except `flags` and `calls`, which they append to (in LangGraph, a list "reducer" that merges instead of overwriting). Built in `src/state.py` (step 2b); `calls` holds one record per model call, since code steps cost nothing and take milliseconds.
 
 ## How it's measured (step 5, defined now so the gold set supports it)
 

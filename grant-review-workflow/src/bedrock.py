@@ -46,9 +46,9 @@ MODELS = {
 }
 
 
-@dataclasses.dataclass(frozen=True)
-class CallRecord:
-    """What one model call cost and how long it took; the workflow keeps one per call in its state."""
+class CallRecord(BaseModel, frozen=True):
+    """What one model call cost and how long it took; the workflow keeps one per call in its state (a
+    Pydantic model so it's saved with the state's checkpoints)."""
 
     step: str
     model: str

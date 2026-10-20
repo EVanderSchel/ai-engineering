@@ -11,4 +11,6 @@ All notable changes to this project are documented here, following [Keep a Chang
 - The fund's eligibility rules as code (`src/fund_rules.py`), tested at every boundary
 - The 60 real Form 990 answer keys, copied from Project 2 (`data/filings/`)
 - Bedrock client (`src/bedrock.py`): Converse API calls to Claude Sonnet 4.6 and Haiku 4.5 through `us.` inference profiles, explicit `maxTokens`, adaptive retries, structured output through a forced tool with Pydantic validation, errors for cut-off or malformed output, and a cost and latency record per call; tested against Bedrock's API definition with botocore's Stubber
+- State models (`src/state.py`): the application state from the design, one owner per field, validated values, exact JSON round trip for checkpoints; checked against the fund's rules and all 60 answer keys
+- Intake (`src/intake.py`): turns a packet into a state or rejects it with every problem listed, before any model call
 - Gold set of 40 application packets (`data/gold/`): forms, specs and computed labels; narratives for all 40, checked by code for their stated figures and approved in three batches; a test keeps the set complete and approved
