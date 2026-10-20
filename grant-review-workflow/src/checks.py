@@ -8,6 +8,7 @@ from the same e-filed return. No figures for that period means nothing to compar
 """
 
 import fund_rules
+import sensitive
 from state import ApplicationState, Eligibility, Flag, ReturnFigures, Route
 
 # Flags that cast doubt on the figures the rules read. With one of these, a failing application goes to a person
@@ -77,6 +78,7 @@ def cross_check(state: ApplicationState) -> list[Flag]:
                         f"public record {_money(recorded)}."
                     )
                     flags.append(Flag(step="cross_check", kind="figures_disagree", evidence=evidence))
+    flags += sensitive.flags(state)
     return flags
 
 
