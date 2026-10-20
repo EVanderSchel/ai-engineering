@@ -14,6 +14,7 @@ import dataclasses
 import os
 import sys
 import time
+from collections.abc import Callable
 
 import boto3
 from botocore.config import Config
@@ -146,18 +147,7 @@ def structured[T: BaseModel](
     because a schema given to a model is a request, not a guarantee.
     """
     tool_name = schema.__name__
-    tool_config = {
-        "tools": [
-            {
-                "toolSpec": {
-                    "name": tool_name,
-                    "description": (schema.__doc__ or f"Record the {tool_name}.").strip(),
-                    "inputSchema": {"json": schema.model_json_schema()},
-                }
-            }
-        ],
-        "toolChoice": {"tool": {"name": tool_name}},
-    }
+    tool_config = {"tools": [_schema_tool(schema)], "toolChoice": {"tool": {"name": tool_name}}}
     message, record = _call(
         client,
         step=step,
@@ -174,6 +164,77 @@ def structured[T: BaseModel](
         return schema.model_validate(calls[0]["input"]), record
     except ValidationError as e:
         raise InvalidStructuredOutput(f"{step}: {e}") from e
+
+
+def _schema_tool(schema: type[BaseModel]) -> dict:
+    """A Pydantic model as a Converse tool: calling the tool means answering in that shape."""
+    name = schema.__name__
+    description = (schema.__doc__ or f"Record the {name}.").strip()
+    return {"toolSpec": {"name": name, "description": description, "inputSchema": {"json": schema.model_json_schema()}}}
+
+
+def tool_loop[T: BaseModel](
+    client,
+    *,
+    step: str,
+    model: str,
+    system: str,
+    content: list[dict],
+    tools: dict[str, Callable[..., dict]],
+    tool_specs: dict[str, dict],
+    finish: type[T],
+    max_tokens: int,
+    max_turns: int = 6,
+    max_cost_usd: float = 0.10,
+    tool_errors: tuple[type[Exception], ...] = (),
+) -> tuple[T, list[CallRecord], list[dict]]:
+    """A tool-using agent: the model calls `tools` until it calls the `finish` tool, whose input is the answer.
+
+    Every turn the model must call some tool (toolChoice "any"). Each tool call is run and its result sent back
+    as a toolResult matched by toolUseId; a tool that fails (one of `tool_errors`, an unknown tool, or wrong
+    arguments) returns status "error" with its message, so the model can correct itself. On the last allowed
+    turn, or once the calls have cost max_cost_usd, the model is forced to call `finish` with what it has.
+
+    Returns (answer, one CallRecord per model call, trajectory: every tool call with its input and outcome).
+    """
+    specs = [{"toolSpec": {"name": name, **spec}} for name, spec in tool_specs.items()] + [_schema_tool(finish)]
+    messages = [{"role": "user", "content": content}]
+    calls: list[CallRecord] = []
+    trajectory: list[dict] = []
+    for turn in range(max_turns):
+        must_finish = turn == max_turns - 1 or sum(c.cost_usd for c in calls) >= max_cost_usd
+        choice = {"tool": {"name": finish.__name__}} if must_finish else {"any": {}}
+        message, record = _call(
+            client,
+            step=step,
+            model=model,
+            system=system,
+            messages=messages,
+            max_tokens=max_tokens,
+            toolConfig={"tools": specs, "toolChoice": choice},
+        )
+        calls.append(record)
+        messages.append(message)
+        uses = [block["toolUse"] for block in message["content"] if "toolUse" in block]
+        done = next((use for use in uses if use["name"] == finish.__name__), None)
+        if done is not None:
+            trajectory.append({"tool": finish.__name__, "forced": must_finish})
+            try:
+                return finish.model_validate(done["input"]), calls, trajectory
+            except ValidationError as e:
+                raise InvalidStructuredOutput(f"{step}: {e}") from e
+        results = []
+        for use in uses:
+            try:
+                output = tools[use["name"]](**use["input"])
+                result = {"toolUseId": use["toolUseId"], "content": [{"json": output}], "status": "success"}
+            except (*tool_errors, KeyError, TypeError) as e:
+                message_text = f"Unknown tool {use['name']}" if isinstance(e, KeyError) else str(e)
+                result = {"toolUseId": use["toolUseId"], "content": [{"text": message_text}], "status": "error"}
+            trajectory.append({"tool": use["name"], "input": use["input"], "status": result["status"]})
+            results.append({"toolResult": result})
+        messages.append({"role": "user", "content": results})
+    raise InvalidStructuredOutput(f"{step}: no {finish.__name__} call within {max_turns} turns")
 
 
 class _Check(BaseModel):

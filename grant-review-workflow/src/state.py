@@ -78,6 +78,8 @@ class Research(BaseModel):
     found: bool
     registered_name: str | None = None
     name_matches_form: bool | None = None
+    name_explanation: str | None = None  # why the names were judged the same or different
+    form_name_belongs_to: str | None = None  # EIN of another organization registered under the form's name
     years_with_figures: list[int] = []
     latest_year: int | None = None
     latest_revenue: int | None = None

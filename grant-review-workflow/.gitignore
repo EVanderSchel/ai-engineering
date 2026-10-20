@@ -10,3 +10,5 @@ data/raw/
 # CDK (step 7): installed packages and the synthesized CloudFormation templates are rebuilt, never committed.
 node_modules/
 cdk.out/
+# ProPublica API responses (src/propublica.py): re-fetchable, so never committed.
+data/cache/
