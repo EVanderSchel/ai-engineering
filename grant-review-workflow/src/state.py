@@ -138,7 +138,7 @@ class ReviewerDecision(BaseModel):
 
     decision: Literal["approve", "decline"] | None  # None: only corrections, no decision yet
     corrections: dict[str, int] = {}
-    reason: str = Field(min_length=1)
+    reason: str = Field(min_length=1)  # quoted word for word in the decision letter: written to the applicant
     reviewer: str = Field(min_length=1)
     decided_at: dt.datetime
 
@@ -166,6 +166,7 @@ class ApplicationState(BaseModel):
     route: Route | None = None
     review: ReviewerDecision | None = None
     letter: str | None = None
+    letter_problems: list[str] = []  # what the code check still finds wrong after one revision: a person fixes it
     calls: list[CallRecord] = []  # every model call: model, tokens, cost, latency
 
     @property

@@ -1,0 +1,147 @@
+{
+  "model": "haiku",
+  "prompt": "v1",
+  "date": "2026-10-20",
+  "letters": 15,
+  "letters_with_problems": 1,
+  "cost_usd": 0.0348,
+  "rows": [
+    {
+      "packet_id": "gp-002",
+      "outcome": "declined",
+      "source": "reviewer",
+      "problems": [],
+      "words": 91,
+      "cost_usd": 0.0023177,
+      "attempts": 1
+    },
+    {
+      "packet_id": "gp-003",
+      "outcome": "approved",
+      "source": "reviewer",
+      "problems": [],
+      "words": 98,
+      "cost_usd": 0.0024255,
+      "attempts": 1
+    },
+    {
+      "packet_id": "gp-009",
+      "outcome": "declined",
+      "source": "reviewer",
+      "problems": [],
+      "words": 89,
+      "cost_usd": 0.0022946000000000004,
+      "attempts": 1
+    },
+    {
+      "packet_id": "gp-018",
+      "outcome": "declined",
+      "source": "rules",
+      "problems": [],
+      "words": 84,
+      "cost_usd": 0.0023848000000000003,
+      "attempts": 1
+    },
+    {
+      "packet_id": "gp-022",
+      "outcome": "declined",
+      "source": "rules",
+      "problems": [],
+      "words": 105,
+      "cost_usd": 0.002486,
+      "attempts": 1
+    },
+    {
+      "packet_id": "gp-023",
+      "outcome": "declined",
+      "source": "rules",
+      "problems": [],
+      "words": 86,
+      "cost_usd": 0.0023463000000000004,
+      "attempts": 1
+    },
+    {
+      "packet_id": "gp-026",
+      "outcome": "declined",
+      "source": "reviewer",
+      "problems": [],
+      "words": 91,
+      "cost_usd": 0.00231,
+      "attempts": 1
+    },
+    {
+      "packet_id": "gp-027",
+      "outcome": "approved",
+      "source": "reviewer",
+      "problems": [],
+      "words": 80,
+      "cost_usd": 0.0021989,
+      "attempts": 1
+    },
+    {
+      "packet_id": "gp-028",
+      "outcome": "approved",
+      "source": "reviewer",
+      "problems": [],
+      "words": 78,
+      "cost_usd": 0.0021758000000000003,
+      "attempts": 1
+    },
+    {
+      "packet_id": "gp-030",
+      "outcome": "declined",
+      "source": "rules",
+      "problems": [],
+      "words": 82,
+      "cost_usd": 0.002288,
+      "attempts": 1
+    },
+    {
+      "packet_id": "gp-033",
+      "outcome": "approved",
+      "source": "reviewer",
+      "problems": [],
+      "words": 75,
+      "cost_usd": 0.0022,
+      "attempts": 1
+    },
+    {
+      "packet_id": "gp-036",
+      "outcome": "declined",
+      "source": "rules",
+      "problems": [],
+      "words": 92,
+      "cost_usd": 0.0022748,
+      "attempts": 1
+    },
+    {
+      "packet_id": "gp-038",
+      "outcome": "declined",
+      "source": "reviewer",
+      "problems": [],
+      "words": 88,
+      "cost_usd": 0.002343,
+      "attempts": 1
+    },
+    {
+      "packet_id": "gp-039",
+      "outcome": "approved",
+      "source": "reviewer",
+      "problems": [
+        "the approval doesn't state the amount, $34,000"
+      ],
+      "words": 98,
+      "cost_usd": 0.0023419,
+      "attempts": 1
+    },
+    {
+      "packet_id": "gp-040",
+      "outcome": "declined",
+      "source": "rules",
+      "problems": [],
+      "words": 108,
+      "cost_usd": 0.002431,
+      "attempts": 1
+    }
+  ]
+}

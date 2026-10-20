@@ -18,7 +18,7 @@ Rules: only public IRS data and ProPublica's JSON API (as in Project 3). Applica
 |---|---|---|
 | 0 | AWS foundations (sign-in, Region, free plan, budget, Bedrock model access and quotas, a first Converse call) and scaffolding: uv project, ruff, pytest, CI with change detection, dependency audit *(done)* | Calling Claude through Bedrock vs. the Anthropic API |
 | 1 | Design doc ([docs/design.md](docs/design.md)): state diagram (steps, branches, where a human decides) and state schema; gold set of 40 packets with known correct outcomes *(done)* | Workflow vs. agent: fixed steps where possible, model judgment where needed |
-| 2 | Each step as a plain, tested function on Bedrock: extract, classify, research, score, draft | Steps testable and swappable on their own |
+| 2 | Each step as a plain, tested function on Bedrock: intake, extract, research, read_proposal, cross_check, eligibility, route, draft_letter *(done)* | Steps testable and swappable on their own |
 | 3 | Orchestration with LangGraph: shared state, conditional routing, parallel research, the tool-using agent as one step | Graph orchestration; what a framework adds over a hand-built loop |
 | 4 | Durability and human-in-the-loop: checkpoints in DynamoDB, pause and resume on a reviewer's decision, idempotent steps, a kill-and-resume test | Durable execution |
 | 5 | Evals: per-step and end-to-end (routing accuracy, human escalation rate, cost and latency per application, path taken), gating pull requests | How errors compound across steps |
@@ -64,6 +64,21 @@ uv run python src/bedrock.py   # one small call per model: access, structured ou
 | Haiku 4.5 | 164/165 | 15/15 | 1 | $0.0056 | 2.5 s |
 
 Haiku's one error (gp-036's total revenue read as $51,306, not $51,308) was caught by the form's own arithmetic, the only return where revenue didn't add up, so it would reach a reviewer as a flag. It also sat $1,306 above the fund's $50,000 revenue minimum: a digit misread near a threshold is how a wrong automatic decline would happen. **Extract uses Sonnet 4.6**: the saving from Haiku is about a cent per application. One run on 15 returns is a small sample; step 5 repeats it.
+
+**draft_letter (step 2g)** writes the decision letter from the decision and its reasons, never from the narrative: an automatic decline quotes the fund's failed rules word for word, a reviewer's decision quotes the reviewer's reason. Code checks every letter (the decision stated, every reason quoted, no dollar amount that isn't the request or in a reason, an approval states the amount); a draft that fails is sent back once with the problems listed, and anything still wrong is kept in the state for a person. Prompt v1 left the reason out of an approval (Sonnet) and the amount out of three approvals (Haiku); v2 says both apply to every letter, and both models then wrote 15/15 correct letters with no revision needed. **Letters use Haiku 4.5** ($0.0023 a letter vs $0.0071): the content is guaranteed by code, so the cheaper model costs nothing in quality.
+
+**Step 2 in sum** (dev split, about $1.50 of model calls in all):
+
+| Step | How | Model | Cost per application |
+|---|---|---|---|
+| intake | code | | $0 |
+| extract | page 1 image to 12 figures | Sonnet 4.6 | $0.017 |
+| research | code lookup; model only for names that differ; agent only for different organizations | Haiku 4.5 (names), Sonnet 4.6 (agent) | $0 to $0.02 |
+| read_proposal | narrative to focus, claims, rubric, injections | Sonnet 4.6 | $0.012 |
+| cross_check, eligibility, route | code | | $0 |
+| draft_letter | letter from decision and reasons, checked by code | Haiku 4.5 | $0.002 |
+
+About 3-4 cents per application before the reviewer decides. Step 3 joins the steps into one workflow.
 
 **cross_check, eligibility and route (step 2f)** are plain code (`src/checks.py`). cross_check turns the three parallel steps' findings into flags with evidence: name mismatch, a stated budget or staff count more than 25% off the return, out of focus, injection, not found, revenue that doesn't add up as read, and the return disagreeing with the public record *for the same period* (ProPublica's latest figures are often for a newer return). eligibility applies the fund's rules to the extracted figures, with any reviewer corrections laid over them. route declines only when a rule fails and the figures are trusted (design decision 6). Given the right inputs, all 15 dev packets get exactly their labeled flags, failed rules and route (`tests/test_checks.py`), so errors in a full run are the models', not the logic's.
 
