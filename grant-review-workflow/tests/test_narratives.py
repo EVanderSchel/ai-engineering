@@ -117,4 +117,6 @@ def test_form_carries_the_narratives_title(packet_id):
     folder = paths.GOLD_DIR / packet_id
     form = json.loads((folder / "form.json").read_text(encoding="utf-8"))
     meta = json.loads((folder / "narrative.json").read_text(encoding="utf-8"))
-    assert form["project_title"] == meta["project_title"], "rerun src/build_gold.py"
+    injection = json.loads((folder / "spec.json").read_text(encoding="utf-8")).get("form_injection")
+    suffix = injection["text"] if injection and injection["field"] == "project_title" else ""  # held-out title attacks
+    assert form["project_title"] == meta["project_title"] + suffix, "rerun src/build_gold.py or src/build_holdout.py"
