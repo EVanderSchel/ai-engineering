@@ -1,0 +1,208 @@
+{
+  "model": "haiku",
+  "model_id": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+  "date": "2026-10-20",
+  "packets": 15,
+  "field_accuracy": 0.9939,
+  "wrong_fields": 1,
+  "fields_checked": 165,
+  "eligibility_agrees": 15,
+  "revenue_not_adding_up": 1,
+  "cost_usd": 0.0842,
+  "median_latency_ms": 2541,
+  "rows": [
+    {
+      "packet_id": "gp-002",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "cost_usd": 0.0056308999999999994,
+      "latency_ms": 2724,
+      "input_tokens": 3439,
+      "output_tokens": 336
+    },
+    {
+      "packet_id": "gp-003",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "cost_usd": 0.0055759,
+      "latency_ms": 2469,
+      "input_tokens": 3439,
+      "output_tokens": 326
+    },
+    {
+      "packet_id": "gp-009",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "cost_usd": 0.0056122,
+      "latency_ms": 2528,
+      "input_tokens": 3457,
+      "output_tokens": 329
+    },
+    {
+      "packet_id": "gp-018",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [
+        "revenue_range"
+      ],
+      "label_failed_rules": [
+        "revenue_range"
+      ],
+      "cost_usd": 0.005724399999999999,
+      "latency_ms": 2976,
+      "input_tokens": 3439,
+      "output_tokens": 353
+    },
+    {
+      "packet_id": "gp-022",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [
+        "revenue_range",
+        "net_assets"
+      ],
+      "label_failed_rules": [
+        "revenue_range",
+        "net_assets"
+      ],
+      "cost_usd": 0.005623200000000001,
+      "latency_ms": 2541,
+      "input_tokens": 3457,
+      "output_tokens": 331
+    },
+    {
+      "packet_id": "gp-023",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [
+        "revenue_range"
+      ],
+      "label_failed_rules": [
+        "revenue_range"
+      ],
+      "cost_usd": 0.0056254,
+      "latency_ms": 2705,
+      "input_tokens": 3439,
+      "output_tokens": 335
+    },
+    {
+      "packet_id": "gp-026",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "cost_usd": 0.005650700000000001,
+      "latency_ms": 2673,
+      "input_tokens": 3457,
+      "output_tokens": 336
+    },
+    {
+      "packet_id": "gp-027",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "cost_usd": 0.0055957,
+      "latency_ms": 2415,
+      "input_tokens": 3457,
+      "output_tokens": 326
+    },
+    {
+      "packet_id": "gp-028",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "cost_usd": 0.005564899999999999,
+      "latency_ms": 2508,
+      "input_tokens": 3439,
+      "output_tokens": 324
+    },
+    {
+      "packet_id": "gp-030",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [
+        "return_current"
+      ],
+      "label_failed_rules": [
+        "return_current"
+      ],
+      "cost_usd": 0.0055594,
+      "latency_ms": 2471,
+      "input_tokens": 3439,
+      "output_tokens": 323
+    },
+    {
+      "packet_id": "gp-033",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "cost_usd": 0.0055869,
+      "latency_ms": 2534,
+      "input_tokens": 3439,
+      "output_tokens": 328
+    },
+    {
+      "packet_id": "gp-036",
+      "wrong_fields": [
+        "total_revenue_current_year: read 51306, key 51308"
+      ],
+      "revenue_adds_up": false,
+      "failed_rules": [
+        "request_share"
+      ],
+      "label_failed_rules": [
+        "request_share"
+      ],
+      "cost_usd": 0.005584700000000001,
+      "latency_ms": 2858,
+      "input_tokens": 3457,
+      "output_tokens": 324
+    },
+    {
+      "packet_id": "gp-038",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "cost_usd": 0.005650700000000001,
+      "latency_ms": 2733,
+      "input_tokens": 3457,
+      "output_tokens": 336
+    },
+    {
+      "packet_id": "gp-039",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "cost_usd": 0.0056122,
+      "latency_ms": 2564,
+      "input_tokens": 3457,
+      "output_tokens": 329
+    },
+    {
+      "packet_id": "gp-040",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [
+        "net_assets"
+      ],
+      "label_failed_rules": [
+        "net_assets"
+      ],
+      "cost_usd": 0.005623200000000001,
+      "latency_ms": 2441,
+      "input_tokens": 3457,
+      "output_tokens": 331
+    }
+  ]
+}

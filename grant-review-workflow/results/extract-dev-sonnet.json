@@ -1,0 +1,206 @@
+{
+  "model": "sonnet",
+  "model_id": "us.anthropic.claude-sonnet-4-6",
+  "date": "2026-10-20",
+  "packets": 15,
+  "field_accuracy": 1.0,
+  "wrong_fields": 0,
+  "fields_checked": 165,
+  "eligibility_agrees": 15,
+  "revenue_not_adding_up": 0,
+  "cost_usd": 0.2528,
+  "median_latency_ms": 3359,
+  "rows": [
+    {
+      "packet_id": "gp-002",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "cost_usd": 0.016896,
+      "latency_ms": 4119,
+      "input_tokens": 3440,
+      "output_tokens": 336
+    },
+    {
+      "packet_id": "gp-003",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "cost_usd": 0.016863,
+      "latency_ms": 3350,
+      "input_tokens": 3440,
+      "output_tokens": 334
+    },
+    {
+      "packet_id": "gp-009",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "cost_usd": 0.016823400000000002,
+      "latency_ms": 3284,
+      "input_tokens": 3458,
+      "output_tokens": 328
+    },
+    {
+      "packet_id": "gp-018",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [
+        "revenue_range"
+      ],
+      "label_failed_rules": [
+        "revenue_range"
+      ],
+      "cost_usd": 0.017127,
+      "latency_ms": 3995,
+      "input_tokens": 3440,
+      "output_tokens": 350
+    },
+    {
+      "packet_id": "gp-022",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [
+        "revenue_range",
+        "net_assets"
+      ],
+      "label_failed_rules": [
+        "revenue_range",
+        "net_assets"
+      ],
+      "cost_usd": 0.016872900000000003,
+      "latency_ms": 3490,
+      "input_tokens": 3458,
+      "output_tokens": 331
+    },
+    {
+      "packet_id": "gp-023",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [
+        "revenue_range"
+      ],
+      "label_failed_rules": [
+        "revenue_range"
+      ],
+      "cost_usd": 0.0168795,
+      "latency_ms": 3772,
+      "input_tokens": 3440,
+      "output_tokens": 335
+    },
+    {
+      "packet_id": "gp-026",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "cost_usd": 0.016955400000000002,
+      "latency_ms": 3511,
+      "input_tokens": 3458,
+      "output_tokens": 336
+    },
+    {
+      "packet_id": "gp-027",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "cost_usd": 0.0167904,
+      "latency_ms": 3291,
+      "input_tokens": 3458,
+      "output_tokens": 326
+    },
+    {
+      "packet_id": "gp-028",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "cost_usd": 0.016698,
+      "latency_ms": 3270,
+      "input_tokens": 3440,
+      "output_tokens": 324
+    },
+    {
+      "packet_id": "gp-030",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [
+        "return_current"
+      ],
+      "label_failed_rules": [
+        "return_current"
+      ],
+      "cost_usd": 0.0166815,
+      "latency_ms": 3205,
+      "input_tokens": 3440,
+      "output_tokens": 323
+    },
+    {
+      "packet_id": "gp-033",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "cost_usd": 0.016764,
+      "latency_ms": 3333,
+      "input_tokens": 3440,
+      "output_tokens": 328
+    },
+    {
+      "packet_id": "gp-036",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [
+        "request_share"
+      ],
+      "label_failed_rules": [
+        "request_share"
+      ],
+      "cost_usd": 0.016757400000000002,
+      "latency_ms": 4233,
+      "input_tokens": 3458,
+      "output_tokens": 324
+    },
+    {
+      "packet_id": "gp-038",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "cost_usd": 0.016955400000000002,
+      "latency_ms": 3679,
+      "input_tokens": 3458,
+      "output_tokens": 336
+    },
+    {
+      "packet_id": "gp-039",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "cost_usd": 0.0168399,
+      "latency_ms": 3349,
+      "input_tokens": 3458,
+      "output_tokens": 329
+    },
+    {
+      "packet_id": "gp-040",
+      "wrong_fields": [],
+      "revenue_adds_up": true,
+      "failed_rules": [
+        "net_assets"
+      ],
+      "label_failed_rules": [
+        "net_assets"
+      ],
+      "cost_usd": 0.016872900000000003,
+      "latency_ms": 3359,
+      "input_tokens": 3458,
+      "output_tokens": 331
+    }
+  ]
+}

@@ -45,7 +45,7 @@ In the gold set, forms and narratives are written for this project; the returns 
 |---|---|---|---|
 | **intake** | code | the packet | validated form, application ID; rejects malformed packets |
 | **extract** | model (vision) | 990 page images | Part I figures, with the form's own arithmetic checked (Project 2's approach) |
-| **research** | agent (tool use) | EIN, name | ProPublica record: does the EIN exist, does the name match, which years were filed, figures for cross-checking (Project 3's tools) |
+| **research** | code, then model only if needed | EIN, name | ProPublica record: does the EIN exist, does the name match, which years were filed, figures for cross-checking (Project 3's tools). Names that differ after normalizing go to a small model call; names of truly different organizations go to a tool-use agent (decision 5) |
 | **read_proposal** | model | narrative | focus area (or none), the claims it makes as structured data (annual budget, staff, people served, request purpose), rubric scores with quotes |
 | **cross_check** | code | extract, research, read_proposal | flags: extracted figures disagree with ProPublica's; narrative claims disagree with the return (e.g. claimed budget vs. total expenses, more than 25% off); name mismatch |
 | **eligibility** | code | extracted figures, form | pass, or a list of failed rules |
@@ -102,10 +102,10 @@ ApplicationState
   route:         "decline_ineligible" | "review" | None
   review:        ReviewerDecision | None (decision, corrections, reason, reviewer, at)
   letter:        str | None
-  steps:         list[StepRecord]     (step, model, tokens, cost, ms, error)
+  calls:         list[CallRecord]     (step, model, tokens, cost, latency, stop reason)
 ```
 
-Parallel steps write separate fields, except `flags` and `steps`, which they append to (in LangGraph, a list "reducer" that merges instead of overwriting).
+Parallel steps write separate fields, except `flags` and `calls`, which they append to (in LangGraph, a list "reducer" that merges instead of overwriting). Built in `src/state.py` (step 2b); `calls` holds one record per model call, since code steps cost nothing and take milliseconds.
 
 ## How it's measured (step 5, defined now so the gold set supports it)
 
@@ -151,8 +151,14 @@ Parallel steps write separate fields, except `flags` and `steps`, which they app
 
 Multiple funders or programs; applicants uploading documents themselves (packets are given); reviewer accounts and permissions beyond one sign-in (step 8); Schedule and Part VII data; older paper-filed returns.
 
-## Decisions (2026-10-19)
+## Decisions
+
+Decisions 1-3 were made on 2026-10-19, decisions 4-7 on 2026-10-20.
 
 1. **No fast track.** Every eligible application gets the same human review, sorted by priority. A lighter queue for strong, unflagged applications can come later, once the evals show the flags are reliable enough to lean on.
 2. **No "request more information" in v1.** Reviewers approve, decline, or correct a figure. The only pause is waiting for the reviewer.
 3. **Gold set: 40 packets** from Project 2's 60 filings, split 15 dev / 25 test: 15 ineligible (13 by the return's figures, 2 by the request), 13 clean, 12 with planted inconsistencies, and 8 injections placed inside those (see Gold set plan). The rules above were checked against those 60 filings: 47 are eligible and 13 fail (revenue 7, net assets 3, minimum request over 25% of expenses 3, stale return 2; 2 fail more than one), so every rule is exercised by real figures, and more declines can be planted through the requested amount.
+4. **Claude is called through Bedrock's Converse API** (boto3), not the Anthropic SDK's Bedrock client. Converse is AWS's own model-independent API: it's what AWS-focused roles expect, and the same code can call other Bedrock models for a later comparison. The cost: Projects 1-4's Messages API code doesn't carry over directly, and structured output goes through Converse's tool configuration.
+5. **research is a hybrid, not an agent for every application.** With a known EIN the lookup is always the same calls, so code makes them. A model judges only names that differ after normalizing (Haiku), and a Bedrock tool-use agent runs only when the names belong to different organizations, searching by the form's name to tell the reviewer whose it is. An agent for every application would add cost and run-to-run variation to a fixed procedure. On dev: 11 of 15 names matched in code, 4 were judged the same by Haiku ($0.006 in all); a made-up mismatch was traced to the right organization in 3 agent turns ($0.020).
+6. **An automatic decline needs trusted figures.** The route declines only when a rule fails *and* nothing casts doubt on the figures the rule read: an `arithmetic` flag (the return's revenue lines don't add up as read) or a `figures_disagree` flag (the return as read differs from the public record for the same period) sends a failing application to a person instead. A misread digit near a threshold is exactly how a wrong automatic decline would happen (Haiku read $51,308 as $51,306 on a return $1,308 above the revenue minimum). Once a reviewer has checked the figures, the rules decline as usual. The public record is compared only for the same period, matched by period end: ProPublica's `tax_prd` is the return's period end, and its figures for that period equal the return's exactly.
+7. **Models per step, chosen on dev results.** extract: Sonnet 4.6 (165/165 fields vs Haiku's 164/165, whose one misread sat near a threshold). read_proposal: Sonnet 4.6 (tied with Haiku on every labeled measure; Haiku's rubric scores were nearly all 4-5 and ranked nothing). research: Haiku 4.5 for name judgments, Sonnet 4.6 for the agent. draft_letter: Haiku 4.5 (tied with Sonnet; the content is guaranteed by code, so the cheaper model costs nothing). Each is a setting, revisited in step 5 with repeated runs and if newer models become available to the account.

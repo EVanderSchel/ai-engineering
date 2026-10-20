@@ -9,3 +9,4 @@ DATA_DIR = ROOT / "data"
 RAW_DIR = DATA_DIR / "raw"  # IRS downloads (gitignored)
 FILINGS_DIR = DATA_DIR / "filings"  # answer keys of the 60 real returns (from Project 2)
 GOLD_DIR = DATA_DIR / "gold"  # one folder per application packet
+CACHE_DIR = DATA_DIR / "cache"  # ProPublica API responses (gitignored)
