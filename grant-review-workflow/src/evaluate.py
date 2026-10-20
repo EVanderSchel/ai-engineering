@@ -140,6 +140,8 @@ def run_case(app, packet_id: str, rep: int, run_id: str, sleep=time.sleep) -> di
         "flags": sorted(f.kind for f in state.flags),
         "wrong_fields": extract.compare(state.extraction, key),
         "return_name_read": extract.name_read_right(state.extraction, key),
+        # What the name check had before step 6.5: ProPublica's name alone (the old rule flagged when this is False).
+        "public_record_name_matches": state.research.name_matches_form if state.research else None,
         "focus_area": proposal.focus_area,
         "claims": proposal.claims.model_dump(),
         "rubric": {s.criterion: s.score for s in proposal.rubric},
@@ -349,16 +351,18 @@ def report(result: dict) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run the workflow on a gold-set split and score it.")
-    parser.add_argument("--split", choices=["dev", "test"], required=True)
+    parser.add_argument("--split", choices=["dev", "test", "holdout"], required=True)
     parser.add_argument("--reps", type=int, default=3)
-    parser.add_argument("--final", action="store_true", help="required for the test split, which runs once")
+    parser.add_argument("--final", action="store_true", help="required for the test and holdout splits (run once)")
     args = parser.parse_args()
     out = RESULTS / f"eval-{args.split}.json"
-    if args.split == "test":
+    if args.split in ("test", "holdout"):
         if not args.final:
-            parser.error("the test split is the held-out result: run it once, at the end, with --final")
+            parser.error(f"the {args.split} split is a held-out result: run it once, at the end, with --final")
         if out.exists():
-            parser.error(f"{out.name} exists: the test split has been scored, and rerunning it would make it a dev set")
+            parser.error(
+                f"{out.name} exists: the {args.split} split has been scored, and rerunning it would make it a dev set"
+            )
     app = workflow.build(workflow.bedrock_steps(bedrock.make_client()), checkpointer=workflow.memory_checkpointer())
     try:
         result = evaluate(app, args.split, args.reps)

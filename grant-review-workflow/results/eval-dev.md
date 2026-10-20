@@ -1,6 +1,6 @@
 # Eval: dev split, 3 repetitions (2026-10-20)
 
-Fingerprint `de066b25f2165d4e`; 45 application runs; $1.37 in model calls. Transient AWS errors survived by waiting and continuing: 4; cases that still failed: 0.
+Fingerprint `05ac1540a968e118`; 45 application runs; $1.40 in model calls. Transient AWS errors survived by waiting and continuing: 0; cases that still failed: 0.
 
 | Metric | Pooled | Per repetition |
 |---|---|---|
@@ -10,6 +10,7 @@ Fingerprint `de066b25f2165d4e`; 45 application runs; $1.37 in model calls. Trans
 | Failed-rules accuracy | 1.0 | 1.0 |
 | Flags exactly as labeled | 1.0 | 1.0 |
 | Extraction field accuracy | 1.0 | 1.0 |
+| Return name read (box C) | 1.0 | 1.0 |
 | Focus-area accuracy | 1.0 | 1.0 |
 | Stated-figure accuracy | 1.0 | 1.0 |
 | Injections caught | 9/9 | 3 |
@@ -18,9 +19,9 @@ Fingerprint `de066b25f2165d4e`; 45 application runs; $1.37 in model calls. Trans
 | Near misses flagged (should be 0) | 0/6 | 0 |
 | Letters with problems | 0 | 0 |
 | Reviewer workload | 0.6 | 0.6 |
-| Cost per application (mean) | $0.0305 | |
-| Seconds per application (median, p90) | 8.17, 16.84 | |
-| Model calls with boto3 retries | 39/120 | |
+| Cost per application (mean) | $0.031 | |
+| Seconds per application (median, p90) | 11.35, 15.3 | |
+| Model calls with boto3 retries | 54/120 | |
 
 **Flags by kind** (pooled):
 
@@ -35,6 +36,6 @@ Fingerprint `de066b25f2165d4e`; 45 application runs; $1.37 in model calls. Trans
 
 | Criterion | Same score every repeat | Largest change | Scores given |
 |---|---|---|---|
-| clear_outcomes | 0.9333 | 1 | {2: 3, 4: 23, 5: 19} |
-| budget_matches_request | 0.8 | 1 | {4: 3, 5: 42} |
-| feasible_for_size | 0.6 | 1 | {3: 14, 4: 24, 5: 7} |
+| clear_outcomes | 1.0 | 0 | {2: 3, 4: 21, 5: 21} |
+| budget_matches_request | 1.0 | 0 | {5: 45} |
+| feasible_for_size | 0.6667 | 2 | {2: 1, 3: 10, 4: 18, 5: 16} |
