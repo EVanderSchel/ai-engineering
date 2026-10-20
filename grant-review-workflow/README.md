@@ -21,7 +21,7 @@ Rules: only public IRS data and ProPublica's JSON API (as in Project 3). Applica
 | 2 | Each step as a plain, tested function on Bedrock: intake, extract, research, read_proposal, cross_check, eligibility, route, draft_letter *(done)* | Steps testable and swappable on their own |
 | 3 | Orchestration with LangGraph: shared state, conditional routing, parallel research, the tool-using agent as one step *(done)* | Graph orchestration; what a framework adds over a hand-built loop |
 | 4 | Durability and human-in-the-loop: checkpoints in DynamoDB, pause and resume on a reviewer's decision, idempotent steps, a kill-and-resume test *(done)* | Durable execution |
-| 5 | Evals: per-step and end-to-end (routing accuracy, human escalation rate, cost and latency per application, path taken), gating pull requests | How errors compound across steps |
+| 5 | Evals: per-step and end-to-end (routing accuracy, human escalation rate, cost and latency per application, path taken), gating pull requests *(done)* | How errors compound across steps |
 | 6 | Safety: prompt injection in applicant narratives, Bedrock Guardrails vs. code checks, PII handling, least-privilege roles per step | Governance for untrusted and sensitive input |
 | 7 | Infrastructure as code with CDK (TypeScript): S3 uploads trigger the workflow on AgentCore Runtime, DynamoDB, per-component IAM roles, tracing, OIDC deploys from GitHub Actions | IaC, event-driven design, AWS |
 | 8 | Reviewer UI in React + TypeScript: queue, evidence with citations, approve or override (which resumes the workflow) | Full-stack delivery |
@@ -64,6 +64,33 @@ uv run python src/bedrock.py   # one small call per model: access, structured ou
 | Haiku 4.5 | 164/165 | 15/15 | 1 | $0.0056 | 2.5 s |
 
 Haiku's one error (gp-036's total revenue read as $51,306, not $51,308) was caught by the form's own arithmetic, the only return where revenue didn't add up, so it would reach a reviewer as a flag. It also sat $1,306 above the fund's $50,000 revenue minimum: a digit misread near a threshold is how a wrong automatic decline would happen. **Extract uses Sonnet 4.6**: the saving from Haiku is about a cent per application. One run on 15 returns is a small sample; step 5 repeats it.
+
+## Step 5: evals
+
+`src/evaluate.py` runs the whole workflow over a gold-set split with repetitions and scores the design's metrics (results in `results/eval-dev.md` and `results/eval-test.md`). Results carry a fingerprint of the prompts, models and fund rules; `tests/test_eval_gate.py` is a free CI gate that fails when the committed dev results no longer match the code, show a wrong automatic decline, or lost a case. The test split needs `--final` and runs once. A transient Bedrock error is waited out and the application's thread continued from its checkpoint, so finished steps aren't paid for twice; a case that still fails is recorded, not dropped.
+
+| | Dev (15 packets x 3) | **Test (25 packets x 3, run once)** |
+|---|---|---|
+| Wrong automatic declines | 0 | **0** |
+| Route, failed rules | 100%, 100% | **100%, 100%** |
+| Extraction fields, stated figures | 100%, 100% | **100%, 100%** |
+| Injections caught / outcome intact / false alarms | 9/9, 9/9, 0 | **14/14, 14/14, 0** |
+| Near misses flagged (should be 0) | 0/6 | **0/5** |
+| Flags exactly as labeled | 100% | **89.6%** |
+| Focus area | 100% | **97.0%** |
+| Cost per application, median time | $0.031, 8.2 s | $0.034, 7.6 s |
+| Runs completed | 45/45 (4 outages survived) | 67/75 (15 outages survived, 8 runs lost; every packet ran at least twice) |
+
+**What test found that dev didn't.** No error was a misread: extraction and stated figures were 100%, and every error sends an application to a person rather than declining it.
+
+- gp-014, `figures_disagree` (3/3 runs): the return was read correctly ($281,134 revenue), but ProPublica holds different figures for the same period ($228,011). The flag is true; the gold labels assumed the two sources agree, which was checked on dev only.
+- gp-015, `name_mismatch` (3/3): form and return say Elks lodge 2439; ProPublica registers the EIN under the national order's name (a group exemption).
+- gp-025, `name_mismatch` (1/2): form and return say Rosati Center, ProPublica Rosati House Apartments; the name judgment was inconsistent between runs.
+- gp-029, focus `housing` (2/3) vs label `human_services`: an emergency rent fund, and read_proposal prompt v2 defines housing as including rent; the label (a keyword heuristic) and the prompt disagree.
+
+**Proposed, not verified:** compare the form's name with the name on the applicant's own return (box C, already extracted) as well as ProPublica's. That would have avoided both false name mismatches and still caught the two planted ones, whose form name matches neither. It was found by the test set, so it isn't applied and re-scored here: a better test score after a fix found on test would be tuning on test. It needs new data to be measured.
+
+**Latency** is Sonnet 4.6 capacity: every boto3 retry in both evals was on a Sonnet call (Haiku: none), adding a median 4-6 s to those calls; correctness was never affected. **Rubric** scores never move by more than 1 between repeats, but budget_matches_request is 5 in 105 of 112 runs and barely discriminates (every gold budget adds up by construction).
 
 ## Step 4: pausing for the reviewer, and surviving crashes
 
