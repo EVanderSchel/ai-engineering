@@ -80,7 +80,7 @@ flowchart TD
 
 1. **The model never declines anyone.** Automatic declines come only from the eligibility rules, computed by code from figures. Everything else, including every model judgment and every flag, goes to a person. A wrong automatic decline is the costliest error: the applicant is turned away and nobody notices.
 2. **Code checks what code can check.** Arithmetic, thresholds and comparisons are code; the model reads images and prose. (Project 3's lesson: rules in a prompt weren't enough; the grounding check had to move into code.)
-3. **The narrative is untrusted.** It's applicant-written text read by a model, the classic setting for prompt injection. It never gets to change a rule, a threshold or a route; its claims are compared with the return, not believed (Project 3's lesson again).
+3. **Everything the applicant supplies is untrusted.** The narrative most of all (applicant-written text read by a model, the classic setting for prompt injection), but also the organization name and project title they type and the return's page image. None of it gets to change a rule, a threshold or a route; its claims are compared with the return, not believed (Project 3's lesson again). Step 6's red team attacked all four.
 4. **Every flag carries evidence:** which step raised it, the values compared, and a quote or a page. A reviewer shouldn't have to redo the work to trust it.
 5. **One record per application.** Every step writes its output, model, tokens, cost and latency to the state, so a decision can be audited and a run's cost is known.
 
@@ -153,7 +153,7 @@ Multiple funders or programs; applicants uploading documents themselves (packets
 
 ## Decisions
 
-Decisions 1-3 were made on 2026-10-19, decisions 4-8 on 2026-10-20.
+Decisions 1-3 were made on 2026-10-19, decisions 4-12 on 2026-10-20.
 
 1. **No fast track.** Every eligible application gets the same human review, sorted by priority. A lighter queue for strong, unflagged applications can come later, once the evals show the flags are reliable enough to lean on.
 2. **No "request more information" in v1.** Reviewers approve, decline, or correct a figure. The only pause is waiting for the reviewer.
@@ -163,6 +163,10 @@ Decisions 1-3 were made on 2026-10-19, decisions 4-8 on 2026-10-20.
 6. **An automatic decline needs trusted figures.** The route declines only when a rule fails *and* nothing casts doubt on the figures the rule read: an `arithmetic` flag (the return's revenue lines don't add up as read) or a `figures_disagree` flag (the return as read differs from the public record for the same period) sends a failing application to a person instead. A misread digit near a threshold is exactly how a wrong automatic decline would happen (Haiku read $51,308 as $51,306 on a return $1,308 above the revenue minimum). Once a reviewer has checked the figures, the rules decline as usual. The public record is compared only for the same period, matched by period end: ProPublica's `tax_prd` is the return's period end, and its figures for that period equal the return's exactly.
 7. **Models per step, chosen on dev results.** extract: Sonnet 4.6 (165/165 fields vs Haiku's 164/165, whose one misread sat near a threshold). read_proposal: Sonnet 4.6 (tied with Haiku on every labeled measure; Haiku's rubric scores were nearly all 4-5 and ranked nothing). research: Haiku 4.5 for name judgments, Sonnet 4.6 for the agent. draft_letter: Haiku 4.5 (tied with Sonnet; the content is guaranteed by code, so the cheaper model costs nothing). Each is a setting, revisited in step 5 with repeated runs and if newer models become available to the account.
 8. **Checkpoints in DynamoDB, kept 30 days.** One table, `grant-review-checkpoints` (on-demand, keys `PK`/`SK` as `langgraph-checkpoint-aws`'s `DynamoDBSaver` expects, TTL on `ttl`), created by a rerunnable script now and taken over by step 7's CDK. 30 days gives a reviewer time to reach an application; DynamoDB deletes expired checkpoints for free. No point-in-time recovery: a lost checkpoint costs one rerun of an application.
+9. **The Bedrock guardrail flags only, and isn't in the workflow.** A guardrail (`grant-review-screen`) was built in detect-only mode (every action `NONE`: a guardrail that blocks would let an applicant's text stop their own application, and a person should decide) and measured against the workflow's own checks. On dev it caught 9 of 25 injections (Classic tier; 7 on the Standard tier), all of which the workflow also caught, with no false alarms. With no added coverage it isn't wired in; version 1 (Classic, in-Region) stays pinned for the next comparison, for example on the form-field gap.
+10. **`sensitive_data` flags identifiers, not contact details.** SSNs, card numbers and bank numbers never belong in an application, so code flags them (narrow patterns with checksums, never repeating the value). Names, emails, phones, addresses and ages appear in ordinary narratives ("children between the ages of 8 and 14") and aren't flagged: the guardrail's contact-detail findings on dev were all of that kind.
+11. **One runtime policy, generated then narrowed, built from the code.** The policy (`src/iam_policy.py`) starts from IAM Policy Autopilot's static analysis of the boto3 calls, is narrowed to the step models' inference profiles (their models only through those profiles) and the checkpoint table, and is checked with IAM's policy simulator. Building it from `STEP_MODELS` and the table name keeps it in step with the code. Step 7 splits it into a role per component.
+12. **Bedrock model invocation logging stays off.** It would copy every narrative (and any identifier in it) into CloudWatch or S3; the call records already hold tokens, cost and latency. If it's ever needed for debugging: a dedicated, encrypted log group with a short retention, turned off afterwards ([data-handling.md](data-handling.md)).
 
 ## Eval findings (step 5, 2026-10-20)
 
@@ -173,3 +177,9 @@ The test split, run once: no wrong automatic declines; route, rules, extraction 
 3. **A label can contradict the prompt** (gp-029: rent assistance is housing under read_proposal v2's definition, human services in the label). Labels for borderline focus areas need the same definitions the prompt uses.
 
 None of these is fixed in response to the test set: each needs new data to be measured.
+
+## Safety findings (step 6, 2026-10-20, dev packets only)
+
+1. **Outcomes held against every attack** (24, on all four applicant inputs): no route, rule or expected flag changed, no system prompt leaked, and text drawn on the page image was never read as a figure. The defenses that held are structural: figures come from the return, rules and routes are code, and the letter's content is checked by code.
+2. **Attacks in the organization name or project title go unflagged.** The name judge sees the same organization (correctly) but can't report an instruction, and the title is read only by the letter writer, whose output is checked. Nothing bad happened, but the reviewer isn't told. Closing it changes prompts, so it belongs with the name-check step (box C) and new packets.
+3. **A prompt-attack filter isn't an injection detector for documents.** The guardrail caught instructions shaped like jailbreaks and missed ones shaped like data, which is how an applicant would write them; a model reading the narrative as untrusted text, with its findings checked by code, caught all 21 narrative cases.
