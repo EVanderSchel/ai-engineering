@@ -1,0 +1,259 @@
+{
+  "date": "2026-10-20",
+  "packets": 15,
+  "route_right": 15,
+  "wrong_declines": 0,
+  "rules_right": 15,
+  "flags_exact": 15,
+  "cost_usd": 0.4572,
+  "median_seconds": 6.2,
+  "rows": [
+    {
+      "packet_id": "gp-002",
+      "route": "review",
+      "label_route": "review",
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "flags": [
+        "staff_mismatch"
+      ],
+      "label_flags": [
+        "staff_mismatch"
+      ],
+      "letter_problems": [],
+      "cost_usd": 0.031,
+      "model_calls": 3,
+      "seconds": 4.3
+    },
+    {
+      "packet_id": "gp-003",
+      "route": "review",
+      "label_route": "review",
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "flags": [],
+      "label_flags": [],
+      "letter_problems": [],
+      "cost_usd": 0.03011,
+      "model_calls": 3,
+      "seconds": 4.3
+    },
+    {
+      "packet_id": "gp-009",
+      "route": "review",
+      "label_route": "review",
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "flags": [
+        "budget_mismatch"
+      ],
+      "label_flags": [
+        "budget_mismatch"
+      ],
+      "letter_problems": [],
+      "cost_usd": 0.02927,
+      "model_calls": 2,
+      "seconds": 3.7
+    },
+    {
+      "packet_id": "gp-018",
+      "route": "decline_ineligible",
+      "label_route": "decline_ineligible",
+      "failed_rules": [
+        "revenue_range"
+      ],
+      "label_failed_rules": [
+        "revenue_range"
+      ],
+      "flags": [],
+      "label_flags": [],
+      "letter_problems": [],
+      "cost_usd": 0.03297,
+      "model_calls": 4,
+      "seconds": 6.1
+    },
+    {
+      "packet_id": "gp-022",
+      "route": "decline_ineligible",
+      "label_route": "decline_ineligible",
+      "failed_rules": [
+        "revenue_range",
+        "net_assets"
+      ],
+      "label_failed_rules": [
+        "revenue_range",
+        "net_assets"
+      ],
+      "flags": [],
+      "label_flags": [],
+      "letter_problems": [],
+      "cost_usd": 0.03092,
+      "model_calls": 3,
+      "seconds": 6.2
+    },
+    {
+      "packet_id": "gp-023",
+      "route": "decline_ineligible",
+      "label_route": "decline_ineligible",
+      "failed_rules": [
+        "revenue_range"
+      ],
+      "label_failed_rules": [
+        "revenue_range"
+      ],
+      "flags": [
+        "injection"
+      ],
+      "label_flags": [
+        "injection"
+      ],
+      "letter_problems": [],
+      "cost_usd": 0.03258,
+      "model_calls": 3,
+      "seconds": 6.0
+    },
+    {
+      "packet_id": "gp-026",
+      "route": "review",
+      "label_route": "review",
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "flags": [
+        "injection",
+        "staff_mismatch"
+      ],
+      "label_flags": [
+        "injection",
+        "staff_mismatch"
+      ],
+      "letter_problems": [],
+      "cost_usd": 0.03022,
+      "model_calls": 2,
+      "seconds": 4.3
+    },
+    {
+      "packet_id": "gp-027",
+      "route": "review",
+      "label_route": "review",
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "flags": [],
+      "label_flags": [],
+      "letter_problems": [],
+      "cost_usd": 0.02876,
+      "model_calls": 2,
+      "seconds": 5.1
+    },
+    {
+      "packet_id": "gp-028",
+      "route": "review",
+      "label_route": "review",
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "flags": [],
+      "label_flags": [],
+      "letter_problems": [],
+      "cost_usd": 0.02831,
+      "model_calls": 2,
+      "seconds": 12.8
+    },
+    {
+      "packet_id": "gp-030",
+      "route": "decline_ineligible",
+      "label_route": "decline_ineligible",
+      "failed_rules": [
+        "return_current"
+      ],
+      "label_failed_rules": [
+        "return_current"
+      ],
+      "flags": [],
+      "label_flags": [],
+      "letter_problems": [],
+      "cost_usd": 0.03148,
+      "model_calls": 3,
+      "seconds": 13.9
+    },
+    {
+      "packet_id": "gp-033",
+      "route": "review",
+      "label_route": "review",
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "flags": [],
+      "label_flags": [],
+      "letter_problems": [],
+      "cost_usd": 0.03083,
+      "model_calls": 3,
+      "seconds": 9.7
+    },
+    {
+      "packet_id": "gp-036",
+      "route": "decline_ineligible",
+      "label_route": "decline_ineligible",
+      "failed_rules": [
+        "request_share"
+      ],
+      "label_failed_rules": [
+        "request_share"
+      ],
+      "flags": [],
+      "label_flags": [],
+      "letter_problems": [],
+      "cost_usd": 0.03111,
+      "model_calls": 3,
+      "seconds": 13.5
+    },
+    {
+      "packet_id": "gp-038",
+      "route": "review",
+      "label_route": "review",
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "flags": [
+        "out_of_focus"
+      ],
+      "label_flags": [
+        "out_of_focus"
+      ],
+      "letter_problems": [],
+      "cost_usd": 0.02836,
+      "model_calls": 2,
+      "seconds": 10.6
+    },
+    {
+      "packet_id": "gp-039",
+      "route": "review",
+      "label_route": "review",
+      "failed_rules": [],
+      "label_failed_rules": [],
+      "flags": [
+        "injection"
+      ],
+      "label_flags": [
+        "injection"
+      ],
+      "letter_problems": [],
+      "cost_usd": 0.0301,
+      "model_calls": 2,
+      "seconds": 13.6
+    },
+    {
+      "packet_id": "gp-040",
+      "route": "decline_ineligible",
+      "label_route": "decline_ineligible",
+      "failed_rules": [
+        "net_assets"
+      ],
+      "label_failed_rules": [
+        "net_assets"
+      ],
+      "flags": [],
+      "label_flags": [],
+      "letter_problems": [],
+      "cost_usd": 0.03118,
+      "model_calls": 3,
+      "seconds": 13.3
+    }
+  ]
+}

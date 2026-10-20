@@ -19,7 +19,7 @@ Rules: only public IRS data and ProPublica's JSON API (as in Project 3). Applica
 | 0 | AWS foundations (sign-in, Region, free plan, budget, Bedrock model access and quotas, a first Converse call) and scaffolding: uv project, ruff, pytest, CI with change detection, dependency audit *(done)* | Calling Claude through Bedrock vs. the Anthropic API |
 | 1 | Design doc ([docs/design.md](docs/design.md)): state diagram (steps, branches, where a human decides) and state schema; gold set of 40 packets with known correct outcomes *(done)* | Workflow vs. agent: fixed steps where possible, model judgment where needed |
 | 2 | Each step as a plain, tested function on Bedrock: intake, extract, research, read_proposal, cross_check, eligibility, route, draft_letter *(done)* | Steps testable and swappable on their own |
-| 3 | Orchestration with LangGraph: shared state, conditional routing, parallel research, the tool-using agent as one step | Graph orchestration; what a framework adds over a hand-built loop |
+| 3 | Orchestration with LangGraph: shared state, conditional routing, parallel research, the tool-using agent as one step *(done)* | Graph orchestration; what a framework adds over a hand-built loop |
 | 4 | Durability and human-in-the-loop: checkpoints in DynamoDB, pause and resume on a reviewer's decision, idempotent steps, a kill-and-resume test | Durable execution |
 | 5 | Evals: per-step and end-to-end (routing accuracy, human escalation rate, cost and latency per application, path taken), gating pull requests | How errors compound across steps |
 | 6 | Safety: prompt injection in applicant narratives, Bedrock Guardrails vs. code checks, PII handling, least-privilege roles per step | Governance for untrusted and sensitive input |
@@ -64,6 +64,48 @@ uv run python src/bedrock.py   # one small call per model: access, structured ou
 | Haiku 4.5 | 164/165 | 15/15 | 1 | $0.0056 | 2.5 s |
 
 Haiku's one error (gp-036's total revenue read as $51,306, not $51,308) was caught by the form's own arithmetic, the only return where revenue didn't add up, so it would reach a reviewer as a flag. It also sat $1,306 above the fund's $50,000 revenue minimum: a digit misread near a threshold is how a wrong automatic decline would happen. **Extract uses Sonnet 4.6**: the saving from Haiku is about a cent per application. One run on 15 returns is a small sample; step 5 repeats it.
+
+## Step 3: the workflow as a graph
+
+`src/workflow.py` joins the step functions into a LangGraph `StateGraph` over `ApplicationState`. Each node calls one step and returns only the fields that step owns; extract, research and read_proposal run in parallel, and cross_check waits for all three. The two lists several steps add to (`flags`, `calls`) carry a reducer, so parallel additions are concatenated rather than overwritten. A decline by the rules gets its letter; everything else stops, waiting for a reviewer (step 4 adds the pause and checkpoints). The diagram below is drawn by LangGraph from the compiled graph, and a test fails if it drifts.
+
+<!-- graph:start -->
+```mermaid
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	extract(extract)
+	research(research)
+	read_proposal(read_proposal)
+	cross_check(cross_check)
+	eligibility(eligibility)
+	route(route)
+	draft_letter(draft_letter)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> extract;
+	__start__ --> read_proposal;
+	__start__ --> research;
+	cross_check --> eligibility;
+	eligibility --> route;
+	extract --> cross_check;
+	read_proposal --> cross_check;
+	research --> cross_check;
+	route -. &nbsp;review&nbsp; .-> __end__;
+	route -. &nbsp;decline_ineligible&nbsp; .-> draft_letter;
+	draft_letter --> __end__;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc
+```
+<!-- graph:end -->
+
+**First end-to-end run** (15 dev packets: real return images, ProPublica and models; `uv run python src/workflow.py`): route 15/15 with **no wrong automatic declines**, failed rules 15/15, flags exactly as labeled 15/15 (none missed, none extra), **$0.030 per application**, median 6.2 s (3.7-13.9 s; per-step timing comes with step 4's checkpoints). Fifteen packets is a small sample and the test split hasn't been used: step 5 runs the full evals.
+
+**What LangGraph added over plain Python:** parallel branches with a join, reducers for shared lists, conditional edges, and a graph that can be inspected and drawn, plus (step 4) checkpointing and pauses. The cost: 28 more locked packages (`langchain-core` and LangGraph's own), and the graph returns a dict, so the final state is validated back into `ApplicationState`. The steps themselves don't know LangGraph exists, so they stay testable on their own.
 
 **draft_letter (step 2g)** writes the decision letter from the decision and its reasons, never from the narrative: an automatic decline quotes the fund's failed rules word for word, a reviewer's decision quotes the reviewer's reason. Code checks every letter (the decision stated, every reason quoted, no dollar amount that isn't the request or in a reason, an approval states the amount); a draft that fails is sent back once with the problems listed, and anything still wrong is kept in the state for a person. Prompt v1 left the reason out of an approval (Sonnet) and the amount out of three approvals (Haiku); v2 says both apply to every letter, and both models then wrote 15/15 correct letters with no revision needed. **Letters use Haiku 4.5** ($0.0023 a letter vs $0.0071): the content is guaranteed by code, so the cheaper model costs nothing in quality.
 
