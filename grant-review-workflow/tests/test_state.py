@@ -82,7 +82,10 @@ def full_state() -> state.ApplicationState:
             revenue_adds_up=True,
         ),
         research=state.Research(
-            found=True, registered_name="ORG", name_matches_form=True, years_with_figures=[2022, 2023]
+            found=True,
+            registered_name="ORG",
+            name_matches_form=True,
+            figures_by_period={"2023-12": {"revenue": 400_000}},
         ),
         proposal=state.ProposalReading(
             focus_area="health",

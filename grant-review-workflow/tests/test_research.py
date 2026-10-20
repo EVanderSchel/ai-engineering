@@ -101,8 +101,9 @@ def test_an_unknown_ein_is_reported_as_not_found_without_a_model_call(api):
 def test_a_matching_name_needs_no_model_call_and_brings_the_latest_figures(api):
     result, calls, trajectory = research.research(None, form())  # no client: any model call would fail
     assert result.name_matches_form is True and calls == [] and trajectory == []
-    assert result.registered_name == "VALLEY CREST RIDERS INC" and result.years_with_figures == [2021, 2020]
-    assert (result.latest_year, result.latest_revenue, result.latest_expenses) == (2021, 89405, 104184)
+    assert result.registered_name == "VALLEY CREST RIDERS INC"
+    assert list(result.figures_by_period) == ["2020-12", "2021-12"]
+    assert result.figures_by_period["2021-12"].model_dump() == {"revenue": 89405, "expenses": 104184}
 
 
 def test_a_name_the_judge_finds_equivalent_matches(api, stubbed):

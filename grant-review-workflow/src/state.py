@@ -72,6 +72,13 @@ class Extraction(BaseModel):
     revenue_adds_up: bool | None  # the four revenue lines sum to total revenue (None: a line couldn't be read)
 
 
+class PeriodFigures(BaseModel):
+    """One period's figures in the public record (None: not reported)."""
+
+    revenue: int | None = None
+    expenses: int | None = None
+
+
 class Research(BaseModel):
     """Written by `research`: what the public record (ProPublica, from IRS data) says about the EIN."""
 
@@ -80,10 +87,9 @@ class Research(BaseModel):
     name_matches_form: bool | None = None
     name_explanation: str | None = None  # why the names were judged the same or different
     form_name_belongs_to: str | None = None  # EIN of another organization registered under the form's name
-    years_with_figures: list[int] = []
-    latest_year: int | None = None
-    latest_revenue: int | None = None
-    latest_expenses: int | None = None
+    # Revenue and expenses for every period the record has figures for, keyed by period end ("2022-06").
+    # Compared only with the return for the same period: the record's latest year is often a newer return.
+    figures_by_period: dict[str, PeriodFigures] = {}
 
 
 class Claims(BaseModel):

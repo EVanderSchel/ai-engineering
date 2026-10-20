@@ -38,21 +38,21 @@ def untrusted(text: str | None) -> dict | None:
 
 
 def lookup(ein: str) -> dict | None:
-    """The public record for an EIN, or None if ProPublica has no such organization: its registered name,
-    which tax years have figures, and the latest year's revenue and expenses."""
+    """The public record for an EIN, or None if ProPublica has no such organization: its registered name, and
+    revenue and expenses for every period with figures, keyed by period end ("2022-06"). ProPublica's tax_prd is
+    the period end as YYYYMM (checked: it matches the returns' own period ends, with identical figures)."""
     try:
         data = propublica.organization(normalize_ein(ein))
     except propublica.NotFound:
         return None
-    filings = sorted(data["filings_with_data"], key=lambda f: f["tax_prd"], reverse=True)
-    latest = filings[0] if filings else {}
-    return {
-        "registered_name": data["organization"]["name"],
-        "years_with_figures": sorted({f["tax_prd_yr"] for f in filings}, reverse=True),
-        "latest_year": latest.get("tax_prd_yr"),
-        "latest_revenue": latest.get("totrevenue"),
-        "latest_expenses": latest.get("totfuncexpns"),
-    }
+    periods = {}
+    for filing in data["filings_with_data"]:
+        period = str(filing["tax_prd"])
+        periods[f"{period[:4]}-{period[4:6]}"] = {
+            "revenue": filing.get("totrevenue"),
+            "expenses": filing.get("totfuncexpns"),
+        }
+    return {"registered_name": data["organization"]["name"], "figures_by_period": dict(sorted(periods.items()))}
 
 
 # --- The research agent's tools --------------------------------------------------------------------

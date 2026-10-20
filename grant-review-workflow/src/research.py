@@ -132,7 +132,7 @@ def main() -> int:
             how = "same after normalizing" if not calls else f"{len(calls)} model call(s), ${cost:.4f}"
             print(
                 f"{folder.name}: found={result.found} match={result.name_matches_form} ({how}) | "
-                f"latest {result.latest_year}: revenue {result.latest_revenue}, expenses {result.latest_expenses}"
+                f"periods with figures: {', '.join(result.figures_by_period) or 'none'}"
             )
             if result.name_explanation:
                 print(f"    {form.organization_name!r} vs {result.registered_name!r}: {result.name_explanation}")
