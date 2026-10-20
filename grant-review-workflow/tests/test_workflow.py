@@ -42,7 +42,7 @@ def right_answers(delay: float = 0.0) -> workflow.Steps:
     """Stand-in steps that return what a perfect model would, from the packet's spec and answer key."""
 
     def packet(state: ApplicationState):
-        folder = paths.GOLD_DIR / state.application_id
+        folder = paths.GOLD_DIR / state.application_id[:6]  # "gp-039", also from eval IDs like gp-039-<run>-r2
         spec = json.loads((folder / "spec.json").read_text(encoding="utf-8"))
         meta = json.loads((folder / "narrative.json").read_text(encoding="utf-8"))
         key = json.loads((paths.FILINGS_DIR / f"{spec['object_id']}.json").read_text(encoding="utf-8"))["fields"]
