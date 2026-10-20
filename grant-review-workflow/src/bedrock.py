@@ -61,6 +61,23 @@ class CallRecord(BaseModel, frozen=True):
     latency_ms: int  # measured by Bedrock: time spent in the model
     wall_ms: int  # measured here: includes network and any retries
     stop_reason: str
+    attempts: int = 1  # more than 1: the first answer didn't fit the schema; tokens and cost cover every attempt
+
+    def plus(self, other: CallRecord) -> CallRecord:
+        """This call and a retry of it, as one record."""
+        return self.model_copy(
+            update={
+                "input_tokens": self.input_tokens + other.input_tokens,
+                "output_tokens": self.output_tokens + other.output_tokens,
+                "cache_read_tokens": self.cache_read_tokens + other.cache_read_tokens,
+                "cache_write_tokens": self.cache_write_tokens + other.cache_write_tokens,
+                "cost_usd": self.cost_usd + other.cost_usd,
+                "latency_ms": self.latency_ms + other.latency_ms,
+                "wall_ms": self.wall_ms + other.wall_ms,
+                "stop_reason": other.stop_reason,
+                "attempts": self.attempts + other.attempts,
+            }
+        )
 
 
 class TruncatedOutput(RuntimeError):
@@ -144,26 +161,35 @@ def structured[T: BaseModel](
 
     Converse has no JSON mode for Claude, so the schema becomes the input schema of a single tool, and
     toolChoice forces the model to call it: the tool call's input is the answer. Pydantic then validates it,
-    because a schema given to a model is a request, not a guarantee.
+    because a schema given to a model is a request, not a guarantee (Haiku once returned a list as a JSON
+    string). An answer that doesn't fit is asked for once more; the returned record covers both attempts.
     """
     tool_name = schema.__name__
     tool_config = {"tools": [_schema_tool(schema)], "toolChoice": {"tool": {"name": tool_name}}}
-    message, record = _call(
-        client,
-        step=step,
-        model=model,
-        system=system,
-        messages=[{"role": "user", "content": content}],
-        max_tokens=max_tokens,
-        toolConfig=tool_config,
-    )
-    calls = [block["toolUse"] for block in message["content"] if "toolUse" in block]
-    if len(calls) != 1 or calls[0]["name"] != tool_name:
-        raise InvalidStructuredOutput(f"{step}: expected one {tool_name} call, got {len(calls)}")
-    try:
-        return schema.model_validate(calls[0]["input"]), record
-    except ValidationError as e:
-        raise InvalidStructuredOutput(f"{step}: {e}") from e
+    record = None
+    for attempt in (1, 2):
+        message, this_call = _call(
+            client,
+            step=step,
+            model=model,
+            system=system,
+            messages=[{"role": "user", "content": content}],
+            max_tokens=max_tokens,
+            toolConfig=tool_config,
+        )
+        record = this_call if record is None else record.plus(this_call)
+        calls = [block["toolUse"] for block in message["content"] if "toolUse" in block]
+        try:
+            if len(calls) != 1 or calls[0]["name"] != tool_name:
+                raise InvalidStructuredOutput(f"{step}: expected one {tool_name} call, got {len(calls)}")
+            try:
+                return schema.model_validate(calls[0]["input"]), record
+            except ValidationError as e:
+                raise InvalidStructuredOutput(f"{step}: {e}") from e
+        except InvalidStructuredOutput:
+            if attempt == 2:
+                raise
+    raise AssertionError("unreachable")
 
 
 def _schema_tool(schema: type[BaseModel]) -> dict:

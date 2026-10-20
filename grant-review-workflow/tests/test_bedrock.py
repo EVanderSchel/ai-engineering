@@ -118,6 +118,7 @@ def test_structured_output_that_breaks_the_schema_is_rejected(stubbed):
     client, stubber = stubbed
     bad = {"toolUse": {"toolUseId": "t1", "name": "Verdict", "input": {"holds": "maybe"}}}
     stubber.add_response("converse", reply([bad], stop_reason="tool_use"))
+    stubber.add_response("converse", reply([bad], stop_reason="tool_use"))  # the retry fails too
     with pytest.raises(bedrock.InvalidStructuredOutput):
         bedrock.structured(
             client, step="t", model="sonnet", system="s", content=[{"text": "q"}], schema=Verdict, max_tokens=400
@@ -127,6 +128,7 @@ def test_structured_output_that_breaks_the_schema_is_rejected(stubbed):
 def test_structured_output_without_the_tool_call_is_rejected(stubbed):
     client, stubber = stubbed
     stubber.add_response("converse", reply([{"text": "I'd rather just say it holds."}]))
+    stubber.add_response("converse", reply([{"text": "Still just text."}]))
     with pytest.raises(bedrock.InvalidStructuredOutput):
         bedrock.structured(
             client, step="t", model="sonnet", system="s", content=[{"text": "q"}], schema=Verdict, max_tokens=400
@@ -161,3 +163,18 @@ def test_client_is_the_runtime_endpoint_in_the_project_region_with_adaptive_retr
 
 def test_every_model_uses_a_us_inference_profile():
     assert all(m.model_id.startswith("us.anthropic.") for m in bedrock.MODELS.values())
+
+
+def test_an_answer_that_breaks_the_schema_is_asked_for_once_more(stubbed):
+    """The returned record covers both attempts, so a retry shows up in the cost instead of hiding."""
+    client, stubber = stubbed
+    bad = {"toolUse": {"toolUseId": "t1", "name": "Verdict", "input": {"holds": True, "reason": ["not", "text"]}}}
+    good = {"toolUse": {"toolUseId": "t2", "name": "Verdict", "input": {"holds": True, "reason": "It matches."}}}
+    stubber.add_response("converse", reply([bad], stop_reason="tool_use", input_tokens=1000, output_tokens=100))
+    stubber.add_response("converse", reply([good], stop_reason="tool_use", input_tokens=1000, output_tokens=100))
+    verdict, record = bedrock.structured(
+        client, step="t", model="haiku", system="s", content=[{"text": "q"}], schema=Verdict, max_tokens=400
+    )
+    assert verdict.reason == "It matches." and record.attempts == 2
+    assert (record.input_tokens, record.output_tokens) == (2000, 200)
+    assert record.cost_usd == pytest.approx(2 * (1000 * 1.10 + 100 * 5.50) / 1_000_000)
