@@ -6,6 +6,7 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 ### Added
 
+- Safety (step 6): a red team of 24 attacks on dev packets across the narrative, a hidden HTML comment, the organization name, the project title and the page image (`src/red_team.py`; all outcomes held, no leaks, 4 form-field attacks unflagged); a detect-only Bedrock guardrail compared with the workflow's own injection checks (`src/guardrail.py`; 9/25 on the Classic tier, 7/25 on Standard, nothing the workflow missed, not wired in); a `sensitive_data` flag for SSNs, card and bank numbers that never repeats the value (`src/sensitive.py`); a data-handling policy with invocation logging confirmed off (`docs/data-handling.md`); and the runtime role's least-privilege policy, from IAM Policy Autopilot, narrowed and checked with IAM's policy simulator (`src/iam_policy.py`)
 - Project scaffolding: uv project on Python 3.14, ruff, pytest, CI workflow with change detection, lint, test, and vulnerability-audit checks
 - Design doc (`docs/design.md`): the fictional fund's rules, the workflow's steps and state, principles, metrics, and the gold set plan
 - The fund's eligibility rules as code (`src/fund_rules.py`), tested at every boundary

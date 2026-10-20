@@ -29,6 +29,7 @@ FlagKind = Literal[
     "figures_disagree",  # figures read from the return disagree with the public record's
     "arithmetic",  # the return's own totals don't add up as read
     "unverified_reading",  # read_proposal quoted or stated something the narrative doesn't contain
+    "sensitive_data",  # the applicant's text contains an identifier the fund shouldn't hold (sensitive.py)
 ]
 Criterion = Literal["clear_outcomes", "budget_matches_request", "feasible_for_size"]
 
