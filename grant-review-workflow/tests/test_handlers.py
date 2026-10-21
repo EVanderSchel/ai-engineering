@@ -113,3 +113,11 @@ def test_a_malformed_packet_is_rejected_without_a_retry(lambda_env):
 def test_only_a_form_json_under_a_safe_id_starts_a_run(lambda_env, key):
     with pytest.raises(ValueError):
         handlers.start(created(key))
+
+
+def test_the_checkpoint_library_logs_warnings_only():
+    import logging
+
+    assert logging.getLogger("langgraph_checkpoint_aws.checkpoint.dynamodb.unified_repository").getEffectiveLevel() == (
+        logging.WARNING
+    )

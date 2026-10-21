@@ -194,7 +194,7 @@ export class WorkflowStack extends cdk.Stack {
       // Every log line is a JSON object with the request ID; the handlers' summaries add their fields and trace ID.
       loggingFormat: lambda.LoggingFormat.JSON,
       applicationLogLevelV2: lambda.ApplicationLogLevel.INFO,
-      systemLogLevelV2: lambda.SystemLogLevel.WARN,
+      systemLogLevelV2: lambda.SystemLogLevel.INFO, // Lambda's own START/REPORT records: duration, memory, init
     });
     Validations.of(role).acknowledge({
       id: 'AwsSolutions-IAM5[Resource::*]',

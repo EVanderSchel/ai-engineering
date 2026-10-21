@@ -42,6 +42,8 @@ APPLICATION_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}")  # becomes a fol
 WORK_DIR = pathlib.Path(os.environ.get("GRANT_REVIEW_WORK_DIR", "/tmp/applications"))  # Lambda: only /tmp is writable
 log = logging.getLogger("grant_review")
 log.setLevel(logging.INFO)
+# The checkpoint library logs every DynamoDB write at INFO (about 30 lines a run): keep its warnings only.
+logging.getLogger("langgraph_checkpoint_aws").setLevel(logging.WARNING)
 
 
 def _log(event: str, result: dict) -> None:
