@@ -57,6 +57,7 @@ describe('after the import', () => {
 
   test('the intake bucket is private, encrypted, TLS-only and emptied after 30 days', () => {
     template.hasResourceProperties('AWS::S3::Bucket', {
+      BucketName: 'grant-review-intake-111122223333',
       PublicAccessBlockConfiguration: {
         BlockPublicAcls: true,
         BlockPublicPolicy: true,

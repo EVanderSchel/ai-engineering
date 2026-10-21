@@ -4,6 +4,11 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 
+/** The intake bucket's name: fixed, so uploaders and the workflow's role name it without cross-stack lookups. */
+export function intakeBucketName(account: string): string {
+  return `grant-review-intake-${account}`;
+}
+
 export interface DataStackProps extends cdk.StackProps {
   /**
    * True only for the one-time `cdk import` of the existing checkpoint table. An import change set may add
@@ -49,6 +54,7 @@ export class DataStack extends cdk.Stack {
     // Applications arrive here as <application id>/form.json, narrative.md and return.pdf. Private, encrypted,
     // TLS only, and emptied after 30 days, the same as the checkpoints (docs/data-handling.md).
     const intake = new s3.Bucket(this, 'Intake', {
+      bucketName: intakeBucketName(this.account),
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,

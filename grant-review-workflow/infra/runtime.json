@@ -1,0 +1,30 @@
+{
+  "_generated_by": "src/iam_policy.py --export (do not edit)",
+  "region": "us-east-2",
+  "profile_regions": [
+    "us-east-1",
+    "us-east-2",
+    "us-west-2"
+  ],
+  "checkpoint_table": "grant-review-checkpoints",
+  "checkpoint_actions": [
+    "dynamodb:GetItem",
+    "dynamodb:PutItem",
+    "dynamodb:Query",
+    "dynamodb:BatchGetItem",
+    "dynamodb:BatchWriteItem"
+  ],
+  "functions": {
+    "start": {
+      "inference_profiles": [
+        "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+        "us.anthropic.claude-sonnet-4-6"
+      ]
+    },
+    "resume": {
+      "inference_profiles": [
+        "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+      ]
+    }
+  }
+}
