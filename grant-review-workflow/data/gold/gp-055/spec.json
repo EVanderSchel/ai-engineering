@@ -1,0 +1,19 @@
+{
+  "packet_id": "gp-055",
+  "object_id": "202433199349307518",
+  "mission": "HARNESSING MICRO ENTREPRENEURS TO DELIVER HEALTH EDUCATION AND LIFE-CHANGING PRODUCTS.",
+  "ntee_code": "Q30",
+  "focus_area": "health",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 23722000,
+    "staff": 15
+  },
+  "plant": null,
+  "near_miss": null,
+  "injection": null,
+  "holdout_case": "clean",
+  "registered_name": "Living Goods",
+  "registered_name_differs": false,
+  "form_injection": null
+}

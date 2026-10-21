@@ -1,0 +1,19 @@
+{
+  "packet_id": "gp-058",
+  "object_id": "202442489349300149",
+  "mission": "YOUTH SOCCER LEAGUE",
+  "ntee_code": null,
+  "focus_area": null,
+  "out_of_focus_project": "renovating the organization's own clubhouse and meeting hall",
+  "claims": {
+    "annual_budget": 244000,
+    "staff": 2
+  },
+  "plant": "out_of_focus",
+  "near_miss": null,
+  "injection": null,
+  "holdout_case": "out_of_focus",
+  "registered_name": "Gold Country Soccer League",
+  "registered_name_differs": false,
+  "form_injection": null
+}

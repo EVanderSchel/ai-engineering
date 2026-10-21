@@ -1,0 +1,15 @@
+{
+  "packet_id": "gp-060",
+  "split": "holdout",
+  "category": "holdout",
+  "route": "review",
+  "failed_rules": [],
+  "flags": [],
+  "focus_area": "human_services",
+  "injection": null,
+  "near_miss": {
+    "field": "staff",
+    "claimed": 15,
+    "actual": 13
+  }
+}

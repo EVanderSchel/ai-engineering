@@ -1,0 +1,19 @@
+{
+  "packet_id": "gp-059",
+  "object_id": "202443039349300144",
+  "mission": "To provide fire fighting and medical emergency services to the community of Harkers Island, NC.",
+  "ntee_code": "M24Z",
+  "focus_area": "health",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 697000,
+    "staff": 36
+  },
+  "plant": null,
+  "near_miss": null,
+  "injection": null,
+  "holdout_case": "natural_name_difference",
+  "registered_name": "Harkers Island Fire & Rescue Department Inc",
+  "registered_name_differs": true,
+  "form_injection": null
+}

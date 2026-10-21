@@ -112,6 +112,16 @@ def compare(extraction: Extraction, key: dict) -> list[str]:
     return [f"{name}: read {read[name]}, key {key.get(name)}" for name in COMPARED if read[name] != key.get(name)]
 
 
+def name_read_right(extraction: Extraction, key: dict) -> bool:
+    """Whether the return's name (box C) was read as the answer key has it, compared the way cross_check compares
+    names (case, punctuation, a leading THE and corporate suffixes don't count). Scored on its own, not with the
+    figures: a name read as "Fire & Rescue Dept" for "FIRE AND RESCUE DEPT" isn't wrong for the name check."""
+    from research import normalize_name  # research imports the ProPublica client; only scoring needs it here
+
+    read = extraction.figures.organization_name
+    return read is not None and normalize_name(read) == normalize_name(key.get("organization_name") or "")
+
+
 def score_dev(model: str) -> dict:
     client = bedrock.make_client()
     rows = []

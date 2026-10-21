@@ -1,0 +1,19 @@
+{
+  "packet_id": "gp-042",
+  "object_id": "202410899349300626",
+  "mission": "OWN & MANAGE REAL PROPERTY FOR NORTHERN HUMAN SERVICES, INC.",
+  "ntee_code": null,
+  "focus_area": "human_services",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 894000,
+    "staff": null
+  },
+  "plant": null,
+  "near_miss": null,
+  "injection": null,
+  "holdout_case": "natural_name_difference",
+  "registered_name": "Shallow River Properties Inc Washington St",
+  "registered_name_differs": true,
+  "form_injection": null
+}

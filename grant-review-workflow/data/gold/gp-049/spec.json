@@ -1,0 +1,19 @@
+{
+  "packet_id": "gp-049",
+  "object_id": "202422479349301127",
+  "mission": "MANAGING AN URBAN COMMUNITY FARM ACCORDING TO ORGANIC STANDARDS, RUNNING A HUNGER RELEAF FOOD ACCESS PROGRAM, EDUCATING YOUTH AND ADULTS ABOUT SUSTAINABLE AGRICULTURE AND PROMOTING RESPONSIBLE LAND MANAGEMENT.",
+  "ntee_code": "K20",
+  "focus_area": "food_security",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 2353000,
+    "staff": 28
+  },
+  "plant": "budget_mismatch",
+  "near_miss": null,
+  "injection": null,
+  "holdout_case": "budget_mismatch",
+  "registered_name": "Community Farms Outreach",
+  "registered_name_differs": false,
+  "form_injection": null
+}

@@ -1,0 +1,13 @@
+{
+  "packet_id": "gp-043",
+  "split": "holdout",
+  "category": "holdout",
+  "route": "review",
+  "failed_rules": [],
+  "flags": [
+    "staff_mismatch"
+  ],
+  "focus_area": "housing",
+  "injection": null,
+  "near_miss": null
+}

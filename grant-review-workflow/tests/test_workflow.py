@@ -135,7 +135,7 @@ def test_an_unverifiable_reading_becomes_a_flag(monkeypatch, tmp_path):
     monkeypatch.setattr(
         read_proposal,
         "read_proposal",
-        lambda client, narrative, model: (reading, ["quote not found"], call("read_proposal")),
+        lambda client, narrative, name, title, model: (reading, ["quote not found"], call("read_proposal")),
     )
     update = workflow.bedrock_steps(client=None).read_proposal(application("gp-027", tmp_path))
     assert [f.kind for f in update["flags"]] == ["unverified_reading"] and update["flags"][

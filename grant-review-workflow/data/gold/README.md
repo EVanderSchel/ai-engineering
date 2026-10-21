@@ -1,6 +1,8 @@
 # Gold set: grant application packets
 
-40 application packets to the **Prairie Commons Fund**, a fictional fund, with known right answers. See "Gold set plan" in [docs/design.md](../../docs/design.md).
+40 application packets to the **Prairie Commons Fund**, a fictional fund, with known right answers (gp-001 to gp-040, split dev / test). See "Gold set plan" in [docs/design.md](../../docs/design.md).
+
+Plus 20 held-out packets (gp-041 to gp-060, split `holdout`), added in step 6.5 from the filings the first 40 left unused and scored once: written by `src/build_holdout.py` the same way, with ProPublica's registered name kept in each spec and `holdout_case` saying what each one tests (`tests/test_holdout.py`). A title injection is added to the form's project title, not the narrative's.
 
 **What's real and what isn't.** Each packet is built on a real organization's real Form 990 (its figures come from the IRS e-file XML, via Project 2). **The organizations did not apply for anything: the application forms and narratives were written for this project**, by Claude from each packet's spec, and approved one by one. Where a narrative says something about the organization beyond its name, mission and the figures in its spec, treat it as invented. Some packets deliberately contain wrong figures, a wrong name, or text that tries to manipulate an automated reviewer (prompt injection); `label.json` says which.
 

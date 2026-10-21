@@ -5,10 +5,16 @@ What research taught about the public record (step 2d) shapes cross_check: ProPu
 often for a newer return than the one submitted, so the return is compared only with the record's figures for
 the same period (matched by period end), and for the same period they must agree exactly, because both come
 from the same e-filed return. No figures for that period means nothing to compare, never a disagreement.
+
+The same lesson for names (step 6.5): the public record's name for an EIN can differ from the organization's own
+(a lodge filed under its national order's group exemption, a renamed organization), so a name mismatch needs the
+form's name to differ from the applicant's own return (box C) too. When only the public record differs, nothing is
+flagged; its name and the research explanation stay in the state for the reviewer.
 """
 
 import fund_rules
 import sensitive
+from research import normalize_name
 from state import ApplicationState, Eligibility, Flag, ReturnFigures, Route
 
 # Flags that cast doubt on the figures the rules read. With one of these, a failing application goes to a person
@@ -29,8 +35,13 @@ def cross_check(state: ApplicationState) -> list[Flag]:
 
     if research is not None and not research.found:
         flags.append(Flag(step="cross_check", kind="not_found", evidence=f"No public record for EIN {state.form.ein}."))
-    if research is not None and research.found and research.name_matches_form is False:
-        evidence = f"Form says {state.form.organization_name!r}; EIN {state.form.ein} is {research.registered_name!r}."
+    return_name = figures.organization_name if figures else None
+    form_matches_return = return_name is not None and normalize_name(state.form.organization_name) == normalize_name(
+        return_name
+    )
+    if research is not None and research.found and research.name_matches_form is False and not form_matches_return:
+        evidence = f"Form says {state.form.organization_name!r}; EIN {state.form.ein} is {research.registered_name!r}"
+        evidence += f", and its return says {return_name!r}." if return_name else "."
         if research.form_name_belongs_to:
             evidence += f" The form's name belongs to EIN {research.form_name_belongs_to}."
         if research.name_explanation:

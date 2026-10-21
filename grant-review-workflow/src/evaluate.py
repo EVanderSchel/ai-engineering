@@ -139,6 +139,9 @@ def run_case(app, packet_id: str, rep: int, run_id: str, sleep=time.sleep) -> di
         "failed_rules": state.eligibility.failed_rules,
         "flags": sorted(f.kind for f in state.flags),
         "wrong_fields": extract.compare(state.extraction, key),
+        "return_name_read": extract.name_read_right(state.extraction, key),
+        # What the name check had before step 6.5: ProPublica's name alone (the old rule flagged when this is False).
+        "public_record_name_matches": state.research.name_matches_form if state.research else None,
         "focus_area": proposal.focus_area,
         "claims": proposal.claims.model_dump(),
         "rubric": {s.criterion: s.score for s in proposal.rubric},
@@ -218,6 +221,8 @@ def score(rows: list[dict]) -> dict:
 
     fields = len(extract.COMPARED)
     out["extraction_field_accuracy"] = _ratio(n * fields - sum(len(r["wrong_fields"]) for r in rows), n * fields)
+    named = [r for r in rows if "return_name_read" in r]  # scored from step 6.5 on
+    out["return_name_accuracy"] = _ratio(sum(r["return_name_read"] for r in named), len(named))
     out["focus_accuracy"] = _ratio(sum(r["focus_area"] == label(r)["focus_area"] for r in rows), n)
     out["claims_accuracy"] = _ratio(sum(r["claims"] == spec(r)["claims"] for r in rows), n)
     out["letters_with_problems"] = sum(bool(r["letter_problems"]) for r in rows)
@@ -310,6 +315,7 @@ def report(result: dict) -> str:
         f"| Failed-rules accuracy | {p['failed_rules_accuracy']} | {spread('failed_rules_accuracy')} |",
         f"| Flags exactly as labeled | {p['flags_exact']} | {spread('flags_exact')} |",
         f"| Extraction field accuracy | {p['extraction_field_accuracy']} | {spread('extraction_field_accuracy')} |",
+        f"| Return name read (box C) | {p['return_name_accuracy']} | {spread('return_name_accuracy')} |",
         f"| Focus-area accuracy | {p['focus_accuracy']} | {spread('focus_accuracy')} |",
         f"| Stated-figure accuracy | {p['claims_accuracy']} | {spread('claims_accuracy')} |",
         f"| Injections caught | {p['injections_caught']}/{p['injections']} | {spread('injections_caught')} |",
@@ -345,16 +351,18 @@ def report(result: dict) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run the workflow on a gold-set split and score it.")
-    parser.add_argument("--split", choices=["dev", "test"], required=True)
+    parser.add_argument("--split", choices=["dev", "test", "holdout"], required=True)
     parser.add_argument("--reps", type=int, default=3)
-    parser.add_argument("--final", action="store_true", help="required for the test split, which runs once")
+    parser.add_argument("--final", action="store_true", help="required for the test and holdout splits (run once)")
     args = parser.parse_args()
     out = RESULTS / f"eval-{args.split}.json"
-    if args.split == "test":
+    if args.split in ("test", "holdout"):
         if not args.final:
-            parser.error("the test split is the held-out result: run it once, at the end, with --final")
+            parser.error(f"the {args.split} split is a held-out result: run it once, at the end, with --final")
         if out.exists():
-            parser.error(f"{out.name} exists: the test split has been scored, and rerunning it would make it a dev set")
+            parser.error(
+                f"{out.name} exists: the {args.split} split has been scored, and rerunning it would make it a dev set"
+            )
     app = workflow.build(workflow.bedrock_steps(bedrock.make_client()), checkpointer=workflow.memory_checkpointer())
     try:
         result = evaluate(app, args.split, args.reps)

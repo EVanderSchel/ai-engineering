@@ -10,7 +10,7 @@ import returns
 
 def test_every_gold_packet_needs_one_return_with_its_irs_file_name():
     entries = returns.needed()
-    assert len(entries) == 40 and len({object_id for _, object_id, _ in entries}) == 40
+    assert len(entries) == 60 and len({object_id for _, object_id, _ in entries}) == 60  # 40 + 20 held out
     assert all(filename.endswith(".pdf") for _, _, filename in entries)
 
 
@@ -20,10 +20,10 @@ def test_urls_point_at_the_irs_public_copies():
 
 def test_missing_lists_returns_not_on_disk(tmp_path, monkeypatch):
     monkeypatch.setattr(returns, "return_pdf_path", lambda object_id: tmp_path / f"{object_id}.pdf")
-    assert len(returns.missing()) == 40
+    assert len(returns.missing()) == 60
     first = returns.needed()[0][1]
     (tmp_path / f"{first}.pdf").write_bytes(b"%PDF-")
-    assert len(returns.missing()) == 39
+    assert len(returns.missing()) == 59
 
 
 def a_pdf() -> bytes:

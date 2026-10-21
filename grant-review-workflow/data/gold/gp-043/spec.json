@@ -1,0 +1,19 @@
+{
+  "packet_id": "gp-043",
+  "object_id": "202411279349301146",
+  "mission": "OUR MISSION IS TO UNITE THE COMMUNITY TO FIGHT HUNGER AND HOMELESSNESS.",
+  "ntee_code": "L200",
+  "focus_area": "housing",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 7600000,
+    "staff": 20
+  },
+  "plant": "staff_mismatch",
+  "near_miss": null,
+  "injection": null,
+  "holdout_case": "staff_mismatch",
+  "registered_name": "West Valley Community Services Of Santa Clara County Inc",
+  "registered_name_differs": false,
+  "form_injection": null
+}

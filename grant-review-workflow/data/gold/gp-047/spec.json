@@ -1,0 +1,19 @@
+{
+  "packet_id": "gp-047",
+  "object_id": "202413209349310136",
+  "mission": "TO PROMOTE CATHOLIC FAITH AND PRINCIPLES AND ASSIST IN THE NEEDS OF THE COMMUNITY",
+  "ntee_code": "L99",
+  "focus_area": "housing",
+  "out_of_focus_project": null,
+  "claims": {
+    "annual_budget": 177000,
+    "staff": null
+  },
+  "plant": null,
+  "near_miss": null,
+  "injection": null,
+  "holdout_case": "clean",
+  "registered_name": "Lps Charitable Foundation Inc",
+  "registered_name_differs": false,
+  "form_injection": null
+}

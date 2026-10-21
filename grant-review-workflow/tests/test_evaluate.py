@@ -88,16 +88,18 @@ def test_the_fingerprint_changes_with_a_prompt_or_a_model(monkeypatch):
     assert evaluate.fingerprint()["digest"] != before
 
 
-def test_the_test_split_needs_final(monkeypatch):
-    monkeypatch.setattr("sys.argv", ["evaluate.py", "--split", "test"])
+@pytest.mark.parametrize("split", ["test", "holdout"])
+def test_a_held_out_split_needs_final(monkeypatch, split):
+    monkeypatch.setattr("sys.argv", ["evaluate.py", "--split", split])
     with pytest.raises(SystemExit):
         evaluate.main()
 
 
-def test_the_test_split_runs_only_once(monkeypatch, tmp_path):
+@pytest.mark.parametrize("split", ["test", "holdout"])
+def test_a_held_out_split_runs_only_once(monkeypatch, tmp_path, split):
     monkeypatch.setattr(evaluate, "RESULTS", tmp_path)
-    (tmp_path / "eval-test.json").write_text("{}")
-    monkeypatch.setattr("sys.argv", ["evaluate.py", "--split", "test", "--final"])
+    (tmp_path / f"eval-{split}.json").write_text("{}")
+    monkeypatch.setattr("sys.argv", ["evaluate.py", "--split", split, "--final"])
     with pytest.raises(SystemExit):
         evaluate.main()
 
@@ -116,24 +118,34 @@ def test_rubric_consistency_handles_repeats():
 
 
 def flaky(failures: list[str]):
-    """Stand-in steps whose read_proposal raises the given AWS error codes, one per call, before working."""
+    """Stand-in steps whose read_proposal raises the given AWS error codes, one per call, before working.
+
+    The outage hits only after extract and research have finished, as it would with real calls taking seconds:
+    otherwise, on a slow runner, LangGraph cancels a sibling still running when read_proposal fails, and that
+    sibling rightly runs again (it never finished), which isn't what this checks."""
+    import threading
+
     from botocore.exceptions import ClientError
 
     steps = right_answers()
     calls = []
     errors = iter(failures)
+    finished = {"extract": threading.Event(), "research": threading.Event()}
 
     def read_proposal(state):
         calls.append("read_proposal")
         code = next(errors, None)
         if code:
+            assert all(done.wait(timeout=10) for done in finished.values()), "siblings never finished"
             raise ClientError({"Error": {"Code": code, "Message": "x"}}, "Converse")
         return steps.read_proposal(state)
 
     def counted(name, node):
         def run(state):
             calls.append(name)
-            return node(state)
+            result = node(state)
+            finished[name].set()
+            return result
 
         return run
 
@@ -151,6 +163,8 @@ def test_an_outage_that_clears_is_survived_without_paying_twice(placeholder_pdfs
     assert waits == [30, 90]
     assert calls.count("extract") == 1 and calls.count("research") == 1  # not rerun after the outages
     assert row["route"] == "review" and row["flags"] == ["injection"]
+    assert row["return_name_read"]  # the stand-in extract reads the answer key's name
+    assert row["public_record_name_matches"] is True
 
 
 def test_an_outage_that_doesnt_clear_becomes_a_recorded_failure(placeholder_pdfs):

@@ -111,3 +111,20 @@ def test_comparison_with_the_answer_key_names_each_wrong_field():
     extraction = extract.to_extraction(extract.PageOne.model_validate(PAGE))
     key = {**extraction.figures.model_dump(mode="json"), "investment_income_current_year": 0}
     assert extract.compare(extraction, key) == ["investment_income_current_year: read None, key 0"]
+
+
+@pytest.mark.parametrize(
+    ("read", "right"),
+    [
+        ("Harkers Island Fire & Rescue Dept Inc", True),
+        ("THE HARKERS ISLAND FIRE AND RESCUE DEPT", True),
+        ("Harkers Island Fire Rescue Department", False),
+        (None, False),
+    ],
+)
+def test_the_return_name_is_scored_the_way_names_are_compared(read, right):
+    extraction = extract.to_extraction(extract.PageOne.model_validate(PAGE))
+    extraction.figures.organization_name = read
+    assert (
+        extract.name_read_right(extraction, {"organization_name": "Harkers Island Fire and Rescue Dept Inc"}) is right
+    )
