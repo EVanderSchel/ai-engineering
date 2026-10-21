@@ -178,6 +178,27 @@ export class WorkflowStack extends cdk.Stack {
       memorySize: 1024, // page rendering and the LangGraph imports; more memory also means more CPU
       timeout: opts.timeout,
       description: `grant-review-workflow ${opts.handler}`,
+      // Observability (stage 5). Active tracing runs Lambda's X-Ray daemon (and grants the role permission to
+      // write to it); the ADOT wrapper unpacked into the image sends each step's span and the AWS SDK calls inside
+      // it there over UDP. No CloudWatch Transaction Search is needed.
+      tracing: lambda.Tracing.ACTIVE,
+      environment: {
+        AWS_LAMBDA_EXEC_WRAPPER: '/opt/otel-instrument',
+        OTEL_SERVICE_NAME: 'grant-review-workflow',
+        OTEL_AWS_APPLICATION_SIGNALS_ENABLED: 'false', // on by default; needs a broad managed policy
+        // Lite mode: a small SDK sending spans over UDP to the X-Ray daemon, instrumenting botocore, requests and
+        // urllib3 only. The full auto-instrumentation bootstrap took longer than Lambda's 10-second init limit.
+        OTEL_AWS_LAMBDA_FAST_START: 'true',
+        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: 'false', // never copy prompts or answers into spans
+      },
+      // Every log line is a JSON object with the request ID; the handlers' summaries add their fields and trace ID.
+      loggingFormat: lambda.LoggingFormat.JSON,
+      applicationLogLevelV2: lambda.ApplicationLogLevel.INFO,
+      systemLogLevelV2: lambda.SystemLogLevel.WARN,
+    });
+    Validations.of(role).acknowledge({
+      id: 'AwsSolutions-IAM5[Resource::*]',
+      reason: 'X-Ray trace writes (PutTraceSegments, PutTelemetryRecords) do not support resource-level permissions.',
     });
     Validations.of(role).acknowledge({
       id: `AwsSolutions-IAM5[Resource::<${cdk.Names.uniqueId(logGroup)}>:*]`,

@@ -16,11 +16,15 @@ asynchronous invocation; a retry finds the thread already saved and continues it
 validated before the graph sees it. Both return a summary, never the narrative: the logs stay free of applicant
 text (docs/data-handling.md).
 
+Each summary is logged through `logging` with its fields as extras: Lambda's JSON log format makes every line a
+JSON object with the request ID, and the summary's trace_id links it to the run's trace in X-Ray (stage 5).
+
 The Bedrock client, S3 client and compiled graph are created once per Lambda container and reused while it's warm.
 """
 
 import functools
 import json
+import logging
 import os
 import pathlib
 import re
@@ -28,6 +32,7 @@ import re
 import boto3
 
 import bedrock
+import tracing
 import workflow
 from intake import IntakeError, intake
 from state import ReviewerDecision
@@ -35,6 +40,12 @@ from state import ReviewerDecision
 PACKET = ("narrative.md", "return.pdf", "form.json")
 APPLICATION_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}")  # becomes a folder name and a DynamoDB key
 WORK_DIR = pathlib.Path(os.environ.get("GRANT_REVIEW_WORK_DIR", "/tmp/applications"))  # Lambda: only /tmp is writable
+log = logging.getLogger("grant_review")
+log.setLevel(logging.INFO)
+
+
+def _log(event: str, result: dict) -> None:
+    log.info(event, extra={"event": event, **result, "trace_id": tracing.current_trace_id()})
 
 
 @functools.cache
@@ -97,11 +108,11 @@ def start(event: dict, context=None) -> dict:
         except IntakeError as e:
             # A malformed packet is an answer, not an outage: retrying won't fix it, so report and stop.
             result = {"application_id": application_id, "rejected": e.problems}
-            print(json.dumps({"event": "rejected", **result}))
+            _log("rejected", result)
             return result
         outcome = workflow.start(app, application)
     result = summary(outcome)
-    print(json.dumps({"event": "started", **result}))
+    _log("started", result)
     return result
 
 
@@ -115,5 +126,5 @@ def resume(event: dict, context=None) -> dict:
         raise ValueError(f"application {application_id} isn't waiting for a reviewer")
     outcome = workflow.resume(app, application_id, decision)
     result = summary(outcome)
-    print(json.dumps({"event": "resumed", **result}))
+    _log("resumed", result)
     return {**result, "letter": outcome.state.letter}  # the reviewer sees the letter; the log doesn't

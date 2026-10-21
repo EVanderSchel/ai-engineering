@@ -66,12 +66,14 @@ def decision(**changes):
     return {**base, **changes}
 
 
-def test_an_upload_runs_the_workflow_until_it_waits_for_the_reviewer(lambda_env, capsys):
+def test_an_upload_runs_the_workflow_until_it_waits_for_the_reviewer(lambda_env, caplog):
     upload(lambda_env, "gp-027-app1")
-    result = handlers.start(created("gp-027-app1/form.json"))
+    with caplog.at_level("INFO", logger="grant_review"):
+        result = handlers.start(created("gp-027-app1/form.json"))
     assert result["route"] == "review" and result["waiting_for_review"] and not result["letter_ready"]
-    logged = capsys.readouterr().out
-    assert '"event": "started"' in logged and "## Who it serves" not in logged  # no applicant text in the logs
+    [record] = caplog.records
+    assert record.event == "started" and record.application_id == "gp-027-app1" and record.waiting_for_review
+    assert "## Who it serves" not in caplog.text  # no applicant text in the logs
 
 
 def test_a_retried_event_continues_the_saved_thread(lambda_env):

@@ -44,6 +44,7 @@ import paths
 import read_proposal
 import research
 import state as state_models
+import tracing
 from intake import gold_packet, intake
 from state import ApplicationState, Flag, ReviewerDecision
 
@@ -170,14 +171,18 @@ def human_review(state: ApplicationState) -> dict:
 
 def build(steps: Steps, checkpointer: BaseCheckpointSaver | None = None):
     graph = StateGraph(ApplicationState)
-    graph.add_node("extract", steps.extract)
-    graph.add_node("research", steps.research)
-    graph.add_node("read_proposal", steps.read_proposal)
-    graph.add_node("cross_check", lambda state: {"flags": checks.cross_check(state)})
-    graph.add_node("eligibility", lambda state: {"eligibility": checks.eligibility(state)})
-    graph.add_node("route", lambda state: {"route": checks.route(state)})
-    graph.add_node("human_review", human_review)
-    graph.add_node("draft_letter", steps.draft_letter)
+    nodes = {
+        "extract": steps.extract,
+        "research": steps.research,
+        "read_proposal": steps.read_proposal,
+        "cross_check": lambda state: {"flags": checks.cross_check(state)},
+        "eligibility": lambda state: {"eligibility": checks.eligibility(state)},
+        "route": lambda state: {"route": checks.route(state)},
+        "human_review": human_review,
+        "draft_letter": steps.draft_letter,
+    }
+    for name, node in nodes.items():
+        graph.add_node(name, tracing.traced(name, node))  # a span per step (a no-op outside Lambda)
 
     for parallel in ("extract", "research", "read_proposal"):
         graph.add_edge(START, parallel)

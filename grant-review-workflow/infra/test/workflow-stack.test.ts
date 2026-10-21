@@ -115,3 +115,29 @@ test('logs are kept 30 days', () => {
 test('every cdk-nag finding is fixed or acknowledged with a reason', () => {
   expect(stack).toBeDefined(); // synth() above throws on an unacknowledged finding
 });
+
+test('both functions are traced through the ADOT wrapper, with JSON logs and no prompt capture', () => {
+  for (const handler of ['handlers.start', 'handlers.resume']) {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      ImageConfig: { Command: [handler] },
+      TracingConfig: { Mode: 'Active' },
+      LoggingConfig: Match.objectLike({ LogFormat: 'JSON', ApplicationLogLevel: 'INFO' }),
+      Environment: {
+        Variables: Match.objectLike({
+          AWS_LAMBDA_EXEC_WRAPPER: '/opt/otel-instrument',
+          OTEL_AWS_APPLICATION_SIGNALS_ENABLED: 'false',
+          OTEL_AWS_LAMBDA_FAST_START: 'true',
+          OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: 'false',
+        }),
+      },
+    });
+  }
+});
+
+test('the only wildcard resource is X-Ray, for exactly its two write actions', () => {
+  for (const handler of ['handlers.start', 'handlers.resume']) {
+    const wildcard = statementsFor(handler).filter((s) => s.Resource === '*');
+    expect(wildcard).toHaveLength(1);
+    expect([wildcard[0].Action].flat().sort()).toEqual(['xray:PutTelemetryRecords', 'xray:PutTraceSegments']);
+  }
+});
