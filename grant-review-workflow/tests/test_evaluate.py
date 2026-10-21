@@ -118,24 +118,34 @@ def test_rubric_consistency_handles_repeats():
 
 
 def flaky(failures: list[str]):
-    """Stand-in steps whose read_proposal raises the given AWS error codes, one per call, before working."""
+    """Stand-in steps whose read_proposal raises the given AWS error codes, one per call, before working.
+
+    The outage hits only after extract and research have finished, as it would with real calls taking seconds:
+    otherwise, on a slow runner, LangGraph cancels a sibling still running when read_proposal fails, and that
+    sibling rightly runs again (it never finished), which isn't what this checks."""
+    import threading
+
     from botocore.exceptions import ClientError
 
     steps = right_answers()
     calls = []
     errors = iter(failures)
+    finished = {"extract": threading.Event(), "research": threading.Event()}
 
     def read_proposal(state):
         calls.append("read_proposal")
         code = next(errors, None)
         if code:
+            assert all(done.wait(timeout=10) for done in finished.values()), "siblings never finished"
             raise ClientError({"Error": {"Code": code, "Message": "x"}}, "Converse")
         return steps.read_proposal(state)
 
     def counted(name, node):
         def run(state):
             calls.append(name)
-            return node(state)
+            result = node(state)
+            finished[name].set()
+            return result
 
         return run
 
