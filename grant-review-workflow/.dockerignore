@@ -1,0 +1,8 @@
+# Only pyproject.toml, uv.lock, src/ and prompts/ go into the image. Everything else stays out of the build
+# context: applicant data, returns, results, the CDK app and local environments.
+*
+!pyproject.toml
+!uv.lock
+!src/
+!prompts/
+src/__pycache__/
