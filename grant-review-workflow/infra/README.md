@@ -21,3 +21,7 @@ npx cdk diff GrantReviewData  # always before a deploy
 `npx cdk import GrantReviewData -c adopt=true`: in that mode the stack is an exact copy of the live table and
 nothing else (an import change set may only add the imported resource). The next normal deploy turns on deletion
 protection and adds the intake bucket.
+
+Done on 2026-10-21: imported with `--resource-mapping-inline '{"Checkpoints620E2F20":{"TableName":"grant-review-checkpoints"}}'`
+and `--no-version-reporting` (the CDKMetadata resource can't be part of an import change set); drift detection
+IN_SYNC; then deployed normally (deletion protection on, 1,092 items kept).
