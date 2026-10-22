@@ -11,7 +11,7 @@ dependencies = [
     "langgraph>=1.0",
     "langgraph-checkpoint-aws>=1.2",
     "pydantic>=2.11",
-    "pymupdf>=1.26,<2",  # renders PDF pages; 2.0 adds ML layout packages (onnxruntime, numpy) not needed here
+    "pymupdf>=1.26,<3",  # renders PDF pages; 2.0 adds ML layout packages (onnxruntime, numpy) not needed here
     "requests>=2.32",
 ]
 
