@@ -16,6 +16,8 @@ updates:
       rag-python:
         update-types: [minor, patch]
 
+  # pymupdf 2.0 adds ML layout packages (onnxruntime, numpy) that page rendering doesn't use, and would grow the
+  # container image; majors are reviewed by hand rather than proposed weekly.
   - package-ecosystem: uv
     directory: /irs-990-extraction
     schedule:
@@ -23,6 +25,9 @@ updates:
     groups:
       irs-990-extraction-python:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: pymupdf
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: uv
     directory: /nonprofit-agent
@@ -40,6 +45,7 @@ updates:
       ntee-classification-python:
         update-types: [minor, patch]
 
+  # pymupdf is pinned below 2 in pyproject.toml for the same reason as irs-990-extraction (see its note above).
   - package-ecosystem: uv
     directory: /grant-review-workflow
     schedule:
@@ -47,6 +53,9 @@ updates:
     groups:
       grant-review-workflow-python:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: pymupdf
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: pip
     directory: /ci-cd-workflow
