@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib/core';
 import { Validations } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { AwsSolutionsChecks } from 'cdk-nag';
+import { testApp } from './app';
 import { DataStack } from '../lib/data-stack';
 import { WorkflowStack, loadRuntime } from '../lib/workflow-stack';
 
@@ -10,7 +11,7 @@ const SONNET = 'us.anthropic.claude-sonnet-4-6';
 const HAIKU = 'us.anthropic.claude-haiku-4-5-20251001-v1:0';
 
 function synth() {
-  const app = new cdk.App();
+  const app = testApp();
   const data = new DataStack(app, 'Data', { env });
   const stack = new WorkflowStack(app, 'Workflow', { env, table: data.table });
   Validations.of(app).addPlugins(new AwsSolutionsChecks(app)); // an unacknowledged finding throws here
@@ -78,7 +79,7 @@ test('start reads exactly the three packet files from the intake bucket', () => 
 test('checkpoint access is the saver\'s five calls on the table, nothing broader', () => {
   for (const handler of ['handlers.start', 'handlers.resume']) {
     const checkpoints = statementsFor(handler).find((s) => s.Sid === 'ReadAndWriteCheckpoints');
-    expect(checkpoints.Action).toEqual(loadRuntime().checkpoint_actions);
+    expect([...checkpoints.Action].sort()).toEqual([...loadRuntime().checkpoint_actions].sort());
     expect(text(statementsFor(handler))).not.toMatch(/dynamodb:\*|DeleteItem|Scan|DeleteTable/);
   }
 });

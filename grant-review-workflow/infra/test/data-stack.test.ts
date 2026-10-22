@@ -2,12 +2,13 @@ import * as cdk from 'aws-cdk-lib/core';
 import { Validations } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { AwsSolutionsChecks } from 'cdk-nag';
+import { testApp } from './app';
 import { DataStack } from '../lib/data-stack';
 
 const env = { account: '111122223333', region: 'us-east-2' };
 
 function synth(adopting: boolean) {
-  const app = new cdk.App();
+  const app = testApp();
   const stack = new DataStack(app, 'Data', { env, adopting });
   Validations.of(app).addPlugins(new AwsSolutionsChecks(app)); // an unacknowledged finding throws here
   app.synth();
