@@ -153,7 +153,7 @@ Multiple funders or programs; applicants uploading documents themselves (packets
 
 ## Decisions
 
-Decisions 1-3 were made on 2026-10-19, decisions 4-15 on 2026-10-20.
+Decisions 1-3 were made on 2026-10-19, decisions 4-15 on 2026-10-20, decisions 16-19 on 2026-10-21 to 2026-10-23.
 
 1. **No fast track.** Every eligible application gets the same human review, sorted by priority. A lighter queue for strong, unflagged applications can come later, once the evals show the flags are reliable enough to lean on.
 2. **No "request more information" in v1.** Reviewers approve, decline, or correct a figure. The only pause is waiting for the reviewer.
@@ -170,6 +170,10 @@ Decisions 1-3 were made on 2026-10-19, decisions 4-15 on 2026-10-20.
 13. **A name mismatch needs the applicant's own return to disagree too.** cross_check flags `name_mismatch` only when the form's name differs (normalized) from the return's box C name as well as from the public record's. A public-record name can belong to a parent organization or an old name; the return is the applicant's own filing. Proposed from the test split's findings, so it was built on dev and measured on 20 new held-out packets, run once: 9/9 planted mismatches flagged, no false ones, where the old rule would have added 6.
 14. **read_proposal reads every text the applicant typed.** Prompt v3 sends the organization name and project title as `unverified_text` beside the narrative, so instructions in them are reported like the narrative's (decision 9's guardrail missed these too). Red team 4/4 form-field attacks flagged; held out 12/12.
 15. **New data for fixes found on held-out data.** A fix suggested by the test split is measured on packets built from unused filings (split `holdout`, `--final`, run once), never by re-scoring test.
+16. **The workflow runs on Lambda.** Each run is bounded and its state already lives in DynamoDB checkpoints, so an upload event starts a function and the reviewer's decision invokes another. AgentCore Runtime, built for long-running session-based agents, would add an HTTP contract and an ARM image for the same job. Free tier covers the volume; the account's concurrency limit of 10 also bounds Bedrock load.
+17. **Traces with OpenTelemetry, in lite mode.** The X-Ray SDK is in maintenance mode, so the ADOT layer is unpacked into the image (pinned by checksum) and run in lite mode: botocore, requests and urllib3 instrumented, spans to X-Ray over UDP, no account-level settings changed. Spans and logs carry identifiers and numbers, never applicant text.
+18. **Deploys run in AWS, not GitHub Actions.** The project's service control policy denies IAM identity providers, so OIDC is impossible without irreversibly activating advanced features. CodePipeline with a CodeConnections GitHub App (no keys) gives the same shape: deploy on merge after a person approves the diff.
+19. **CloudFormation gets only what our deploys use.** The CDK execution policy is built from CloudTrail's record of the execution role's calls (a test keeps every recorded action allowed) and scoped to this project's names; roles may only be created with the permissions boundary, and the policies that set these limits are deployed by a person, never by the pipeline.
 
 ## Eval findings (step 5, 2026-10-20)
 

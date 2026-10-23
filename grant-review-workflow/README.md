@@ -24,7 +24,7 @@ Rules: only public IRS data and ProPublica's JSON API (as in Project 3). Applica
 | 5 | Evals: per-step and end-to-end (routing accuracy, human escalation rate, cost and latency per application, path taken), gating pull requests *(done)* | How errors compound across steps |
 | 6 | Safety: prompt injection in applicant narratives, Bedrock Guardrails vs. code checks, PII handling, least-privilege roles per step *(done)* | Governance for untrusted and sensitive input |
 | 6.5 | The name check on new data: compare the form's name with the return's own, read the name and title as untrusted, 20 held-out packets scored once *(done)* | Measuring a fix found on test without tuning on test |
-| 7 | Infrastructure as code with CDK (TypeScript): S3 uploads trigger the workflow on AgentCore Runtime, DynamoDB, per-component IAM roles, tracing, OIDC deploys from GitHub Actions | IaC, event-driven design, AWS |
+| 7 | Infrastructure as code with CDK (TypeScript): S3 uploads trigger the workflow on Lambda (AgentCore considered), DynamoDB adopted with `cdk import`, a role per function, OpenTelemetry traces, approval-gated deploys through CodePipeline (GitHub OIDC is blocked here), a narrowed CDK execution policy and a permissions boundary *(done)* | IaC, event-driven design, AWS |
 | 8 | Reviewer UI in React + TypeScript: queue, evidence with citations, approve or override (which resumes the workflow) | Full-stack delivery |
 | 9 | *(Optional)* The same workflow on Step Functions, compared on evidence | Framework vs. AWS-native orchestration |
 | Final | Held-out test split scored once; cost report; release `grant-review-workflow-v1.0.0` | |
@@ -65,6 +65,50 @@ uv run python src/bedrock.py   # one small call per model: access, structured ou
 | Haiku 4.5 | 164/165 | 15/15 | 1 | $0.0056 | 2.5 s |
 
 Haiku's one error (gp-036's total revenue read as $51,306, not $51,308) was caught by the form's own arithmetic, the only return where revenue didn't add up, so it would reach a reviewer as a flag. It also sat $1,306 above the fund's $50,000 revenue minimum: a digit misread near a threshold is how a wrong automatic decline would happen. **Extract uses Sonnet 4.6**: the saving from Haiku is about a cent per application. One run on 15 returns is a small sample; step 5 repeats it.
+
+## Step 7: on AWS, as code
+
+The workflow now runs on AWS, defined in TypeScript with CDK ([infra/](infra/)), deployed by a pipeline that waits for a person's approval.
+
+```
+intake bucket --(form.json uploaded)--> EventBridge --> Start (Lambda) --> runs until it pauses --> DynamoDB checkpoints
+reviewer UI (step 8) -----------------------------------> Resume (Lambda) --> eligibility, route, letter
+merge to main --> CodePipeline: Diff (tests, cdk diff) --> Approve (a person) --> Deploy (cdk deploy)
+```
+
+- **Four stacks:**
+  - `GrantReviewData`: the checkpoint table, adopted from step 4's script with `cdk import` (drift IN_SYNC, deletion protection on, all 1,092 items kept), plus the intake bucket: private, TLS only, emptied after 30 days.
+  - `GrantReviewWorkflow`: two Lambda functions on one container image.
+  - `GrantReviewPipeline`: the deploy pipeline.
+  - `GrantReviewCdkAccess`: what deploys may do.
+- **Lambda rather than AgentCore** (decision 16): each run is bounded (seconds to minutes), and its state already lives in DynamoDB.
+  - `start` runs on the upload event. Lambda retries a failure twice and the handler continues from the checkpoint, then the event goes to a failed-applications queue.
+  - `resume` validates the reviewer's decision before the graph sees it.
+  - Each function has its own role, built from `infra/runtime.json`, which `src/iam_policy.py --export` writes. `resume` can only call Haiku.
+- **The image** (`Dockerfile`): AWS's Python 3.14 Lambda base, pinned by digest, with dependencies installed from `uv.lock` with hash checks. It's tested locally in Docker and through the Lambda runtime emulator.
+- **Observability** (decision 17):
+  - Each workflow step is an OpenTelemetry span, with Bedrock, DynamoDB, S3 and ProPublica calls nested under it. The AWS Distro for OpenTelemetry layer runs in lite mode inside the image (the full bootstrap took 13 s against Lambda's 10 s init limit; lite mode 4 s).
+  - Spans go to X-Ray through Lambda's daemon. No Transaction Search or Application Signals.
+  - Logs are JSON; each run's summary carries its trace ID and never applicant text.
+- **Deploys** (decision 18): the project's service control policy denies IAM identity providers, so GitHub Actions can't use OIDC. The deploy pipeline runs inside AWS instead:
+  - a CodeConnections GitHub App limited to this repository triggers CodePipeline on merges touching `grant-review-workflow/`;
+  - the Diff build runs the infra tests and `cdk diff`, a person approves, and the Deploy build runs `cdk deploy`;
+  - the builds may only assume CDK's bootstrap roles.
+- **Least privilege for deploys** (decision 19):
+  - CloudFormation's execution role no longer has AdministratorAccess. A policy built from CloudTrail's record of the 85 calls our deploys actually made replaces it, scoped to this project's names.
+  - Every role the stacks create carries a permissions boundary, and the execution policy refuses to create a role without it.
+  - IAM's simulator: 24/24 cases as expected. A role with full rights inside the boundary still can't delete the table or create users.
+
+| On AWS (gp-027, end to end) | Start | Resume |
+|---|---|---|
+| Billed time (warm container) | 12.6 s | 3.9 s |
+| Model cost | $0.029 | $0.002 |
+| In the trace | extract 4.2 s, read_proposal 2.2 s in parallel with research 0.3 s; 55 DynamoDB calls (checkpoints) | draft_letter 1.9 s; 33 DynamoDB calls |
+
+**Found on the way:**
+- The first invocation after a deploy hits Lambda's 10 s init limit while the new 280 MB image loads (once per deploy, then 2-3 s).
+- LangGraph can lose a sibling step's checkpoint write when a step fails at the same moment (two tests made deterministic).
+- Idle cost is about $0.05-0.10 a month (images in ECR, logs).
 
 ## Step 6.5: the name check, measured on new data
 
@@ -225,6 +269,8 @@ v1's focus misses were boundaries in the prompt's own definitions (home help as 
 - `tests/`: unit tests, no network and no AWS calls (Bedrock calls are checked against Bedrock's API definition with botocore's Stubber).
 - `docs/design.md`: the design: fund rules, steps, state, principles, metrics, gold set plan.
 - `docs/data-handling.md`: where application data goes, how long it stays, and the rules (step 6).
+- `infra/`: the CDK app (TypeScript): data, workflow, pipeline and access stacks, with jest tests and cdk-nag. See its README.
+- `Dockerfile`: the Lambda container image (step 7).
 - `data/filings/`: answer keys of the 60 real Form 990s, copied from Project 2 by `src/import_filings.py`.
 - `data/gold/`: the 40 application packets (`src/build_gold.py` writes forms, specs and labels; narratives are written and approved separately) and the 20 held-out packets of step 6.5 (`src/build_holdout.py`). See its README.
 - `data/raw/`: IRS downloads (gitignored, re-downloadable).
