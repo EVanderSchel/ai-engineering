@@ -1,5 +1,7 @@
 """The runtime policy, without AWS: its shape, and the simulator and drift checks against Stubber."""
 
+import json
+
 import boto3
 import pytest
 from botocore.stub import ANY, Stubber
@@ -91,3 +93,15 @@ def test_drift_check_finds_a_region_the_policy_doesnt_cover():
         stubber.add_response("get_inference_profile", response, {"inferenceProfileIdentifier": model_id})
     with stubber:
         assert iam_policy.profile_regions_drifted(client) == [extra]
+
+
+def test_the_runtime_file_cdk_reads_matches_the_code():
+    """infra/runtime.json is what the Lambda roles are built from: regenerate it with --export after a model change."""
+    committed = json.loads(iam_policy.RUNTIME_FILE.read_text(encoding="utf-8"))
+    assert committed == iam_policy.runtime(), "run: uv run python src/iam_policy.py --export"
+
+
+def test_resume_can_only_call_the_letter_writers_model():
+    functions = iam_policy.runtime()["functions"]
+    assert functions["resume"]["inference_profiles"] == ["us.anthropic.claude-haiku-4-5-20251001-v1:0"]
+    assert set(functions["resume"]["inference_profiles"]) < set(functions["start"]["inference_profiles"])

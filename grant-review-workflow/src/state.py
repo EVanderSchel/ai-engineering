@@ -159,7 +159,9 @@ class ApplicationState(BaseModel):
     received_at: dt.datetime
     form: ApplicationForm
     narrative: str  # untrusted
-    return_pdf: str  # local path now; an S3 key once deployed (step 7)
+    return_pdf: (
+        str  # a local path; in Lambda /tmp/applications/<id>/return.pdf, downloaded again before a run continues
+    )
 
     extraction: Extraction | None = None
     research: Research | None = None

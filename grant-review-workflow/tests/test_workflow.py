@@ -262,18 +262,30 @@ def test_an_invalid_decision_is_rejected_before_it_reaches_the_graph(tmp_path):
 def test_after_a_crash_finished_steps_are_not_run_again(tmp_path):
     """read_proposal fails (a crash, an outage) while extract and research succeed in the same parallel step.
     LangGraph saved their results as pending writes, so resuming the thread reruns only read_proposal: the model
-    calls already paid for aren't paid for twice."""
+    calls already paid for aren't paid for twice.
+
+    The crash comes after extract and research have finished, as it would with real calls taking seconds. Raised
+    at once, it can land while a sibling is still finishing on a slow runner: LangGraph's executor is then shutting
+    down and that sibling's write is lost, so it rightly runs again (it flaked on CI, PR #90; the evaluate test's
+    outage case has the same guard)."""
+    import threading
+
     saver = workflow.memory_checkpointer()
     steps = right_answers()
     calls = []
     failures = iter([True])  # read_proposal fails once, then works
+    finished = {"extract": threading.Event(), "research": threading.Event()}
 
     def counted(name, node):
         def run(state):
             calls.append(name)
             if name == "read_proposal" and next(failures, False):
+                assert all(done.wait(timeout=10) for done in finished.values()), "siblings never finished"
                 raise ConnectionError("Bedrock unreachable")
-            return node(state)
+            result = node(state)
+            if name in finished:
+                finished[name].set()
+            return result
 
         return run
 

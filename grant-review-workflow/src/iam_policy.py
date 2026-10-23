@@ -2,6 +2,7 @@
 
     uv run python src/iam_policy.py               # print the policy for this project's account
     uv run python src/iam_policy.py --simulate    # check it with iam simulate-custom-policy (free, changes nothing)
+    uv run python src/iam_policy.py --export      # write infra/runtime.json, what CDK builds the roles from
 
 The baseline came from IAM Policy Autopilot (awslabs, static analysis of the boto3 calls in src/bedrock.py,
 src/workflow.py and langgraph-checkpoint-aws's DynamoDB saver). Autopilot's draft was broader than the workflow
@@ -16,7 +17,10 @@ needs; this narrows it:
 
 Not here: creating tables or guardrails (admin scripts, run with the developer's own sign-in), the ProPublica API
 (no AWS), and the S3 client the saver creates only for its optional large-checkpoint offload (not configured).
-The role itself is created in step 7 (CDK); the account ID is passed in, never committed.
+The roles are created by CDK (step 7, infra/lib/workflow-stack.ts) from infra/runtime.json, which --export writes
+from the same code, so the TypeScript never repeats a model ID (tests/test_iam_policy.py fails if the file is stale).
+Each function gets only what it runs: start runs every step; resume runs only draft_letter's model (the rest of
+a resumed run is code), so its role can't call Sonnet. The account ID is passed in, never committed.
 """
 
 import argparse
@@ -29,6 +33,7 @@ from botocore.exceptions import ClientError
 
 import bedrock
 import checkpoint_table
+import paths
 import workflow
 
 # Where the us. profiles send requests (get-inference-profile, checked 2026-10-20). --simulate rechecks it live.
@@ -40,6 +45,31 @@ SAVER_ACTIONS = [
     "dynamodb:BatchGetItem",
     "dynamodb:BatchWriteItem",
 ]
+
+
+# The model steps a resumed application can reach: eligibility, route and human_review are code, then the letter.
+RESUME_STEPS = ["draft_letter"]
+RUNTIME_FILE = paths.ROOT / "infra" / "runtime.json"
+
+
+def runtime() -> dict:
+    """What each Lambda function's role needs, for CDK: inference profile IDs per function, the profiles' Regions,
+    the checkpoint table and the saver's calls."""
+
+    def profile_ids(steps) -> list[str]:
+        return sorted({bedrock.MODELS[workflow.STEP_MODELS[step]].model_id for step in steps})
+
+    return {
+        "_generated_by": "src/iam_policy.py --export (do not edit)",
+        "region": bedrock.REGION,
+        "profile_regions": PROFILE_REGIONS,
+        "checkpoint_table": checkpoint_table.TABLE,
+        "checkpoint_actions": SAVER_ACTIONS,
+        "functions": {
+            "start": {"inference_profiles": profile_ids(workflow.STEP_MODELS)},
+            "resume": {"inference_profiles": profile_ids(RESUME_STEPS)},
+        },
+    }
 
 
 def profiles(account: str) -> list[str]:
@@ -175,7 +205,12 @@ def profile_regions_drifted(control) -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="The workflow's runtime policy: print it, or --simulate.")
     parser.add_argument("--simulate", action="store_true", help="check it with iam simulate-custom-policy")
+    parser.add_argument("--export", action="store_true", help=f"write {RUNTIME_FILE.relative_to(paths.ROOT)}")
     args = parser.parse_args()
+    if args.export:
+        RUNTIME_FILE.write_text(json.dumps(runtime(), indent=2) + "\n", encoding="utf-8")
+        print(f"Wrote {RUNTIME_FILE.relative_to(paths.ROOT)}")
+        return 0
     session = boto3.Session(profile_name=os.environ.get("AWS_PROFILE"), region_name=bedrock.REGION)
     try:
         account = session.client("sts").get_caller_identity()["Account"]

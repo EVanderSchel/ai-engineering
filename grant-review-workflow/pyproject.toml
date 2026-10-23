@@ -10,6 +10,7 @@ dependencies = [
     "boto3>=1.40",
     "langgraph>=1.0",
     "langgraph-checkpoint-aws>=1.2",
+    "opentelemetry-api>=1.44,<2",
     "pydantic>=2.11",
     "pymupdf>=1.26,<2",  # renders PDF pages; 2.0 adds ML layout packages (onnxruntime, numpy) not needed here
     "requests>=2.32",
@@ -22,6 +23,7 @@ lint = [
 dev = [
     # Reads the credentials `aws login` stores locally; deployed code uses an IAM role and doesn't need it.
     "botocore[crt]>=1.43.115",
+    "opentelemetry-sdk>=1.44,<2",
     "pytest>=9.0",
     { include-group = "lint" },
 ]
