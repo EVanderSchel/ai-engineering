@@ -42,6 +42,17 @@ def with_rubric(steps: workflow.Steps) -> workflow.Steps:
     return workflow.Steps(steps.extract, steps.research, read_proposal, steps.draft_letter)
 
 
+def seed(graph, store, folder) -> None:
+    """The dev packets run into a graph and status store: 7 waiting, 2 decided, 6 declined by the rules. The UI's
+    fixtures are made this way, and tests/local_api.py starts this way."""
+    for hour, packet in enumerate(DEV):
+        received = dt.datetime(2025, 6, 2, 8, tzinfo=dt.UTC) + dt.timedelta(hours=hour)
+        outcome = workflow.start(graph, application(packet, folder).model_copy(update={"received_at": received}))
+        if packet in DECIDED:
+            outcome = workflow.resume(graph, packet, decision(DECIDED[packet]))
+        store.put(applications.record(outcome, NOW))
+
+
 def generate(tmp_path, monkeypatch) -> dict[str, str]:
     """Every file the UI keeps, by path relative to ui/src, from the current API."""
     checkpointer = workflow.memory_checkpointer()
@@ -49,13 +60,7 @@ def generate(tmp_path, monkeypatch) -> dict[str, str]:
     store = applications.MemoryStore()
     monkeypatch.setattr(api, "_workflow", lambda: workflow.reader(checkpointer))
     monkeypatch.setattr(api, "_applications", lambda: store)
-
-    for hour, packet in enumerate(DEV):
-        received = dt.datetime(2025, 6, 2, 8, tzinfo=dt.UTC) + dt.timedelta(hours=hour)
-        outcome = workflow.start(graph, application(packet, tmp_path).model_copy(update={"received_at": received}))
-        if packet in DECIDED:
-            outcome = workflow.resume(graph, packet, decision(DECIDED[packet]))
-        store.put(applications.record(outcome, NOW))
+    seed(graph, store, tmp_path)
 
     def body(route, **event):
         response = api.handler({"routeKey": route, **event})

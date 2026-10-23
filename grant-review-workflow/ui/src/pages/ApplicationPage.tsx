@@ -1,11 +1,22 @@
 // One application's evidence. Most of it comes from the applicant (the form, the narrative, and quotes the model
 // took from the narrative): it's rendered as text by React, never as HTML or markdown, so nothing in it can become
 // markup, a link or a script. The narrative is shown as written, comments and all.
+import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { NotFound, useApi } from '../api/client';
 import type { Evidence } from '../api/types';
-import { CRITERION_LABELS, FLAG_LABELS, FOCUS_LABELS, STATUS_LABELS, date, money, number } from '../format';
+import {
+  CRITERION_LABELS,
+  type CorrectableFigure,
+  FLAG_LABELS,
+  FOCUS_LABELS,
+  STATUS_LABELS,
+  date,
+  money,
+  number,
+} from '../format';
 import { useLoad } from '../useLoad';
+import { DecisionForm } from './DecisionForm';
 
 export function ApplicationPage() {
   const api = useApi();
@@ -25,12 +36,14 @@ export function ApplicationPage() {
             : `Couldn't load the application: ${evidence.error.message}`}
         </p>
       )}
-      {evidence.state === 'done' && <Application evidence={evidence.value} />}
+      {evidence.state === 'done' && <Application key={applicationId} loaded={evidence.value} />}
     </main>
   );
 }
 
-function Application({ evidence: e }: { evidence: Evidence }) {
+function Application({ loaded }: { loaded: Evidence }) {
+  // A decision answers with the application's new evidence: shown in place of what was loaded.
+  const [e, setEvidence] = useState(loaded);
   return (
     <article>
       <header className="application-header">
@@ -55,6 +68,10 @@ function Application({ evidence: e }: { evidence: Evidence }) {
       <Figures evidence={e} />
       <PublicRecord evidence={e} />
       <Reading evidence={e} />
+      {e.waiting_for_review && e.record.status === 'waiting_for_review' && (
+        // A new form after each round of corrections: nothing typed for the last round carries over.
+        <DecisionForm key={e.review?.decided_at ?? 'first'} evidence={e} onDecided={setEvidence} />
+      )}
       <Outcome evidence={e} />
 
       <section aria-labelledby="narrative">
@@ -106,8 +123,21 @@ function Rules({ evidence: e }: { evidence: Evidence }) {
 }
 
 function Figures({ evidence: e }: { evidence: Evidence }) {
-  const figures = e.extraction?.figures;
-  if (!figures) return null;
+  const read = e.extraction?.figures;
+  if (!read) return null;
+  // What the rules used: the figures read from the return, with the reviewer's corrections laid over them (as
+  // checks.py does). A corrected figure shows both, so nobody mistakes the return's own number.
+  const corrections = (e.review?.corrections ?? {}) as Partial<Record<CorrectableFigure, number>>;
+  const figures = { ...read, ...corrections };
+  const shown = (field: CorrectableFigure, format: (value: number | null) => string) =>
+    corrections[field] == null ? (
+      format(read[field])
+    ) : (
+      <>
+        <strong>{format(corrections[field])}</strong>
+        <div className="muted">corrected; the return reads {format(read[field])}</div>
+      </>
+    );
   // The public record is compared for the return's own period only: its latest year is often a newer return.
   const period = figures.tax_period_end?.slice(0, 7);
   const record = period ? e.research?.figures_by_period[period] : undefined;
@@ -134,7 +164,7 @@ function Figures({ evidence: e }: { evidence: Evidence }) {
           <tr>
             <th scope="col">Figure</th>
             <th scope="col" className="number">
-              Read from the return
+              From the return
             </th>
             <th scope="col" className="number">
               Public record{period ? ` (${period})` : ''}
@@ -147,13 +177,13 @@ function Figures({ evidence: e }: { evidence: Evidence }) {
         <tbody>
           <tr>
             <th scope="row">Total revenue</th>
-            <td className="number">{money(figures.total_revenue_current_year)}</td>
+            <td className="number">{shown('total_revenue_current_year', money)}</td>
             <td className="number">{record ? money(record.revenue) : '-'}</td>
             <td className="number">-</td>
           </tr>
           <tr>
             <th scope="row">Total expenses</th>
-            <td className="number">{money(figures.total_expenses_current_year)}</td>
+            <td className="number">{shown('total_expenses_current_year', money)}</td>
             <td className="number">{record ? money(record.expenses) : '-'}</td>
             <td className="number">{claims?.annual_budget != null ? `${money(claims.annual_budget)} budget` : '-'}</td>
           </tr>
@@ -165,7 +195,7 @@ function Figures({ evidence: e }: { evidence: Evidence }) {
           </tr>
           <tr>
             <th scope="row">Employees</th>
-            <td className="number">{number(figures.employees)}</td>
+            <td className="number">{shown('employees', number)}</td>
             <td className="number">-</td>
             <td className="number">{claims?.staff != null ? `${number(claims.staff)} staff` : '-'}</td>
           </tr>
@@ -246,7 +276,7 @@ function Outcome({ evidence: e }: { evidence: Evidence }) {
   if (!e.review && !e.letter) return null;
   return (
     <section aria-labelledby="outcome">
-      <h2 id="outcome">Outcome</h2>
+      <h2 id="outcome">{e.waiting_for_review ? 'Corrections so far' : 'Outcome'}</h2>
       {e.review && (
         <dl className="facts">
           <dt>Decision</dt>

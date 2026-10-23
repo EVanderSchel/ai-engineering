@@ -1,10 +1,11 @@
 // Labels and number formats in one place. The label maps are typed by the API's own unions: when the Python API
 // adds a flag kind or a status, the regenerated types make this file fail to compile until it has a label.
 import type { Status } from './api/client';
-import type { Flag, ProposalReading, RubricScore } from './api/types';
+import type { Flag, ProposalReading, ReturnFigures, RubricScore } from './api/types';
 
 export const STATUS_LABELS: Record<Status, string> = {
   waiting_for_review: 'Waiting for review',
+  deciding: 'Being decided',
   decided: 'Decided',
   declined_by_rules: 'Declined by the rules',
 };
@@ -34,6 +35,23 @@ export const CRITERION_LABELS: Record<RubricScore['criterion'], string> = {
   clear_outcomes: 'Clear outcomes',
   budget_matches_request: 'Budget matches the request',
   feasible_for_size: 'Feasible for its size',
+};
+
+// The figures a reviewer can correct: the return's numbers (not its EIN, name or period).
+export type CorrectableFigure = {
+  [K in keyof ReturnFigures]-?: ReturnFigures[K] extends number | null ? K : never;
+}[keyof ReturnFigures];
+
+export const FIGURE_LABELS: Record<CorrectableFigure, string> = {
+  contributions_and_grants_current_year: 'Contributions and grants',
+  program_service_revenue_current_year: 'Program service revenue',
+  investment_income_current_year: 'Investment income',
+  other_revenue_current_year: 'Other revenue',
+  total_revenue_current_year: 'Total revenue',
+  total_expenses_current_year: 'Total expenses',
+  total_assets_end_of_year: 'Total assets, end of year',
+  total_liabilities_end_of_year: 'Total liabilities, end of year',
+  employees: 'Employees',
 };
 
 const dollars = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });

@@ -47,6 +47,7 @@
         "status": {
           "enum": [
             "waiting_for_review",
+            "deciding",
             "decided",
             "declined_by_rules"
           ],
@@ -170,6 +171,45 @@
         "annual_budget",
         "staff"
       ]
+    },
+    "DecisionRequest": {
+      "additionalProperties": false,
+      "description": "What the reviewer sends. Corrections replace figures read from the return (ReturnFigures field -> value) and send\nthe application back through the rules; with no decision, it pauses again afterwards.",
+      "properties": {
+        "decision": {
+          "anyOf": [
+            {
+              "enum": [
+                "approve",
+                "decline"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "corrections": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "default": {},
+          "type": "object"
+        },
+        "reason": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision",
+        "corrections",
+        "reason"
+      ],
+      "title": "DecisionRequest",
+      "type": "object"
     },
     "Evidence": {
       "description": "One application, as the reviewer sees it.",
@@ -767,16 +807,20 @@
   "title": "ReviewerApi",
   "type": "object",
   "properties": {
-    "queue": {
+    "Queue": {
       "$ref": "#/$defs/Queue"
     },
-    "evidence": {
+    "Evidence": {
       "$ref": "#/$defs/Evidence"
+    },
+    "DecisionRequest": {
+      "$ref": "#/$defs/DecisionRequest"
     }
   },
   "required": [
-    "queue",
-    "evidence"
+    "Queue",
+    "Evidence",
+    "DecisionRequest"
   ],
   "additionalProperties": false
 }

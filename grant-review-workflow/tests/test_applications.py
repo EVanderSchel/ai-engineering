@@ -154,3 +154,79 @@ def test_list_queries_the_status_index_across_pages(stubbed):
     stubber.add_response("query", page(rec("a"), last="a"), expected)
     stubber.add_response("query", page(rec("b")), {**expected, "ExclusiveStartKey": ANY})
     assert [r.application_id for r in store.list("waiting_for_review")] == ["a", "b"]
+
+
+def test_one_claim_wins_and_a_release_reopens_it():
+    store = applications.MemoryStore()
+    store.put(rec("a"))
+    assert store.claim("a", NOW) and store.get("a").status == "deciding"
+    assert not store.claim("a", NOW)  # a double-click, or a second reviewer
+    store.release("a")
+    assert store.get("a").status == "waiting_for_review" and store.claim("a", NOW)
+
+
+def test_a_stale_claim_can_be_taken_again_but_a_decided_one_never():
+    store = applications.MemoryStore()
+    store.put(rec("a"))
+    store.put(rec("b", status="decided"))
+    assert store.claim("a", NOW)
+    later = NOW + dt.timedelta(seconds=applications.CLAIM_SECONDS + 1)
+    assert not store.claim("a", NOW + dt.timedelta(seconds=10)) and store.claim("a", later)
+    assert not store.claim("b", later) and not store.claim("missing", later)
+
+
+class Wire:
+    """Answers a real client's requests after botocore has serialized them: what DynamoDB itself would receive."""
+
+    def __init__(self, status=200, body=b"{}"):
+        self.requests, self.status, self.body = [], status, body
+
+    def __call__(self, request, **_):
+        import json
+
+        from botocore.awsrequest import AWSResponse
+
+        self.requests.append(json.loads(request.body))
+        return AWSResponse(request.url, self.status, {"x-amzn-requestid": "test"}, Raw(self.body))
+
+
+class Raw:
+    def __init__(self, body):
+        self.body = body
+
+    def stream(self, **_):
+        yield self.body
+
+
+def wired(answer: Wire):
+    session = boto3.Session(aws_access_key_id="test", aws_secret_access_key="test", region_name="us-east-2")
+    table = session.resource("dynamodb").Table(applications.TABLE)
+    table.meta.client.meta.events.register("before-send.dynamodb", answer)
+    return applications.DynamoDBStore(table)
+
+
+def test_the_claim_is_one_conditional_update_with_every_placeholder_defined():
+    answer = Wire()
+    assert wired(answer).claim("gp-027", NOW)
+    [sent] = answer.requests
+    # Our own placeholders (#status: a reserved word) merged with the ones boto3 generates for the condition.
+    assert sent["UpdateExpression"] == "SET #status = :deciding, claimed_at = :now"
+    assert sent["ConditionExpression"] == "(#n0 = :v0 OR (#n1 = :v1 AND #n2 < :v2))"
+    names = {"#status": "status", "#n0": "status", "#n1": "status", "#n2": "claimed_at"}
+    assert sent["ExpressionAttributeNames"] == names
+    assert sent["ExpressionAttributeValues"] == {
+        ":deciding": {"S": "deciding"},
+        ":now": {"S": "2025-07-01T12:00:00.000000+00:00"},
+        ":v0": {"S": "waiting_for_review"},
+        ":v1": {"S": "deciding"},
+        ":v2": {"S": "2025-07-01T11:55:00.000000+00:00"},  # CLAIM_SECONDS before now
+    }
+
+
+def test_a_failed_condition_means_someone_else_has_it():
+    body = b'{"__type":"com.amazonaws.dynamodb.v20120810#ConditionalCheckFailedException","message":"failed"}'
+    answer = Wire(status=400, body=body)
+    store = wired(answer)
+    assert not store.claim("gp-027", NOW)
+    store.release("gp-027")  # already moved on: nothing to release, and no error
+    assert len(answer.requests) == 2

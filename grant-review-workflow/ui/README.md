@@ -2,15 +2,23 @@
 
 Step 8: the page a reviewer uses. A queue of applications by status, and one page per application with the evidence
 to decide it: flags, the fund's rules, figures from the return beside the public record and the narrative's claims,
-the proposal as read, and the narrative itself. Decisions (stage 3) and sign-in (stage 4) come next.
+the proposal as read, and the narrative itself. While an application waits, the reviewer approves or declines it with
+a reason (quoted in the letter), or corrects figures read from the return, which sends it back through the rules.
+Sign-in comes in stage 4.
 
 ```powershell
 cd grant-review-workflow/ui
 npm ci
-npm run dev       # http://localhost:5173, on local fixtures
+npm run dev       # http://localhost:5173, on local fixtures (read-only)
+npm run dev:api   # the same, on the local API: decisions work (start it first, below)
 npm test          # vitest + Testing Library
 npm run build     # type-check, then a production build in dist/
 ```
+
+**The local API.** `uv run python tests/local_api.py` (from `grant-review-workflow/`) runs the real API handler
+behind a stand-in for API Gateway on http://127.0.0.1:8000, signed in as a fixed local reviewer, with the dev packets
+loaded and decisions resumed in-process by stand-in steps: no AWS, no model calls, all in memory. `npm run dev:api`
+proxies `/api` to it.
 
 **Data.** `src/api/client.ts` has one interface with two sources. Without `VITE_API_URL` the app reads
 `src/fixtures/`: the dev packets run through the workflow with stand-in steps (no model calls) and read back

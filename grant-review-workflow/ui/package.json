@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:api": "vite --mode api",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
     "types": "node scripts/types.mjs"

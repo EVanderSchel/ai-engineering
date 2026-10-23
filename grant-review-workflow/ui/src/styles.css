@@ -315,3 +315,59 @@ footer {
     font-size: 0.85rem;
   }
 }
+
+.decision-form fieldset {
+  border: 1px solid var(--border);
+  padding: 1rem;
+  margin: 0;
+}
+
+.choice {
+  display: block;
+  margin: 0.25rem 0;
+}
+
+.reason-label {
+  display: block;
+  font-weight: 600;
+  margin-top: 1rem;
+}
+
+.decision-form textarea {
+  width: 100%;
+  font: inherit;
+  padding: 0.5rem;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.corrections input {
+  width: 100%;
+  max-width: 12rem;
+  font: inherit;
+  padding: 0.25rem 0.5rem;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.decision-form button {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.5rem 1.25rem;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  cursor: pointer;
+}
+
+.decision-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.decision-form [role='alert'] {
+  color: var(--fail);
+  font-weight: 600;
+}
