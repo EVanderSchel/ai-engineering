@@ -11,7 +11,7 @@
 # same image runs locally, in tests and in Lambda. x86_64 (the build machine's architecture).
 
 # AWS's Python 3.14 Lambda base image, pinned by digest so a rebuild gets the same OS and runtime.
-FROM public.ecr.aws/lambda/python:3.14@sha256:252cbb0879717b1c049b9f909d86d06d88e129f3208386d7ba1189d535f5f981
+FROM public.ecr.aws/lambda/python:3.14@sha256:fc4e15a5e09e2c9b6184810ea0fdc87afe1c1c734c98cbe27d739a35c3f15e7e
 
 # Dependencies first (a separate layer, rebuilt only when the lock changes): exactly the versions in uv.lock,
 # with their hashes checked, runtime dependencies only. uv is used only at build time and isn't in the image.
