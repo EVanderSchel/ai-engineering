@@ -10,9 +10,9 @@ dependencies = [
     "anthropic>=1.15.0",
     "sentence-transformers>=3.0",
     "rank_bm25>=0.2",
-    "fastapi>=0.149.0",
+    "fastapi>=0.153.0",
     "uvicorn[standard]>=0.54.0",
-    "langfuse>=5.0.2",
+    "langfuse>=5.0.3",
     "python-dotenv>=1.2.4",
     "torch>=2.10",
 ]
