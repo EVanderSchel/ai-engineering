@@ -201,6 +201,16 @@ def build(steps: Steps, checkpointer: BaseCheckpointSaver | None = None):
     return graph.compile(checkpointer=checkpointer)
 
 
+def reader(checkpointer: BaseCheckpointSaver):
+    """The graph for reading saved applications only (the reviewer UI's API): its model steps refuse to run, so a
+    read can never call a model, and the API never invokes it."""
+
+    def refuse(state: ApplicationState) -> dict:
+        raise RuntimeError("this graph only reads saved applications")
+
+    return build(Steps(refuse, refuse, refuse, refuse), checkpointer=checkpointer)
+
+
 def diagram() -> str:
     """The compiled graph drawn as Mermaid by LangGraph itself (the README's copy is checked against it)."""
     shape_only = Steps(*(lambda state: {},) * 4)  # the graph is drawn, never run

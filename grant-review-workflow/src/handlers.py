@@ -14,7 +14,8 @@ asynchronous invocation; a retry finds the thread already saved and continues it
 
 `resume` is invoked directly (step 8's reviewer UI will call it) with the application ID and a ReviewerDecision,
 validated before the graph sees it. Both return a summary, never the narrative: the logs stay free of applicant
-text (docs/data-handling.md).
+text (docs/data-handling.md). After each run both write the application's status record (applications.py), which
+the reviewer UI's queue lists (step 8).
 
 Each summary is logged through `logging` with its fields as extras: Lambda's JSON log format makes every line a
 JSON object with the request ID, and the summary's trace_id links it to the run's trace in X-Ray (stage 5).
@@ -22,15 +23,16 @@ JSON object with the request ID, and the summary's trace_id links it to the run'
 The Bedrock client, S3 client and compiled graph are created once per Lambda container and reused while it's warm.
 """
 
+import datetime as dt
 import functools
 import json
 import logging
 import os
 import pathlib
-import re
 
 import boto3
 
+import applications
 import bedrock
 import tracing
 import workflow
@@ -38,7 +40,6 @@ from intake import IntakeError, intake
 from state import ReviewerDecision
 
 PACKET = ("narrative.md", "return.pdf", "form.json")
-APPLICATION_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}")  # becomes a folder name and a DynamoDB key
 WORK_DIR = pathlib.Path(os.environ.get("GRANT_REVIEW_WORK_DIR", "/tmp/applications"))  # Lambda: only /tmp is writable
 log = logging.getLogger("grant_review")
 log.setLevel(logging.INFO)
@@ -56,14 +57,17 @@ def _workflow():
 
 
 @functools.cache
+def _applications():
+    return applications.DynamoDBStore()
+
+
+def _record(outcome: workflow.Outcome) -> None:
+    _applications().put(applications.record(outcome, dt.datetime.now(dt.UTC)))
+
+
+@functools.cache
 def _s3():
     return boto3.Session(region_name=bedrock.REGION).client("s3")
-
-
-def _application_id(value: str) -> str:
-    if not isinstance(value, str) or not APPLICATION_ID.fullmatch(value):
-        raise ValueError(f"not a valid application ID: {value!r}")
-    return value
 
 
 def _download(bucket: str, application_id: str) -> tuple[dict, str, pathlib.Path]:
@@ -98,7 +102,7 @@ def start(event: dict, context=None) -> dict:
     application_id, _, name = key.rpartition("/")
     if name != "form.json":
         raise ValueError(f"start runs on <application_id>/form.json, not {key!r}")
-    application_id = _application_id(application_id)
+    application_id = applications.check_id(application_id)
     form, narrative, pdf = _download(bucket, application_id)
 
     app = _workflow()
@@ -113,6 +117,7 @@ def start(event: dict, context=None) -> dict:
             _log("rejected", result)
             return result
         outcome = workflow.start(app, application)
+    _record(outcome)
     result = summary(outcome)
     _log("started", result)
     return result
@@ -120,13 +125,14 @@ def start(event: dict, context=None) -> dict:
 
 def resume(event: dict, context=None) -> dict:
     """{"application_id": ..., "decision": {ReviewerDecision fields}}, from the reviewer UI."""
-    application_id = _application_id(event.get("application_id"))
+    application_id = applications.check_id(event.get("application_id"))
     decision = ReviewerDecision.model_validate(event.get("decision"))  # invalid input never reaches the graph
     app = _workflow()
     current = workflow.outcome(app, application_id) if app.get_state(workflow.thread(application_id)).values else None
     if current is None or not current.waiting_for_review:
         raise ValueError(f"application {application_id} isn't waiting for a reviewer")
     outcome = workflow.resume(app, application_id, decision)
+    _record(outcome)
     result = summary(outcome)
     _log("resumed", result)
     return {**result, "letter": outcome.state.letter}  # the reviewer sees the letter; the log doesn't
