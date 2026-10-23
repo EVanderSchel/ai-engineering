@@ -1,0 +1,118 @@
+{
+  "record": {
+    "application_id": "gp-030",
+    "status": "declined_by_rules",
+    "received_at": "2025-06-02T17:00:00Z",
+    "updated_at": "2025-07-01T12:00:00Z",
+    "organization_name": "ISLAA FOUNDATION",
+    "amount_requested": 25000,
+    "route": "decline_ineligible",
+    "failed_rules": [
+      "return_current"
+    ],
+    "flags": [],
+    "decision": null
+  },
+  "waiting_for_review": false,
+  "form": {
+    "ein": "833592939",
+    "organization_name": "ISLAA FOUNDATION",
+    "amount_requested": 25000,
+    "project_title": "Community Blood Pressure Screening and Follow-Up"
+  },
+  "rules": [
+    {
+      "rule": "form_type",
+      "description": "Files the full Form 990 (not 990-EZ or 990-PF)",
+      "passed": true
+    },
+    {
+      "rule": "revenue_range",
+      "description": "Total revenue between $50,000 and $20,000,000 in the latest year",
+      "passed": true
+    },
+    {
+      "rule": "return_current",
+      "description": "Latest return's tax year ended on or after 2022-06-30",
+      "passed": false
+    },
+    {
+      "rule": "net_assets",
+      "description": "Positive net assets (total assets minus total liabilities) at year end",
+      "passed": true
+    },
+    {
+      "rule": "request_range",
+      "description": "Request between $5,000 and $50,000",
+      "passed": true
+    },
+    {
+      "rule": "request_share",
+      "description": "Request at most 25% of total annual expenses",
+      "passed": true
+    }
+  ],
+  "flags": [],
+  "extraction": {
+    "form_type": "990",
+    "figures": {
+      "ein": "833592939",
+      "organization_name": "ISLAA FOUNDATION",
+      "tax_period_end": "2021-12-31",
+      "contributions_and_grants_current_year": 0,
+      "program_service_revenue_current_year": 412500,
+      "investment_income_current_year": 132,
+      "other_revenue_current_year": 0,
+      "total_revenue_current_year": 412632,
+      "total_expenses_current_year": 263190,
+      "total_assets_end_of_year": 848395,
+      "total_liabilities_end_of_year": 0,
+      "employees": 0
+    },
+    "revenue_adds_up": true
+  },
+  "research": {
+    "found": true,
+    "registered_name": "ISLAA FOUNDATION",
+    "name_matches_form": true,
+    "name_explanation": null,
+    "form_name_belongs_to": null,
+    "figures_by_period": {
+      "2021-12": {
+        "revenue": 412632,
+        "expenses": 263190
+      }
+    }
+  },
+  "proposal": {
+    "focus_area": "health",
+    "claims": {
+      "annual_budget": 263000,
+      "staff": null
+    },
+    "rubric": [
+      {
+        "criterion": "clear_outcomes",
+        "score": 4,
+        "quote": "We request $25,000 to run free blood pressure screenings in community settings, with follow-up for everyone whose reading is high."
+      },
+      {
+        "criterion": "budget_matches_request",
+        "score": 3,
+        "quote": "We request $25,000 to run free blood pressure screenings in community settings, with follow-up for everyone whose reading is high."
+      },
+      {
+        "criterion": "feasible_for_size",
+        "score": 4,
+        "quote": "We request $25,000 to run free blood pressure screenings in community settings, with follow-up for everyone whose reading is high."
+      }
+    ],
+    "suspected_instructions": []
+  },
+  "narrative": "# Community Blood Pressure Screening and Follow-Up\n\n## About us\n\nISLAA Foundation supports education and research in cardiovascular medicine. Our annual operating budget is $263,000. Most of our work has been with physicians and researchers, but the most common heart problem we see is also the easiest to miss: high blood pressure that no one has measured. Many adults in the neighborhoods around our partner clinics have not had their blood pressure checked in years.\n\n## The project\n\nWe request $25,000 to run free blood pressure screenings in community settings, with follow-up for everyone whose reading is high. Screening alone does little if no one acts on the result, so the follow-up is the heart of this project.\n\nScreenings will be held twice a month at churches, grocery stores, barbershops and community centers. A nurse or trained community health worker takes each reading using validated equipment and explains the result. Anyone with a high reading gets a printed record, a same-week appointment at one of our partner clinics if they don't already have a doctor, and a call from a community health worker within a week to make sure they went. People who are found to have high blood pressure are offered a home blood pressure monitor and coaching on how to use it. All materials will be available in English and Spanish.\n\n## Who it serves\n\nWe expect to screen about 1,200 adults in the first year. Based on screenings by similar programs, we expect around one in four to have a high reading and about 150 people to be newly identified with high blood pressure. Priority goes to neighborhoods with the fewest primary care clinics.\n\n## Outcomes\n\n- About 1,200 adults screened over the year.\n- Every person with a high reading is called within one week.\n- At least 70 percent of people newly identified with high blood pressure see a clinician within one month.\n- We will report screenings, referrals and completed visits to the Fund every quarter.\n\n## Budget\n\n- Screening equipment and home monitors: $6,000\n- Nurse and community health worker time: $13,000\n- Follow-up and referral support: $4,000\n- Outreach materials in English and Spanish: $2,000\n",
+  "review": null,
+  "letter": "Letter for gp-030",
+  "letter_problems": [],
+  "model_calls": 3,
+  "cost_usd": 0.003
+}

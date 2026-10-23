@@ -1,0 +1,122 @@
+{
+  "record": {
+    "application_id": "gp-028",
+    "status": "decided",
+    "received_at": "2025-06-02T16:00:00Z",
+    "updated_at": "2025-07-01T12:00:00Z",
+    "organization_name": "NEW PRAIRIE ACTIVITY CENTER",
+    "amount_requested": 11500,
+    "route": "review",
+    "failed_rules": [],
+    "flags": [],
+    "decision": "decline"
+  },
+  "waiting_for_review": false,
+  "form": {
+    "ein": "452684767",
+    "organization_name": "NEW PRAIRIE ACTIVITY CENTER",
+    "amount_requested": 11500,
+    "project_title": "Classroom Innovation Grants for Teachers"
+  },
+  "rules": [
+    {
+      "rule": "form_type",
+      "description": "Files the full Form 990 (not 990-EZ or 990-PF)",
+      "passed": true
+    },
+    {
+      "rule": "revenue_range",
+      "description": "Total revenue between $50,000 and $20,000,000 in the latest year",
+      "passed": true
+    },
+    {
+      "rule": "return_current",
+      "description": "Latest return's tax year ended on or after 2022-06-30",
+      "passed": true
+    },
+    {
+      "rule": "net_assets",
+      "description": "Positive net assets (total assets minus total liabilities) at year end",
+      "passed": true
+    },
+    {
+      "rule": "request_range",
+      "description": "Request between $5,000 and $50,000",
+      "passed": true
+    },
+    {
+      "rule": "request_share",
+      "description": "Request at most 25% of total annual expenses",
+      "passed": true
+    }
+  ],
+  "flags": [],
+  "extraction": {
+    "form_type": "990",
+    "figures": {
+      "ein": "452684767",
+      "organization_name": "NEW PRAIRIE ACTIVITY CENTER",
+      "tax_period_end": "2024-06-30",
+      "contributions_and_grants_current_year": 295989,
+      "program_service_revenue_current_year": 0,
+      "investment_income_current_year": 703,
+      "other_revenue_current_year": 0,
+      "total_revenue_current_year": 296692,
+      "total_expenses_current_year": 303158,
+      "total_assets_end_of_year": 18997,
+      "total_liabilities_end_of_year": 0,
+      "employees": 0
+    },
+    "revenue_adds_up": true
+  },
+  "research": {
+    "found": true,
+    "registered_name": "NEW PRAIRIE ACTIVITY CENTER",
+    "name_matches_form": true,
+    "name_explanation": null,
+    "form_name_belongs_to": null,
+    "figures_by_period": {
+      "2024-06": {
+        "revenue": 296692,
+        "expenses": 303158
+      }
+    }
+  },
+  "proposal": {
+    "focus_area": "education",
+    "claims": {
+      "annual_budget": 303000,
+      "staff": null
+    },
+    "rubric": [
+      {
+        "criterion": "clear_outcomes",
+        "score": 4,
+        "quote": "We request $11,500 to expand our Classroom Innovation Grants, small grants that let teachers try new ways of teaching that the regular school budget can't cover."
+      },
+      {
+        "criterion": "budget_matches_request",
+        "score": 3,
+        "quote": "We request $11,500 to expand our Classroom Innovation Grants, small grants that let teachers try new ways of teaching that the regular school budget can't cover."
+      },
+      {
+        "criterion": "feasible_for_size",
+        "score": 4,
+        "quote": "We request $11,500 to expand our Classroom Innovation Grants, small grants that let teachers try new ways of teaching that the regular school budget can't cover."
+      }
+    ],
+    "suspected_instructions": []
+  },
+  "narrative": "# Classroom Innovation Grants for Teachers\n\n## About us\n\nNew Prairie Activity Center financially supports the staff and students of the New Prairie United School Corporation through two standing programs: student scholarships and teacher grants. Our annual operating budget is $303,000. Our teacher grants have always been popular, and every year we turn down more good proposals than we can fund.\n\n## The project\n\nWe request $11,500 to expand our Classroom Innovation Grants, small grants that let teachers try new ways of teaching that the regular school budget can't cover. Past grants have paid for a classroom set of microscopes, a school garden used for science lessons, and books for a reading program that brought families into the classroom once a month.\n\nThis year we will add a second round of grants focused on science, technology, engineering and math in the elementary grades, where hands-on materials are hardest to come by. Teachers apply with a one-page proposal describing what they want to try, which students it will reach and how they will know whether it worked. A committee of retired teachers and parents reviews the proposals. Each grant comes with a short report at the end of the year, and we share the most successful projects with every school in the district so that good ideas spread beyond a single classroom.\n\n## Who it serves\n\nThe grants will fund about 20 projects across the district's elementary, middle and high schools, reaching more than 1,500 students. The STEM kits will be shared among elementary classrooms through a lending library, so every elementary teacher can use them.\n\n## Outcomes\n\n- About 20 teacher projects funded and completed during the school year.\n- Every funded teacher submits a short report on what students learned.\n- STEM kits are used in every elementary school in the district.\n- We will send the Fund a summary of the funded projects and teacher reports.\n\n## Budget\n\n- Teacher classroom grants: $9,000\n- STEM kits for elementary classrooms: $2,000\n- Program administration: $500\n",
+  "review": {
+    "decision": "decline",
+    "corrections": {},
+    "reason": "Checked the return.",
+    "reviewer": "me",
+    "decided_at": "2025-07-01T00:00:00Z"
+  },
+  "letter": "Letter for gp-028",
+  "letter_problems": [],
+  "model_calls": 3,
+  "cost_usd": 0.003
+}

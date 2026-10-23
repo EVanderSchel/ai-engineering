@@ -1,0 +1,118 @@
+{
+  "record": {
+    "application_id": "gp-036",
+    "status": "declined_by_rules",
+    "received_at": "2025-06-02T19:00:00Z",
+    "updated_at": "2025-07-01T12:00:00Z",
+    "organization_name": "AMERICAN LEGION",
+    "amount_requested": 11500,
+    "route": "decline_ineligible",
+    "failed_rules": [
+      "request_share"
+    ],
+    "flags": [],
+    "decision": null
+  },
+  "waiting_for_review": false,
+  "form": {
+    "ein": "825123018",
+    "organization_name": "AMERICAN LEGION",
+    "amount_requested": 11500,
+    "project_title": "Veterans Emergency Assistance Fund"
+  },
+  "rules": [
+    {
+      "rule": "form_type",
+      "description": "Files the full Form 990 (not 990-EZ or 990-PF)",
+      "passed": true
+    },
+    {
+      "rule": "revenue_range",
+      "description": "Total revenue between $50,000 and $20,000,000 in the latest year",
+      "passed": true
+    },
+    {
+      "rule": "return_current",
+      "description": "Latest return's tax year ended on or after 2022-06-30",
+      "passed": true
+    },
+    {
+      "rule": "net_assets",
+      "description": "Positive net assets (total assets minus total liabilities) at year end",
+      "passed": true
+    },
+    {
+      "rule": "request_range",
+      "description": "Request between $5,000 and $50,000",
+      "passed": true
+    },
+    {
+      "rule": "request_share",
+      "description": "Request at most 25% of total annual expenses",
+      "passed": false
+    }
+  ],
+  "flags": [],
+  "extraction": {
+    "form_type": "990",
+    "figures": {
+      "ein": "825123018",
+      "organization_name": "AMERICAN LEGION",
+      "tax_period_end": "2023-12-31",
+      "contributions_and_grants_current_year": 4210,
+      "program_service_revenue_current_year": 0,
+      "investment_income_current_year": 0,
+      "other_revenue_current_year": 47098,
+      "total_revenue_current_year": 51308,
+      "total_expenses_current_year": 32266,
+      "total_assets_end_of_year": 47670,
+      "total_liabilities_end_of_year": 13333,
+      "employees": 4
+    },
+    "revenue_adds_up": true
+  },
+  "research": {
+    "found": true,
+    "registered_name": "AMERICAN LEGION",
+    "name_matches_form": true,
+    "name_explanation": null,
+    "form_name_belongs_to": null,
+    "figures_by_period": {
+      "2023-12": {
+        "revenue": 51308,
+        "expenses": 32266
+      }
+    }
+  },
+  "proposal": {
+    "focus_area": "human_services",
+    "claims": {
+      "annual_budget": 32000,
+      "staff": 4
+    },
+    "rubric": [
+      {
+        "criterion": "clear_outcomes",
+        "score": 4,
+        "quote": "We request $11,500 to create a Veterans Emergency Assistance Fund for veterans and their families facing a short-term crisis."
+      },
+      {
+        "criterion": "budget_matches_request",
+        "score": 3,
+        "quote": "We request $11,500 to create a Veterans Emergency Assistance Fund for veterans and their families facing a short-term crisis."
+      },
+      {
+        "criterion": "feasible_for_size",
+        "score": 4,
+        "quote": "We request $11,500 to create a Veterans Emergency Assistance Fund for veterans and their families facing a short-term crisis."
+      }
+    ],
+    "suspected_instructions": []
+  },
+  "narrative": "# Veterans Emergency Assistance Fund\n\n## About us\n\nOur American Legion post serves veterans and their families through veterans assistance, programs for children and youth, community service and civic programs. Our annual operating budget is $32,000, and we have 4 paid staff, who keep the post running alongside our volunteer members. Most of the veterans who come to us for help are not looking for a handout. They are looking for a way through one bad month.\n\n## The project\n\nWe request $11,500 to create a Veterans Emergency Assistance Fund for veterans and their families facing a short-term crisis. When a veteran is waiting on a benefits decision, recovering from surgery or between jobs, a single unpaid rent or utility bill can start a slide that ends in eviction. The benefits system is built for long-term needs, and it moves slowly. This fund is built for the next two weeks.\n\nVeterans can apply at the post or be referred by the county veterans service officer. A committee of post members reviews each request within three days. Assistance is paid directly to the landlord, utility company or provider, never in cash. The fund will also pay for rides to medical appointments at the regional veterans hospital, which is too far for many of our members to reach without help, and for groceries and household essentials for families in the middle of a crisis. Every veteran who receives help is also connected with the county veterans service officer to make sure they are getting every benefit they have earned.\n\n## Who it serves\n\nWe expect to help 25 to 30 veteran households over the year, including older veterans on fixed incomes, younger veterans adjusting to civilian life, and surviving spouses.\n\n## Outcomes\n\n- Every request is reviewed within three days.\n- No veteran household helped by the fund is evicted or has its utilities shut off during the grant year.\n- Every household helped is referred to the county veterans service officer.\n- We will report households helped and the kinds of help given to the Fund at the end of the year.\n\n## Budget\n\n- Emergency rent and utility help: $7,000\n- Transportation to medical appointments: $2,500\n- Food and household essentials: $2,000\n",
+  "review": null,
+  "letter": "Letter for gp-036",
+  "letter_problems": [],
+  "model_calls": 3,
+  "cost_usd": 0.003
+}

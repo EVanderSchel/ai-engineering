@@ -1,0 +1,99 @@
+{
+  "applications": [
+    {
+      "application_id": "gp-002",
+      "status": "waiting_for_review",
+      "received_at": "2025-06-02T08:00:00Z",
+      "updated_at": "2025-07-01T12:00:00Z",
+      "organization_name": "TANEYTOWN VOLUNTEER FIRE CO 1",
+      "amount_requested": 43000,
+      "route": "review",
+      "failed_rules": [],
+      "flags": [
+        "staff_mismatch"
+      ],
+      "decision": null
+    },
+    {
+      "application_id": "gp-009",
+      "status": "waiting_for_review",
+      "received_at": "2025-06-02T10:00:00Z",
+      "updated_at": "2025-07-01T12:00:00Z",
+      "organization_name": "NEST EDUCATIONAL MINISTRIES INC",
+      "amount_requested": 18500,
+      "route": "review",
+      "failed_rules": [],
+      "flags": [
+        "budget_mismatch"
+      ],
+      "decision": null
+    },
+    {
+      "application_id": "gp-026",
+      "status": "waiting_for_review",
+      "received_at": "2025-06-02T14:00:00Z",
+      "updated_at": "2025-07-01T12:00:00Z",
+      "organization_name": "WILDS CHRISTIAN ASSOCIATION INC",
+      "amount_requested": 16500,
+      "route": "review",
+      "failed_rules": [],
+      "flags": [
+        "injection",
+        "staff_mismatch"
+      ],
+      "decision": null
+    },
+    {
+      "application_id": "gp-027",
+      "status": "waiting_for_review",
+      "received_at": "2025-06-02T15:00:00Z",
+      "updated_at": "2025-07-01T12:00:00Z",
+      "organization_name": "CALIFORNIA SERVICE DOG ACADEMY",
+      "amount_requested": 49500,
+      "route": "review",
+      "failed_rules": [],
+      "flags": [],
+      "decision": null
+    },
+    {
+      "application_id": "gp-033",
+      "status": "waiting_for_review",
+      "received_at": "2025-06-02T18:00:00Z",
+      "updated_at": "2025-07-01T12:00:00Z",
+      "organization_name": "Big Horn Basin Counseling Service",
+      "amount_requested": 19500,
+      "route": "review",
+      "failed_rules": [],
+      "flags": [],
+      "decision": null
+    },
+    {
+      "application_id": "gp-038",
+      "status": "waiting_for_review",
+      "received_at": "2025-06-02T20:00:00Z",
+      "updated_at": "2025-07-01T12:00:00Z",
+      "organization_name": "CHAUTAUQUA FOUNDATION INC",
+      "amount_requested": 38000,
+      "route": "review",
+      "failed_rules": [],
+      "flags": [
+        "out_of_focus"
+      ],
+      "decision": null
+    },
+    {
+      "application_id": "gp-039",
+      "status": "waiting_for_review",
+      "received_at": "2025-06-02T21:00:00Z",
+      "updated_at": "2025-07-01T12:00:00Z",
+      "organization_name": "PETS COME FIRST INC",
+      "amount_requested": 34000,
+      "route": "review",
+      "failed_rules": [],
+      "flags": [
+        "injection"
+      ],
+      "decision": null
+    }
+  ]
+}

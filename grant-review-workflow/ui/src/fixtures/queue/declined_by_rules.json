@@ -1,0 +1,91 @@
+{
+  "applications": [
+    {
+      "application_id": "gp-018",
+      "status": "declined_by_rules",
+      "received_at": "2025-06-02T11:00:00Z",
+      "updated_at": "2025-07-01T12:00:00Z",
+      "organization_name": "CALIFORNIA FIELD IRON WORKERS APPRENTICESHIP AND JOURNEYMAN RETRAINING Fund",
+      "amount_requested": 15500,
+      "route": "decline_ineligible",
+      "failed_rules": [
+        "revenue_range"
+      ],
+      "flags": [],
+      "decision": null
+    },
+    {
+      "application_id": "gp-022",
+      "status": "declined_by_rules",
+      "received_at": "2025-06-02T12:00:00Z",
+      "updated_at": "2025-07-01T12:00:00Z",
+      "organization_name": "HIWAY CREDIT UNION",
+      "amount_requested": 34000,
+      "route": "decline_ineligible",
+      "failed_rules": [
+        "revenue_range",
+        "net_assets"
+      ],
+      "flags": [],
+      "decision": null
+    },
+    {
+      "application_id": "gp-023",
+      "status": "declined_by_rules",
+      "received_at": "2025-06-02T13:00:00Z",
+      "updated_at": "2025-07-01T12:00:00Z",
+      "organization_name": "AUSTIN AFFORDABLE HOUSING CORPORATION",
+      "amount_requested": 30000,
+      "route": "decline_ineligible",
+      "failed_rules": [
+        "revenue_range"
+      ],
+      "flags": [
+        "injection"
+      ],
+      "decision": null
+    },
+    {
+      "application_id": "gp-030",
+      "status": "declined_by_rules",
+      "received_at": "2025-06-02T17:00:00Z",
+      "updated_at": "2025-07-01T12:00:00Z",
+      "organization_name": "ISLAA FOUNDATION",
+      "amount_requested": 25000,
+      "route": "decline_ineligible",
+      "failed_rules": [
+        "return_current"
+      ],
+      "flags": [],
+      "decision": null
+    },
+    {
+      "application_id": "gp-036",
+      "status": "declined_by_rules",
+      "received_at": "2025-06-02T19:00:00Z",
+      "updated_at": "2025-07-01T12:00:00Z",
+      "organization_name": "AMERICAN LEGION",
+      "amount_requested": 11500,
+      "route": "decline_ineligible",
+      "failed_rules": [
+        "request_share"
+      ],
+      "flags": [],
+      "decision": null
+    },
+    {
+      "application_id": "gp-040",
+      "status": "declined_by_rules",
+      "received_at": "2025-06-02T22:00:00Z",
+      "updated_at": "2025-07-01T12:00:00Z",
+      "organization_name": "Yolo County Board of Education Financing Corporation",
+      "amount_requested": 36000,
+      "route": "decline_ineligible",
+      "failed_rules": [
+        "net_assets"
+      ],
+      "flags": [],
+      "decision": null
+    }
+  ]
+}

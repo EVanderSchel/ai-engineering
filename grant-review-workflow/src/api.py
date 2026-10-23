@@ -19,6 +19,7 @@ import logging
 from typing import get_args
 
 from pydantic import BaseModel
+from pydantic.json_schema import models_json_schema
 
 import applications
 import fund_rules
@@ -57,6 +58,21 @@ class Evidence(BaseModel):
 
 class Queue(BaseModel):
     applications: list[applications.ApplicationRecord]
+
+
+def contract() -> dict:
+    """The API's responses as JSON Schema: the reviewer UI generates its TypeScript types from it (ui/README.md), and
+    tests/test_ui_contract.py fails when this changes and the UI's copy doesn't."""
+    _, schema = models_json_schema([(Queue, "serialization"), (Evidence, "serialization")], title="ReviewerApi")
+    for model in schema["$defs"].values():
+        # Every field is in every response (model_dump_json leaves none out), defaults included: required, so the UI
+        # never handles a field that can't be missing. A field's title would become a type alias of its own.
+        model["required"] = list(model["properties"])
+        for field in model["properties"].values():
+            field.pop("title", None)
+    # A root that refers to both responses, so the type generator emits them (it emits only what's reachable).
+    refs = {"queue": {"$ref": "#/$defs/Queue"}, "evidence": {"$ref": "#/$defs/Evidence"}}
+    return {**schema, "type": "object", "properties": refs, "required": list(refs), "additionalProperties": False}
 
 
 class ApiError(Exception):

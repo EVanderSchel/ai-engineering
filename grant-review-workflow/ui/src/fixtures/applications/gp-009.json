@@ -1,0 +1,124 @@
+{
+  "record": {
+    "application_id": "gp-009",
+    "status": "waiting_for_review",
+    "received_at": "2025-06-02T10:00:00Z",
+    "updated_at": "2025-07-01T12:00:00Z",
+    "organization_name": "NEST EDUCATIONAL MINISTRIES INC",
+    "amount_requested": 18500,
+    "route": "review",
+    "failed_rules": [],
+    "flags": [
+      "budget_mismatch"
+    ],
+    "decision": null
+  },
+  "waiting_for_review": true,
+  "form": {
+    "ein": "264288433",
+    "organization_name": "NEST EDUCATIONAL MINISTRIES INC",
+    "amount_requested": 18500,
+    "project_title": "After-School Reading Club"
+  },
+  "rules": [
+    {
+      "rule": "form_type",
+      "description": "Files the full Form 990 (not 990-EZ or 990-PF)",
+      "passed": true
+    },
+    {
+      "rule": "revenue_range",
+      "description": "Total revenue between $50,000 and $20,000,000 in the latest year",
+      "passed": true
+    },
+    {
+      "rule": "return_current",
+      "description": "Latest return's tax year ended on or after 2022-06-30",
+      "passed": true
+    },
+    {
+      "rule": "net_assets",
+      "description": "Positive net assets (total assets minus total liabilities) at year end",
+      "passed": true
+    },
+    {
+      "rule": "request_range",
+      "description": "Request between $5,000 and $50,000",
+      "passed": true
+    },
+    {
+      "rule": "request_share",
+      "description": "Request at most 25% of total annual expenses",
+      "passed": true
+    }
+  ],
+  "flags": [
+    {
+      "step": "cross_check",
+      "kind": "budget_mismatch",
+      "evidence": "The proposal states an annual budget of $51,000; the return reports total expenses of $101,268."
+    }
+  ],
+  "extraction": {
+    "form_type": "990",
+    "figures": {
+      "ein": "264288433",
+      "organization_name": "NEST EDUCATIONAL MINISTRIES INC",
+      "tax_period_end": "2023-12-31",
+      "contributions_and_grants_current_year": 0,
+      "program_service_revenue_current_year": 112198,
+      "investment_income_current_year": 0,
+      "other_revenue_current_year": 0,
+      "total_revenue_current_year": 112198,
+      "total_expenses_current_year": 101268,
+      "total_assets_end_of_year": 81925,
+      "total_liabilities_end_of_year": 71200,
+      "employees": 2
+    },
+    "revenue_adds_up": true
+  },
+  "research": {
+    "found": true,
+    "registered_name": "NEST EDUCATIONAL MINISTRIES INC",
+    "name_matches_form": true,
+    "name_explanation": null,
+    "form_name_belongs_to": null,
+    "figures_by_period": {
+      "2023-12": {
+        "revenue": 112198,
+        "expenses": 101268
+      }
+    }
+  },
+  "proposal": {
+    "focus_area": "education",
+    "claims": {
+      "annual_budget": 51000,
+      "staff": 2
+    },
+    "rubric": [
+      {
+        "criterion": "clear_outcomes",
+        "score": 4,
+        "quote": "We request $18,500 to open an After-School Reading Club for children in kindergarten through fifth grade, open to every child in the neighborhood, not only our own students."
+      },
+      {
+        "criterion": "budget_matches_request",
+        "score": 3,
+        "quote": "We request $18,500 to open an After-School Reading Club for children in kindergarten through fifth grade, open to every child in the neighborhood, not only our own students."
+      },
+      {
+        "criterion": "feasible_for_size",
+        "score": 4,
+        "quote": "We request $18,500 to open an After-School Reading Club for children in kindergarten through fifth grade, open to every child in the neighborhood, not only our own students."
+      }
+    ],
+    "suspected_instructions": []
+  },
+  "narrative": "# After-School Reading Club\n\n## About us\n\nNest Educational Ministries provides academically challenging and spiritually nurturing education to children in our community. We are a small organization: our annual operating budget is $51,000, and we have 2 paid staff, a director and a lead teacher, supported by parents and church members who volunteer each week. Our students come from families who want a smaller, more personal setting than the local schools can offer, and many of them arrive behind in reading.\n\n## The project\n\nWe request $18,500 to open an After-School Reading Club for children in kindergarten through fifth grade, open to every child in the neighborhood, not only our own students. Reading is the skill that everything else in school depends on, and the children who fall behind early rarely catch up without extra time and attention. The local elementary school has a waiting list for its own tutoring program, and families have asked us to help.\n\nThe club will meet four afternoons a week during the school year. Each child will be assessed at the start, placed in a group of no more than four, and given a reading plan built around phonics, fluency and comprehension. Trained part-time tutors will lead the groups, and our lead teacher will review each child's progress every month. Once a month, families will join for a reading night where parents learn simple ways to practice at home and every child takes home a new book to keep.\n\n## Who it serves\n\nWe will serve 36 children over the school year, in three sessions of 12. Priority goes to children reading below grade level and to families who cannot afford private tutoring. Most of the children we expect to serve live within walking distance of our building.\n\n## Outcomes\n\n- Every child is assessed in reading at the start and end of the program.\n- At least 75 percent of children gain one full reading level by the end of the year.\n- Every family attends at least two reading nights.\n- We will send the Fund a summary of assessment results at the end of the school year.\n\n## Budget\n\n- Part-time reading tutors: $9,000\n- Books and classroom library: $4,000\n- Reading assessments: $1,500\n- Family reading nights and snacks: $2,000\n- Transportation for children from the elementary school: $2,000\n",
+  "review": null,
+  "letter": null,
+  "letter_problems": [],
+  "model_calls": 2,
+  "cost_usd": 0.002
+}

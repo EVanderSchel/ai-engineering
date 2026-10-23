@@ -1,0 +1,119 @@
+{
+  "record": {
+    "application_id": "gp-022",
+    "status": "declined_by_rules",
+    "received_at": "2025-06-02T12:00:00Z",
+    "updated_at": "2025-07-01T12:00:00Z",
+    "organization_name": "HIWAY CREDIT UNION",
+    "amount_requested": 34000,
+    "route": "decline_ineligible",
+    "failed_rules": [
+      "revenue_range",
+      "net_assets"
+    ],
+    "flags": [],
+    "decision": null
+  },
+  "waiting_for_review": false,
+  "form": {
+    "ein": "410313750",
+    "organization_name": "HIWAY CREDIT UNION",
+    "amount_requested": 34000,
+    "project_title": "Free Financial Counseling for Families in Crisis"
+  },
+  "rules": [
+    {
+      "rule": "form_type",
+      "description": "Files the full Form 990 (not 990-EZ or 990-PF)",
+      "passed": true
+    },
+    {
+      "rule": "revenue_range",
+      "description": "Total revenue between $50,000 and $20,000,000 in the latest year",
+      "passed": false
+    },
+    {
+      "rule": "return_current",
+      "description": "Latest return's tax year ended on or after 2022-06-30",
+      "passed": true
+    },
+    {
+      "rule": "net_assets",
+      "description": "Positive net assets (total assets minus total liabilities) at year end",
+      "passed": false
+    },
+    {
+      "rule": "request_range",
+      "description": "Request between $5,000 and $50,000",
+      "passed": true
+    },
+    {
+      "rule": "request_share",
+      "description": "Request at most 25% of total annual expenses",
+      "passed": true
+    }
+  ],
+  "flags": [],
+  "extraction": {
+    "form_type": "990",
+    "figures": {
+      "ein": "410313750",
+      "organization_name": "HIWAY CREDIT UNION",
+      "tax_period_end": "2023-12-31",
+      "contributions_and_grants_current_year": 0,
+      "program_service_revenue_current_year": 70443855,
+      "investment_income_current_year": 20029038,
+      "other_revenue_current_year": 4117895,
+      "total_revenue_current_year": 94590788,
+      "total_expenses_current_year": 88936279,
+      "total_assets_end_of_year": 0,
+      "total_liabilities_end_of_year": 0,
+      "employees": 306
+    },
+    "revenue_adds_up": true
+  },
+  "research": {
+    "found": true,
+    "registered_name": "HIWAY CREDIT UNION",
+    "name_matches_form": true,
+    "name_explanation": null,
+    "form_name_belongs_to": null,
+    "figures_by_period": {
+      "2023-12": {
+        "revenue": 94590788,
+        "expenses": 88936279
+      }
+    }
+  },
+  "proposal": {
+    "focus_area": "human_services",
+    "claims": {
+      "annual_budget": 88936000,
+      "staff": 306
+    },
+    "rubric": [
+      {
+        "criterion": "clear_outcomes",
+        "score": 4,
+        "quote": "We request $34,000 to offer free one-on-one financial counseling to families in financial crisis, whether or not they are credit union members."
+      },
+      {
+        "criterion": "budget_matches_request",
+        "score": 3,
+        "quote": "We request $34,000 to offer free one-on-one financial counseling to families in financial crisis, whether or not they are credit union members."
+      },
+      {
+        "criterion": "feasible_for_size",
+        "score": 4,
+        "quote": "We request $34,000 to offer free one-on-one financial counseling to families in financial crisis, whether or not they are credit union members."
+      }
+    ],
+    "suspected_instructions": []
+  },
+  "narrative": "# Free Financial Counseling for Families in Crisis\n\n## About us\n\nHiway Credit Union provides financial services to its members. Our annual operating budget is $88,936,000, and we have 306 paid staff in our branches and support offices. Because we see members' accounts every day, we also see the moment a household starts to slip: an overdraft becomes a payday loan, a missed payment becomes a collection notice, and a family that was getting by is suddenly in crisis.\n\n## The project\n\nWe request $34,000 to offer free one-on-one financial counseling to families in financial crisis, whether or not they are credit union members. Many of the people who need this help most have no relationship with any bank, and the advice available to them comes from lenders with something to sell.\n\nFamilies will be referred by county social services, food shelves and school social workers, or can call us directly. Each family meets a certified financial counselor for up to six sessions. Together they build a realistic budget, sort out which debts are most urgent, negotiate payment plans with creditors, and check eligibility for benefits they may be missing. When a single overdue bill is about to cost a family their housing or their utilities, a small emergency payment can be made directly to the landlord or utility company. Workshops in English and Spanish will cover the basics for families who prefer a group setting.\n\n## Who it serves\n\nWe expect to counsel 140 households in the first year, most with incomes below twice the poverty line, and to reach another 200 people through workshops. Priority goes to families facing eviction, utility shutoff or wage garnishment.\n\n## Outcomes\n\n- Every counseled household leaves with a written budget and a plan for its debts.\n- At least 70 percent of households facing eviction or shutoff avoid it.\n- At least 60 percent of households report less debt six months later.\n- We will report households served, emergency payments made and six-month results to the Fund.\n\n## Budget\n\n- Certified counselor time: $20,000\n- Emergency bill assistance: $9,000\n- Workshop materials and translation: $3,000\n- Outreach to referral partners: $2,000\n",
+  "review": null,
+  "letter": "Letter for gp-022",
+  "letter_problems": [],
+  "model_calls": 3,
+  "cost_usd": 0.003
+}
