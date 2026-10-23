@@ -1,0 +1,274 @@
+import * as cdk from 'aws-cdk-lib/core';
+import { Validations } from 'aws-cdk-lib';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import { Construct } from 'constructs';
+
+/** Names the other stacks and the bootstrap refer to: fixed, so nothing has to look them up. */
+export const BOUNDARY_POLICY = 'grant-review-workload-boundary';
+export const EXECUTION_POLICY = 'grant-review-cdk-execution';
+const QUALIFIER = 'hnb659fds'; // cdk bootstrap's default
+
+/**
+ * Narrows what a deploy can do (step 7, stage 6, part 2). The CDK bootstrap gave CloudFormation's execution role
+ * AdministratorAccess; with the pipeline deploying on merge, that meant anything that reached main could create
+ * anything in the account. Two managed policies replace it:
+ *
+ * - the execution policy (`cdk bootstrap --cloudformation-execution-policies`): what CloudFormation may do,
+ *   taken from CloudTrail's record of every call the execution role made in our deploys (plus the deletes a
+ *   replacement needs), limited to this project's resource names;
+ * - the permissions boundary: the most any role our stacks create may ever do. The execution policy may create or
+ *   change a role only with this boundary attached, so it can't mint a role stronger than the boundary.
+ *
+ * Both are protected by explicit denies, and this stack is deployed with a person's own credentials
+ * (CliCredentialsStackSynthesizer), never through the bootstrap roles: the pipeline can't loosen its own limits.
+ */
+export class AccessStack extends cdk.Stack {
+  readonly boundary: iam.ManagedPolicy;
+  readonly execution: iam.ManagedPolicy;
+
+  constructor(scope: Construct, id: string, props: cdk.StackProps) {
+    super(scope, id, { ...props, synthesizer: new cdk.CliCredentialsStackSynthesizer() });
+    const a = this.account;
+    const r = this.region;
+    const arn = (service: string, resource: string, region = r) => `arn:aws:${service}:${region}:${a}:${resource}`;
+    const ourRoles = `arn:aws:iam::${a}:role/GrantReview*`;
+    const boundaryArn = `arn:aws:iam::${a}:policy/${BOUNDARY_POLICY}`;
+    const executionArn = `arn:aws:iam::${a}:policy/${EXECUTION_POLICY}`;
+    const ourBuckets = ['arn:aws:s3:::grant-review-*', 'arn:aws:s3:::grantreview*'];
+
+    this.boundary = new iam.ManagedPolicy(this, 'WorkloadBoundary', {
+      managedPolicyName: BOUNDARY_POLICY,
+      description: 'The most any grant-review-workflow role may do: a cap, not a grant',
+      statements: [
+        new iam.PolicyStatement({
+          sid: 'InvokeClaudeOnBedrock',
+          actions: ['bedrock:InvokeModel'],
+          resources: [arn('bedrock', 'inference-profile/*'), 'arn:aws:bedrock:*::foundation-model/anthropic.*'],
+        }),
+        new iam.PolicyStatement({
+          sid: 'Checkpoints',
+          actions: [
+            'dynamodb:GetItem',
+            'dynamodb:PutItem',
+            'dynamodb:Query',
+            'dynamodb:BatchGetItem',
+            'dynamodb:BatchWriteItem',
+          ],
+          resources: [arn('dynamodb', 'table/grant-review-*')],
+        }),
+        new iam.PolicyStatement({
+          sid: 'OurBuckets',
+          actions: ['s3:GetObject*', 's3:PutObject*', 's3:DeleteObject*', 's3:Abort*', 's3:GetBucket*', 's3:List*'],
+          resources: ourBuckets.flatMap((b) => [b, `${b}/*`]),
+        }),
+        new iam.PolicyStatement({
+          sid: 'OurLogs',
+          actions: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents'],
+          resources: [arn('logs', 'log-group:GrantReview*'), arn('logs', 'log-group:/aws/codebuild/grant-review-*')],
+        }),
+        new iam.PolicyStatement({
+          sid: 'Traces', // X-Ray writes don't support resource-level permissions
+          actions: ['xray:PutTraceSegments', 'xray:PutTelemetryRecords'],
+          resources: ['*'],
+        }),
+        new iam.PolicyStatement({
+          sid: 'FailedApplicationsQueue',
+          actions: ['sqs:SendMessage', 'sqs:GetQueueAttributes', 'sqs:GetQueueUrl'],
+          resources: [arn('sqs', 'GrantReview*')],
+        }),
+        new iam.PolicyStatement({
+          sid: 'PipelineAndBuilds',
+          actions: [
+            'codebuild:StartBuild',
+            'codebuild:BatchGetBuilds',
+            'codebuild:StopBuild',
+            'codebuild:CreateReport',
+            'codebuild:CreateReportGroup',
+            'codebuild:UpdateReport',
+            'codebuild:BatchPutTestCases',
+            'codebuild:BatchPutCodeCoverages',
+            'codestar-connections:UseConnection',
+            'codeconnections:UseConnection',
+          ],
+          resources: [
+            arn('codebuild', 'project/grant-review-*'),
+            arn('codebuild', 'report-group/grant-review-*'),
+            arn('codestar-connections', 'connection/*'),
+            arn('codeconnections', 'connection/*'),
+          ],
+        }),
+        new iam.PolicyStatement({
+          sid: 'AssumeBootstrapAndOurRoles', // the builds assume CDK's roles; the pipeline its action roles
+          actions: ['sts:AssumeRole'],
+          resources: [`arn:aws:iam::${a}:role/cdk-${QUALIFIER}-*`, ourRoles],
+        }),
+      ],
+    });
+
+    this.execution = new iam.ManagedPolicy(this, 'CdkExecution', {
+      managedPolicyName: EXECUTION_POLICY,
+      description: 'What CloudFormation may do when deploying grant-review-workflow (replaces AdministratorAccess)',
+      statements: [
+        // --- What CloudFormation creates and changes, by our names (from CloudTrail, plus deletes) ---
+        new iam.PolicyStatement({
+          sid: 'CheckpointTable',
+          actions: ['dynamodb:*'],
+          resources: [arn('dynamodb', 'table/grant-review-*')],
+        }),
+        new iam.PolicyStatement({ sid: 'OurBuckets', actions: ['s3:*'], resources: ourBuckets }),
+        new iam.PolicyStatement({
+          sid: 'OurFunctions',
+          actions: ['lambda:*'],
+          resources: [arn('lambda', 'function:GrantReview*'), arn('lambda', 'function:GrantReview*:*')],
+        }),
+        new iam.PolicyStatement({
+          sid: 'OurLogGroups',
+          actions: ['logs:*'],
+          resources: [arn('logs', 'log-group:GrantReview*'), arn('logs', 'log-group:GrantReview*:*')],
+        }),
+        new iam.PolicyStatement({ sid: 'OurQueue', actions: ['sqs:*'], resources: [arn('sqs', 'GrantReview*')] }),
+        new iam.PolicyStatement({ sid: 'OurRules', actions: ['events:*'], resources: [arn('events', 'rule/GrantReview*')] }),
+        new iam.PolicyStatement({
+          sid: 'OurPipeline',
+          actions: ['codebuild:*', 'codepipeline:*'],
+          resources: [arn('codebuild', 'project/grant-review-*'), arn('codepipeline', 'grant-review-*')],
+        }),
+        new iam.PolicyStatement({
+          sid: 'GitHubConnection',
+          actions: ['codeconnections:*', 'codestar-connections:*'],
+          resources: [arn('codeconnections', 'connection/*'), arn('codestar-connections', 'connection/*')],
+        }),
+        new iam.PolicyStatement({
+          sid: 'PullTheLambdaImage', // CreateFunction checks the caller can read the image
+          actions: ['ecr:BatchGetImage', 'ecr:GetDownloadUrlForLayer'],
+          resources: [arn('ecr', `repository/cdk-${QUALIFIER}-container-assets-${a}-${r}`)],
+        }),
+        new iam.PolicyStatement({
+          sid: 'BootstrapVersion',
+          actions: ['ssm:GetParameters'],
+          resources: [arn('ssm', `parameter/cdk-bootstrap/${QUALIFIER}/version`)],
+        }),
+        new iam.PolicyStatement({
+          sid: 'ReadStackOutputs', // Fn::GetStackOutput between our stacks
+          actions: ['cloudformation:DescribeStacks'],
+          resources: [arn('cloudformation', 'stack/GrantReview*/*')],
+        }),
+        new iam.PolicyStatement({
+          sid: 'EncryptionThroughServices', // Lambda environment variables, S3 and SSM use AWS-managed keys
+          actions: ['kms:Decrypt', 'kms:Encrypt', 'kms:GenerateDataKey', 'kms:DescribeKey'],
+          resources: ['*'],
+          conditions: {
+            StringEquals: {
+              'kms:ViaService': [`lambda.${r}.amazonaws.com`, `s3.${r}.amazonaws.com`, `ssm.${r}.amazonaws.com`],
+            },
+          },
+        }),
+        new iam.PolicyStatement({
+          sid: 'AccountLevelReads', // these calls have no resource to scope to
+          actions: [
+            'lambda:GetAccountSettings',
+            'logs:DescribeLogGroups',
+            'logs:DescribeResourcePolicies',
+            'logs:DescribeIndexPolicies',
+            'iam:GetAccountSummary',
+          ],
+          resources: ['*'],
+        }),
+
+        // --- IAM: our roles only, and only with the boundary attached ---
+        new iam.PolicyStatement({
+          sid: 'ChangeOurRolesOnlyWithTheBoundary',
+          actions: [
+            'iam:CreateRole',
+            'iam:PutRolePolicy',
+            'iam:DeleteRolePolicy',
+            'iam:AttachRolePolicy',
+            'iam:DetachRolePolicy',
+            'iam:PutRolePermissionsBoundary',
+          ],
+          resources: [ourRoles],
+          conditions: { StringEquals: { 'iam:PermissionsBoundary': boundaryArn } },
+        }),
+        new iam.PolicyStatement({
+          sid: 'ManageOurRoles',
+          actions: [
+            'iam:GetRole',
+            'iam:GetRolePolicy',
+            'iam:ListRolePolicies',
+            'iam:ListAttachedRolePolicies',
+            'iam:ListRoleTags',
+            'iam:TagRole',
+            'iam:UntagRole',
+            'iam:UpdateRole',
+            'iam:UpdateRoleDescription',
+            'iam:UpdateAssumeRolePolicy',
+            'iam:DeleteRole',
+          ],
+          resources: [ourRoles],
+        }),
+        new iam.PolicyStatement({
+          sid: 'PassOurRolesToOurServices',
+          actions: ['iam:PassRole'],
+          resources: [ourRoles],
+          conditions: {
+            StringEquals: {
+              'iam:PassedToService': ['lambda.amazonaws.com', 'codebuild.amazonaws.com', 'codepipeline.amazonaws.com'],
+            },
+          },
+        }),
+
+        // --- Guardrails that no allow above can override ---
+        new iam.PolicyStatement({
+          sid: 'NeverRemoveTheBoundary',
+          effect: iam.Effect.DENY,
+          actions: ['iam:DeleteRolePermissionsBoundary'],
+          resources: ['*'],
+        }),
+        new iam.PolicyStatement({
+          sid: 'NeverChangeTheseTwoPolicies',
+          effect: iam.Effect.DENY,
+          actions: [
+            'iam:CreatePolicyVersion',
+            'iam:DeletePolicy',
+            'iam:DeletePolicyVersion',
+            'iam:SetDefaultPolicyVersion',
+            'iam:TagPolicy',
+            'iam:UntagPolicy',
+          ],
+          resources: [boundaryArn, executionArn],
+        }),
+        new iam.PolicyStatement({
+          sid: 'NeverCreateUsersOrKeys',
+          effect: iam.Effect.DENY,
+          actions: ['iam:CreateUser', 'iam:CreateAccessKey', 'iam:CreateLoginProfile', 'iam:AttachUserPolicy'],
+          resources: ['*'],
+        }),
+      ],
+    });
+
+    // cdk-nag flags every wildcard. Here they are the design: name-prefix patterns for resources whose generated
+    // names aren't known in advance (GrantReview*, grant-review-*), wildcard actions only on those, and in the
+    // boundary a ceiling rather than a grant. Each finding is acknowledged individually, from the statements.
+    const findings = new Set<string>();
+    for (const doc of [this.boundary.document, this.execution.document]) {
+      for (const s of doc.toJSON().Statement as any[]) {
+        if (s.Effect !== 'Allow') continue;
+        for (const action of [s.Action].flat()) if (action.includes('*')) findings.add(`Action::${action}`);
+        for (const res of [s.Resource].flat()) if (res !== '*' && res.includes('*')) findings.add(`Resource::${res}`);
+        if ([s.Resource].flat().includes('*')) findings.add('Resource::*');
+      }
+    }
+    for (const finding of findings) {
+      Validations.of(this).acknowledge({
+        id: `AwsSolutions-IAM5[${finding}]`,
+        reason: 'Prefix-scoped patterns for generated resource names; in the boundary, a ceiling rather than a grant.',
+      });
+    }
+
+    new cdk.CfnOutput(this, 'ExecutionPolicyArn', {
+      value: this.execution.managedPolicyArn,
+      description: 'cdk bootstrap --cloudformation-execution-policies <this>',
+    });
+    new cdk.CfnOutput(this, 'BoundaryPolicyArn', { value: this.boundary.managedPolicyArn });
+  }
+}

@@ -63,13 +63,14 @@ export class PipelineStack extends cdk.Stack {
     const diff = this.cdkProject('Diff', {
       description: 'grant-review-workflow: infra tests, cdk synth and cdk diff (read by the approver)',
       privileged: false,
-      commands: ['npm test', 'npx cdk synth --strict', 'npx cdk diff GrantReviewData GrantReviewWorkflow'],
+      // --exclusively: never pull in another stack (GrantReviewCdkAccess is deployed by a person only).
+      commands: ['npm test', 'npx cdk synth --strict', 'npx cdk diff GrantReviewData GrantReviewWorkflow --exclusively'],
       assume: [bootstrapRole('lookup'), bootstrapRole('deploy')],
     });
     const deploy = this.cdkProject('Deploy', {
       description: 'grant-review-workflow: cdk deploy of the data and workflow stacks',
       privileged: true, // builds the Lambda container image with Docker
-      commands: ['npx cdk deploy GrantReviewData GrantReviewWorkflow --require-approval never'],
+      commands: ['npx cdk deploy GrantReviewData GrantReviewWorkflow --exclusively --require-approval never'],
       assume: [
         bootstrapRole('lookup'),
         bootstrapRole('deploy'),
@@ -133,6 +134,7 @@ export class PipelineStack extends cdk.Stack {
       ...['s3:Abort*', 's3:DeleteObject*', 's3:GetBucket*', 's3:GetObject*', 's3:List*'].map((a) => `Action::${a}`),
       `Resource::<${logicalId(artifacts)}.Arn>/*`,
     ];
+    // CDK's grants refer to each project by reference, which cdk-nag prints as <LogicalId>.
     const ownBuildGroups = [diff, deploy].flatMap((p) => [
       `Resource::arn:${partition}:logs:${this.region}:${this.account}:log-group:/aws/codebuild/<${logicalId(p)}>:*`,
       `Resource::arn:${partition}:codebuild:${this.region}:${this.account}:report-group/<${logicalId(p)}>-*`,
@@ -167,6 +169,8 @@ export class PipelineStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
     const project = new codebuild.PipelineProject(this, id, {
+      // Named, so the execution policy and the permissions boundary can scope builds to project/grant-review-*.
+      projectName: `grant-review-${id.toLowerCase()}`,
       description: opts.description,
       environment: {
         buildImage: codebuild.LinuxBuildImage.STANDARD_8_0,
