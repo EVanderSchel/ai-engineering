@@ -57,6 +57,16 @@ updates:
       - dependency-name: pymupdf
         update-types: ["version-update:semver-major"]
 
+  # grant-review-workflow's CDK app: package.json + package-lock.json. aws-cdk (the CLI) is pinned exactly in
+  # package.json, so Dependabot proposes each new version of it.
+  - package-ecosystem: npm
+    directory: /grant-review-workflow/infra
+    schedule:
+      interval: weekly
+    groups:
+      grant-review-workflow-infra-npm:
+        update-types: [minor, patch]
+
   - package-ecosystem: pip
     directory: /ci-cd-workflow
     schedule:
@@ -77,7 +87,7 @@ updates:
   # Base images are pinned by digest; Dependabot also proposes new digests when an image is rebuilt
   # (for example, with OS security patches) under the same tag.
   - package-ecosystem: docker
-    directories: [/rag, /ci-cd-workflow, /irs-990-extraction]
+    directories: [/rag, /ci-cd-workflow, /irs-990-extraction, /grant-review-workflow]
     schedule:
       interval: weekly
     groups:

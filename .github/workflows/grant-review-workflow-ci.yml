@@ -143,3 +143,71 @@ jobs:
 
       - name: Audit dependencies
         run: bash security/audit.sh
+
+  # The CDK app in infra/: type-check and run the jest tests, which include the cdk-nag checks. The tests build
+  # their own app with a fixed test account (test/app.ts), so no AWS credentials are needed; `cdk synth` of the
+  # real app (bin/infra.ts) needs an account and only runs in the deploy pipeline. Catching a failing test here
+  # stops it before the pipeline's Diff stage, after merge.
+  infra:
+    name: grant-review-workflow-infra
+    needs: changes
+    if: needs.changes.outputs.project == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: grant-review-workflow/infra
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: grant-review-workflow/infra/package-lock.json
+
+      # Exactly what package-lock.json specifies; fails if it's out of date with package.json.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run build
+
+      - name: Run tests (including cdk-nag)
+        run: npm test
+
+  # Build the Lambda container image to prove it still builds (including the checksum-pinned ADOT layer download),
+  # then check the workflow's modules import inside it. Not pushed anywhere: CDK builds and pushes the image it
+  # deploys in the pipeline. Layers are cached between runs; pull requests reuse the cache main writes.
+  image:
+    name: grant-review-workflow-image
+    needs: changes
+    if: needs.changes.outputs.project == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: grant-review-workflow
+          load: true
+          push: false
+          tags: grant-review-workflow:ci-${{ github.sha }}
+          cache-from: type=gha,scope=grant-review-workflow-image
+          cache-to: type=gha,scope=grant-review-workflow-image,mode=max
+
+      # The image's entrypoint is Lambda's runtime emulator, so run Python directly. Fails if a dependency is
+      # missing from the image or a module doesn't import. Lambda puts the layer's /opt/python on the path (that's
+      # where opentelemetry-api comes from, see the Dockerfile); a plain `python` doesn't, so it's added here.
+      - name: Check the handlers import
+        run: |
+          docker run --rm --entrypoint python --env PYTHONPATH=/var/task/src:/opt/python \
+            "grant-review-workflow:ci-${{ github.sha }}" -c 'import handlers, workflow'
