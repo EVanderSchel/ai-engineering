@@ -67,7 +67,11 @@ def test_tool_call_then_answer():
     result = runner_agent.run(api.client, "revenue?")
     assert (result.answer, result.stop, result.steps) == ("Revenue was $100.", "answered", 2)
     assert [e["type"] for e in result.trajectory] == ["text", "tool", "text"]
-    [tool_result] = api.requests[1]["messages"][2]["content"]
+    follow_up = api.requests[1]
+    assert "thread" not in follow_up  # no server-held history: the whole conversation is resent, as agent.run does
+    assert [m["role"] for m in follow_up["messages"]] == ["user", "assistant", "user"]
+    assert follow_up["system"][0]["text"] == agent.SYSTEM_PROMPT
+    [tool_result] = follow_up["messages"][2]["content"]
     assert tool_result["tool_use_id"] == "t1"
     assert json.loads(tool_result["content"])["filings"][0]["total_revenue"] == 100
 

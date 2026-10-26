@@ -6,6 +6,10 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 Add entries here as you make notable changes. Move them under a new version heading when you cut a release.
 
+### Changed
+
+- `anthropic` 1.15 → 2.2 (requires `>=2.2.0`). The 2.x SDK sends API version `2026-10-21` and its Tool Runner keeps the conversation on the server (beta message threads) by default; the Tool Runner agent passes `thread=False` so it still resends the full history like the hand-built loop
+
 ## [1.0.0] - 2026-10-12
 
 First release: a tool-using agent that researches US charities from public IRS data (ProPublica Nonprofit Explorer), built by hand and with the SDK's Tool Runner, served over MCP, evaluated on its trajectories, tested against prompt injection, and deployed as an authenticated API on Azure. On the release version: 98.5% correct and 100% grounded over 66 eval runs; 0 of 60 prompt-injection attacks followed, all 60 flagged to the user.

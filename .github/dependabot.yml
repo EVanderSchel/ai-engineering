@@ -15,6 +15,11 @@ updates:
     groups:
       rag-python:
         update-types: [minor, patch]
+      # Security fixes in one PR: the audit job fails on any open advisory, so separate PRs each fixing one of
+      # several would each fail on the others (#105 and #106).
+      rag-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   # pymupdf 2.0 adds ML layout packages (onnxruntime, numpy) that page rendering doesn't use, and would grow the
   # container image; majors are reviewed by hand rather than proposed weekly.

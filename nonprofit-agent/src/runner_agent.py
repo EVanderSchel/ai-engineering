@@ -18,6 +18,10 @@ What it doesn't do, and this file adds (found by reading the SDK source, anthrop
   each yielded message plus runner.generate_tool_call_response(), which runs that turn's tools and caches the
   result so the runner doesn't run them a second time.
 
+Since anthropic 2.2 the runner by default keeps the conversation on the server (a beta "message thread") and
+sends only each turn's new messages. thread=False turns that off, so every request carries the whole history,
+system prompt and tools exactly as the hand-built loop sends them, and the two loops stay comparable.
+
 Usage: python src/runner_agent.py "How did Iowa Public Radio's revenue change from 2020 to 2023?"
 """
 
@@ -83,6 +87,7 @@ def run(
             messages=list(messages),
             cache_control={"type": "ephemeral"},
             max_iterations=max_steps - result.steps,  # model calls left in the step budget
+            thread=False,  # send the full history every turn, as agent.run does (see the module docstring)
         )
         last = None
         try:
