@@ -259,6 +259,11 @@ export class AccessStack extends cdk.Stack {
           resources: [arn('cloudwatch', 'alarm:GrantReview*')],
         }),
         new iam.PolicyStatement({
+          sid: 'OurStateMachines', // the step 9 comparison: the workflow on Step Functions
+          actions: ['states:*'],
+          resources: [arn('states', 'stateMachine:GrantReview*'), arn('states', 'execution:GrantReview*:*')],
+        }),
+        new iam.PolicyStatement({
           sid: 'PullTheLambdaImage', // CreateFunction checks the caller can read the image
           actions: ['ecr:BatchGetImage', 'ecr:GetDownloadUrlForLayer'],
           resources: [arn('ecr', `repository/cdk-${QUALIFIER}-container-assets-${a}-${r}`)],
@@ -333,7 +338,12 @@ export class AccessStack extends cdk.Stack {
           resources: [ourRoles],
           conditions: {
             StringEquals: {
-              'iam:PassedToService': ['lambda.amazonaws.com', 'codebuild.amazonaws.com', 'codepipeline.amazonaws.com'],
+              'iam:PassedToService': [
+                'lambda.amazonaws.com',
+                'codebuild.amazonaws.com',
+                'codepipeline.amazonaws.com',
+                'states.amazonaws.com',
+              ],
             },
           },
         }),

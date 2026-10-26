@@ -13,15 +13,21 @@ the state machine and this module do explicitly:
   copies of it. "join" takes each branch's own field and appends the branches' new flags and model-call records, as
   the graph's reducers (operator.add on `flags` and `calls`) do.
 - Saving progress: Step Functions keeps each execution's state; there are no checkpoints of our own.
-- The reviewer: the state machine waits on a task token until the decision arrives, then "apply_review" validates it
-  and keeps earlier corrections (workflow.with_earlier_corrections, shared with the graph's human_review).
+- The reviewer: "await_review" leaves the execution's task token in the reviews table and the state machine waits
+  until someone sends the decision with it (SendTaskSuccess); "apply_review" then validates the decision and keeps
+  earlier corrections (workflow.with_earlier_corrections, shared with the graph's human_review). A Lambda task does
+  the waiting because Step Functions' DynamoDB integration can't wait for a task token.
 
 Logs carry the step, the application ID and the number of model calls, never applicant text (docs/data-handling.md).
 """
 
 import functools
 import logging
+import os
 import pathlib
+import time
+
+import boto3
 
 import applications
 import bedrock
@@ -77,6 +83,23 @@ def run(steps: workflow.Steps, step: str, state: ApplicationState, **extra) -> A
     raise ValueError(f"no step {step!r}")
 
 
+REVIEW_WAIT_SECONDS = 30 * 24 * 3600  # the state machine's own timeout for the wait: the data's 30 days
+
+
+@functools.cache
+def _reviews():
+    """The table where a waiting execution leaves its task token (infra/lib/step-functions-stack.ts)."""
+    return boto3.Session(region_name=bedrock.REGION).resource("dynamodb").Table(os.environ["REVIEWS_TABLE"])
+
+
+def await_review(application_id: str, task_token: str, now: float | None = None) -> None:
+    """Leave the execution's task token for whoever decides; the item expires with the wait."""
+    now = time.time() if now is None else now
+    _reviews().put_item(
+        Item={"application_id": application_id, "task_token": task_token, "ttl": int(now) + REVIEW_WAIT_SECONDS}
+    )
+
+
 @functools.cache
 def _steps() -> workflow.Steps:
     return workflow.bedrock_steps(bedrock.make_client())
@@ -93,6 +116,10 @@ def _with_local_return(state: ApplicationState, bucket: str) -> ApplicationState
 def handler(event: dict, context=None) -> dict:
     """{"step": ..., "state": {...}} -> the new state; "intake" takes {"application_id", "bucket"} instead."""
     step = event["step"]
+    if step == "await_review":  # the execution waits for SendTaskSuccess; this task's own result is ignored
+        await_review(applications.check_id(event["application_id"]), event["task_token"])
+        log.info("step", extra={"event": "step", "step": step, "application_id": event["application_id"]})
+        return {}
     if step == "intake":
         application_id = applications.check_id(event["application_id"])
         form, narrative, pdf = handlers._download(event["bucket"], application_id)

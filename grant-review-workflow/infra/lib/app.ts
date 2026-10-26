@@ -4,6 +4,7 @@ import { AccessStack, BOUNDARY_POLICY, PROJECT_TAG } from './access-stack';
 import { AuthStack } from './auth-stack';
 import { DataStack } from './data-stack';
 import { PipelineStack } from './pipeline-stack';
+import { StepFunctionsStack } from './step-functions-stack';
 import { UI_URL_PARAMETER, UiStack } from './ui-stack';
 import { WorkflowStack } from './workflow-stack';
 
@@ -54,6 +55,13 @@ export function buildApp(app: cdk.App, env: cdk.Environment): void {
     });
   }
 
+
+  // The same workflow on Step Functions, for the step 9 comparison: deployed by hand, never by the pipeline, and
+  // deleted after the comparison.
+  new StepFunctionsStack(app, 'GrantReviewStepFunctions', {
+    env,
+    description: 'grant-review-workflow: the workflow on Step Functions (step 9 comparison; temporary)',
+  });
 
   // Deploys the two stacks above on merge to main, after a person approves the diff (stage 6). Deployed once from a
   // laptop; it doesn't deploy itself.

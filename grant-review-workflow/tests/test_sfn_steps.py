@@ -147,3 +147,35 @@ def test_extract_downloads_the_return_again_in_a_fresh_container(lambda_env, tmp
 def test_an_unsafe_application_id_is_refused_at_intake(lambda_env):
     with pytest.raises(ValueError):
         sfn_steps.handler({"step": "intake", "application_id": "../x", "bucket": "intake"})
+
+
+class FakeTable:
+    def __init__(self):
+        self.items = []
+
+    def put_item(self, Item):  # noqa: N803 (boto3's name)
+        self.items.append(Item)
+
+
+def test_await_review_leaves_the_task_token_for_the_decider(monkeypatch, caplog):
+    table = FakeTable()
+    monkeypatch.setattr(sfn_steps, "_reviews", lambda: table)
+    with caplog.at_level("INFO", logger="grant_review"):
+        result = sfn_steps.handler({"step": "await_review", "application_id": "gp-027-sfn3", "task_token": "tok-123"})
+    assert result == {}  # the state's output is the decision SendTaskSuccess sends, not this
+    [item] = table.items
+    assert (item["application_id"], item["task_token"]) == ("gp-027-sfn3", "tok-123")
+    assert "tok-123" not in caplog.text  # the token is a credential for the execution: never logged
+
+
+def test_the_token_item_expires_with_the_wait(monkeypatch):
+    table = FakeTable()
+    monkeypatch.setattr(sfn_steps, "_reviews", lambda: table)
+    sfn_steps.await_review("gp-027", "tok", now=1_000_000)
+    assert table.items[0]["ttl"] == 1_000_000 + 30 * 24 * 3600
+
+
+def test_await_review_refuses_an_unsafe_id(monkeypatch):
+    monkeypatch.setattr(sfn_steps, "_reviews", lambda: FakeTable())
+    with pytest.raises(ValueError):
+        sfn_steps.handler({"step": "await_review", "application_id": "../x", "task_token": "t"})

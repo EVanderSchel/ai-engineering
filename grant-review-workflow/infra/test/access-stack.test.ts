@@ -13,7 +13,15 @@ buildApp(app, env); // the real app: all four stacks, boundary aspect included
 Validations.of(app).addPlugins(new AwsSolutionsChecks(app)); // an unacknowledged finding throws here
 app.synth();
 const templates = Object.fromEntries(
-  ['GrantReviewData', 'GrantReviewWorkflow', 'GrantReviewAuth', 'GrantReviewUi', 'GrantReviewPipeline', ACCESS_STACK].map(
+  [
+    'GrantReviewData',
+    'GrantReviewWorkflow',
+    'GrantReviewAuth',
+    'GrantReviewUi',
+    'GrantReviewStepFunctions',
+    'GrantReviewPipeline',
+    ACCESS_STACK,
+  ].map(
     (name) => [
     name,
     Template.fromStack(app.node.findChild(name) as any),
@@ -104,13 +112,20 @@ test('the guardrails deny removing the boundary, changing either policy, and cre
 
 test('every role in the deployable stacks carries the boundary', () => {
   let roles = 0;
-  for (const name of ['GrantReviewData', 'GrantReviewWorkflow', 'GrantReviewAuth', 'GrantReviewUi', 'GrantReviewPipeline']) {
+  for (const name of [
+    'GrantReviewData',
+    'GrantReviewWorkflow',
+    'GrantReviewAuth',
+    'GrantReviewUi',
+    'GrantReviewStepFunctions',
+    'GrantReviewPipeline',
+  ]) {
     for (const role of Object.values(templates[name].findResources('AWS::IAM::Role')) as any[]) {
       roles += 1;
       expect(JSON.stringify(role.Properties.PermissionsBoundary)).toContain(`policy/${BOUNDARY_POLICY}`);
     }
   }
-  expect(roles).toBe(10); // the three Lambda roles (the reviewer API's since step 8) and the pipeline's seven
+  expect(roles).toBe(12); // three Lambda roles, the pipeline's seven, and step 9's steps function and state machine
 });
 
 test('the access stack deploys with a person\'s credentials, never through the bootstrap roles', () => {
@@ -194,4 +209,21 @@ test('the deploy-time guardrails protect all three policies', () => {
   const guard = execution.find((s) => s.Sid === 'NeverChangeOurPolicies');
   expect(JSON.stringify(guard.Resource)).toContain(`policy/${EXECUTION_WEB_POLICY}`);
   expect(list(guard.Resource)).toHaveLength(3);
+});
+
+test('state machines: ours by name, and only Step Functions may be given our roles beyond the build services', () => {
+  const states = execution.find((s) => s.Sid === 'OurStateMachines');
+  expect(list(states.Resource).sort()).toEqual(
+    [
+      'arn:aws:states:us-east-2:111122223333:stateMachine:GrantReview*',
+      'arn:aws:states:us-east-2:111122223333:execution:GrantReview*:*',
+    ].sort(), // CDK sorts policy resources
+  );
+  const pass = execution.find((s) => s.Sid === 'PassOurRolesToOurServices');
+  expect(pass.Condition.StringEquals['iam:PassedToService']).toContain('states.amazonaws.com');
+});
+
+test('the Step Functions stack is never deployed by the pipeline', () => {
+  const builds = Object.values(templates.GrantReviewPipeline.findResources('AWS::CodeBuild::Project')) as any[];
+  expect(builds.map((b) => b.Properties.Source.BuildSpec).join('\n')).not.toContain('GrantReviewStepFunctions');
 });
