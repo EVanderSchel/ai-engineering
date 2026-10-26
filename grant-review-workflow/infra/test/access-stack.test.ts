@@ -13,7 +13,8 @@ buildApp(app, env); // the real app: all four stacks, boundary aspect included
 Validations.of(app).addPlugins(new AwsSolutionsChecks(app)); // an unacknowledged finding throws here
 app.synth();
 const templates = Object.fromEntries(
-  ['GrantReviewData', 'GrantReviewWorkflow', 'GrantReviewAuth', 'GrantReviewPipeline', ACCESS_STACK].map((name) => [
+  ['GrantReviewData', 'GrantReviewWorkflow', 'GrantReviewAuth', 'GrantReviewUi', 'GrantReviewPipeline', ACCESS_STACK].map(
+    (name) => [
     name,
     Template.fromStack(app.node.findChild(name) as any),
   ]),
@@ -47,6 +48,7 @@ test('nothing is allowed on every resource except account-level reads, condition
   expect(unscoped(execution).sort()).toEqual([
     'AccountLevelReads',
     'ApiAccessLogDelivery',
+    'CreateCloudFrontPieces',
     'CreateOurUserPool',
     'EncryptionThroughServices',
   ]);
@@ -101,7 +103,7 @@ test('the guardrails deny removing the boundary, changing either policy, and cre
 
 test('every role in the deployable stacks carries the boundary', () => {
   let roles = 0;
-  for (const name of ['GrantReviewData', 'GrantReviewWorkflow', 'GrantReviewAuth', 'GrantReviewPipeline']) {
+  for (const name of ['GrantReviewData', 'GrantReviewWorkflow', 'GrantReviewAuth', 'GrantReviewUi', 'GrantReviewPipeline']) {
     for (const role of Object.values(templates[name].findResources('AWS::IAM::Role')) as any[]) {
       roles += 1;
       expect(JSON.stringify(role.Properties.PermissionsBoundary)).toContain(`policy/${BOUNDARY_POLICY}`);
@@ -156,5 +158,25 @@ test('the boundary lets a role claim a status record and run our functions, noth
   expect([invoke.Action, invoke.Resource]).toEqual([
     'lambda:InvokeFunction',
     'arn:aws:lambda:us-east-2:111122223333:function:GrantReview*',
+  ]);
+});
+
+test("CloudFront: only the reviewer UI's kinds of resource in this account, and our function by name", () => {
+  const cf = execution.find((s) => s.Sid === 'OurCloudFront');
+  expect(list(cf.Resource).every((r: string) => r.startsWith('arn:aws:cloudfront::111122223333:'))).toBe(true);
+  expect(list(cf.Resource)).toContain('arn:aws:cloudfront::111122223333:function/GrantReview*');
+  const fn = Object.values(templates.GrantReviewUi.findResources('AWS::CloudFront::Function'))[0] as any;
+  expect(fn.Properties.Name).toBe('GrantReview-strip-api'); // what the policy allows
+  const ssmParams = execution.find((s) => s.Sid === 'OurParameters');
+  expect(ssmParams.Resource).toBe('arn:aws:ssm:us-east-2:111122223333:parameter/grant-review/*');
+});
+
+test('the CloudFront creates that need "*" are exactly the four that support no resource', () => {
+  const creates = execution.find((s) => s.Sid === 'CreateCloudFrontPieces');
+  expect([...creates.Action].sort()).toEqual([
+    'cloudfront:CreateCachePolicy',
+    'cloudfront:CreateFunction',
+    'cloudfront:CreateOriginAccessControl',
+    'cloudfront:CreateResponseHeadersPolicy',
   ]);
 });

@@ -186,6 +186,38 @@ export class AccessStack extends cdk.Stack {
           ],
           resources: ['*'],
         }),
+        // CloudFront (the reviewer UI, step 8): distributions, cache and header policies and origin access controls get
+        // generated IDs, and CloudFront's tag conditions don't cover them all, so these are scoped to the resource
+        // types in this account (it has no other CloudFront resources). The function is scoped by its name.
+        new iam.PolicyStatement({
+          sid: 'OurCloudFront',
+          actions: ['cloudfront:*'],
+          resources: [
+            `arn:aws:cloudfront::${a}:distribution/*`,
+            `arn:aws:cloudfront::${a}:origin-access-control/*`,
+            `arn:aws:cloudfront::${a}:cache-policy/*`,
+            `arn:aws:cloudfront::${a}:origin-request-policy/*`,
+            `arn:aws:cloudfront::${a}:response-headers-policy/*`,
+            `arn:aws:cloudfront::${a}:function/GrantReview*`,
+          ],
+        }),
+        new iam.PolicyStatement({
+          // Creating these has no resource to scope to (CloudFront supports no resource-level permissions for these
+          // creates); everything done to them afterwards is limited by OurCloudFront.
+          sid: 'CreateCloudFrontPieces',
+          actions: [
+            'cloudfront:CreateCachePolicy',
+            'cloudfront:CreateOriginAccessControl',
+            'cloudfront:CreateResponseHeadersPolicy',
+            'cloudfront:CreateFunction',
+          ],
+          resources: ['*'],
+        }),
+        new iam.PolicyStatement({
+          sid: 'OurParameters', // the UI's address, for the auth stack's callback URLs
+          actions: ['ssm:*'],
+          resources: [arn('ssm', 'parameter/grant-review/*')],
+        }),
         new iam.PolicyStatement({ sid: 'OurAlarmTopic', actions: ['sns:*'], resources: [arn('sns', 'GrantReview*')] }),
         new iam.PolicyStatement({
           sid: 'OurAlarms',
