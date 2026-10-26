@@ -124,6 +124,16 @@ export class AccessStack extends cdk.Stack {
           ],
         }),
         new iam.PolicyStatement({
+          sid: 'PublishTheUi', // the deploy build: the UI stacks' outputs, and its distribution's cached index.html
+          actions: ['cloudformation:DescribeStacks', 'cloudfront:CreateInvalidation'],
+          resources: [arn('cloudformation', 'stack/GrantReview*/*'), `arn:aws:cloudfront::${a}:distribution/*`],
+        }),
+        new iam.PolicyStatement({
+          sid: 'NotifyOurTopic', // the pipeline's approval requests
+          actions: ['sns:Publish'],
+          resources: [arn('sns', 'GrantReview*')],
+        }),
+        new iam.PolicyStatement({
           sid: 'AssumeBootstrapAndOurRoles', // the builds assume CDK's roles; the pipeline its action roles
           actions: ['sts:AssumeRole'],
           resources: [`arn:aws:iam::${a}:role/cdk-${QUALIFIER}-*`, ourRoles],

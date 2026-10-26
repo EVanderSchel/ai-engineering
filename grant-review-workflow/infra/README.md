@@ -1,12 +1,14 @@
 # grant-review-workflow infrastructure (CDK, TypeScript)
 
-Step 7: the workflow's AWS resources as code, in us-east-2. The account comes from the signed-in profile
+Steps 7 and 8: the workflow's and the reviewer UI's AWS resources as code, in us-east-2. The account comes from the signed-in profile
 (`CDK_DEFAULT_ACCOUNT`); no account ID is committed, and the app refuses to run without one.
 
 | Stack | What | Deployed by |
 |---|---|---|
-| `GrantReviewData` | Checkpoint table `grant-review-checkpoints`, intake bucket `grant-review-intake-<account>` | The pipeline |
-| `GrantReviewWorkflow` | `start` and `resume` functions (one image), upload rule, failed-applications queue | The pipeline |
+| `GrantReviewData` | Checkpoint table `grant-review-checkpoints`, status table `grant-review-applications`, intake bucket `grant-review-intake-<account>` | The pipeline |
+| `GrantReviewAuth` | Reviewers' user pool, the `reviewers` group, the UI's app client, the hosted sign-in page | The pipeline |
+| `GrantReviewWorkflow` | `start`, `resume` and reviewer API functions (one image), the HTTP API and its JWT authorizer, upload rule, failed-applications queue, alerts topic and alarm | The pipeline |
+| `GrantReviewUi` | The UI's bucket, the CloudFront distribution (`/api/*` to the API), security headers, the UI's address in SSM | The pipeline |
 | `GrantReviewPipeline` | GitHub connection, CodePipeline `grant-review-workflow` (Source, Diff, Approve, Deploy) | A person, once |
 | `GrantReviewCdkAccess` | The CDK execution policy and the permissions boundary | A person, with their own credentials |
 
@@ -22,7 +24,9 @@ npx cdk diff GrantReviewData GrantReviewWorkflow --exclusively
 
 **Deploys** happen in the pipeline: merge to main (touching `grant-review-workflow/`), read the Diff stage's
 `cdk diff` log, approve in the CodePipeline console, and the Deploy stage runs
-`cdk deploy GrantReviewData GrantReviewWorkflow --exclusively`. The pipeline and access stacks are deployed by hand
+`cdk deploy GrantReviewData GrantReviewAuth GrantReviewWorkflow GrantReviewUi --exclusively`, then publishes the UI
+(`npm run publish` in `ui/`). The approval request is emailed through the alerts topic (`GrantReview-alerts`) to
+whoever subscribed in the SNS console. The pipeline and access stacks are deployed by hand
 (`npx cdk deploy GrantReviewPipeline --exclusively`, `npx cdk deploy GrantReviewCdkAccess --exclusively`).
 
 **What deploys may do.** CloudFormation's execution role has only `grant-review-cdk-execution` and
@@ -44,3 +48,7 @@ detection was IN_SYNC; the next deploy turned on deletion protection and added t
 
 **The GitHub connection** was created pending and completed once in the console (CodePipeline, Settings,
 Connections), with the "AWS Connector for GitHub" app installed on this repository only.
+
+**The callback URL** of the UI's app client includes the deployed UI's address, which `GrantReviewUi` writes to the SSM
+parameter `/grant-review/reviewer-ui-url` and `GrantReviewAuth` reads when it deploys. A direct reference would be a
+cycle (UI -> API -> user pool -> UI). In a new account, deploy `GrantReviewAuth` once more after `GrantReviewUi` exists.

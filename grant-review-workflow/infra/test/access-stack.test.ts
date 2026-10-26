@@ -121,10 +121,10 @@ test('the access stack deploys with a person\'s credentials, never through the b
   expect(Object.keys(access.findResources('AWS::IAM::Role'))).toEqual([]);
 });
 
-test('the pipeline deploys only the data and workflow stacks', () => {
+test('the pipeline deploys every stack but the access stack', () => {
   const builds = Object.values(templates.GrantReviewPipeline.findResources('AWS::CodeBuild::Project')) as any[];
   const specs = builds.map((b) => b.Properties.Source.BuildSpec).join('\n');
-  expect(specs).toContain('GrantReviewData GrantReviewWorkflow --exclusively');
+  expect(specs).toContain('GrantReviewData GrantReviewAuth GrantReviewWorkflow GrantReviewUi --exclusively');
   expect(specs).not.toContain(ACCESS_STACK);
   expect(builds.map((b) => b.Properties.Name).sort()).toEqual(['grant-review-deploy', 'grant-review-diff']);
 });

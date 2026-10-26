@@ -49,6 +49,9 @@ export interface WorkflowStackProps extends cdk.StackProps {
   readonly runtime?: Runtime;
 }
 
+/** The alerts topic (owned here): alarms and the pipeline's approval requests go to it; people subscribe by hand. */
+export const ALERTS_TOPIC = 'GrantReview-alerts';
+
 /** The reviewer API's routes: what src/api.py's handler routes on (its route keys). */
 export const API_ROUTES: [apigw.HttpMethod, string][] = [
   [apigw.HttpMethod.GET, '/applications'],
@@ -219,7 +222,7 @@ export class WorkflowStack extends cdk.Stack {
     // A decision taken but not finished (src/api.py logs "resume_failed") emails whoever subscribes to this topic.
     // The subscription is made by hand, so the address isn't in the code.
     this.alerts = new sns.Topic(this, 'Alerts', {
-      topicName: 'GrantReview-alerts',
+      topicName: ALERTS_TOPIC,
       displayName: 'Grant review alerts',
       enforceSSL: true,
     });

@@ -153,7 +153,7 @@ Multiple funders or programs; applicants uploading documents themselves (packets
 
 ## Decisions
 
-Decisions 1-3 were made on 2026-10-19, decisions 4-15 on 2026-10-20, decisions 16-19 on 2026-10-21 to 2026-10-23.
+Decisions 1-3 were made on 2026-10-19, decisions 4-15 on 2026-10-20, decisions 16-19 on 2026-10-21 to 2026-10-23, decisions 20-24 on 2026-10-24 to 2026-10-26.
 
 1. **No fast track.** Every eligible application gets the same human review, sorted by priority. A lighter queue for strong, unflagged applications can come later, once the evals show the flags are reliable enough to lean on.
 2. **No "request more information" in v1.** Reviewers approve, decline, or correct a figure. The only pause is waiting for the reviewer.
@@ -174,6 +174,11 @@ Decisions 1-3 were made on 2026-10-19, decisions 4-15 on 2026-10-20, decisions 1
 17. **Traces with OpenTelemetry, in lite mode.** The X-Ray SDK is in maintenance mode, so the ADOT layer is unpacked into the image (pinned by checksum) and run in lite mode: botocore, requests and urllib3 instrumented, spans to X-Ray over UDP, no account-level settings changed. Spans and logs carry identifiers and numbers, never applicant text.
 18. **Deploys run in AWS, not GitHub Actions.** The project's service control policy denies IAM identity providers, so OIDC is impossible without irreversibly activating advanced features. CodePipeline with a CodeConnections GitHub App (no keys) gives the same shape: deploy on merge after a person approves the diff.
 19. **CloudFormation gets only what our deploys use.** The CDK execution policy is built from CloudTrail's record of the execution role's calls (a test keeps every recorded action allowed) and scoped to this project's names; roles may only be created with the permissions boundary, and the policies that set these limits are deployed by a person, never by the pipeline.
+20. **A status record per application for the queue.** Checkpoints are LangGraph's saved state, one thread per application, and can't answer "which applications are waiting?" without reading them all. After each run the handlers write a small record (no applicant text) to their own table with a `by-status` index; records expire with their checkpoints. The checkpoint library owns its table's key layout, so the records don't share it.
+21. **The API decides through Resume, after a claim.** The reviewer's identity comes from the access token and the time from the server; a conditional write (waiting -> deciding) lets exactly one decision through; the API invokes the Resume function rather than running the workflow, so the public-facing function holds no model or checkpoint-writing permissions. A decision taken but not finished (the letter step failed) is finished by a retry once the claim is stale, never replaced.
+22. **Reviewers sign in with Cognito, and the API checks the group.** Admin-only accounts, authenticator-app MFA, the code flow with PKCE, short tokens with rotating refresh. API Gateway's JWT authorizer checks the token (signature, issuer, app client, expiry) and the API checks membership of `reviewers`, for reading too: the evidence is applicant data. Deploys may create and change only the project's pools and can never create accounts, add group members or add identity providers.
+23. **One origin, a strict CSP.** CloudFront serves the UI and routes `/api/*` to the API, so the browser calls only its own origin: no CORS, one place for security headers. The CSP allows only the site's own scripts and calls to the site and Cognito; applicant text is rendered as text only.
+24. **Deploy permissions scoped by tag where IDs are generated, and split to fit.** User pools and HTTP APIs are created only with the project's tag and changed only when they carry it; CloudFront's kinds of resource are scoped to the account (it has no others) and the four creates that support no resource are listed alone. IAM's 6,144-character limit split the execution policy in two; a test keeps each half under 90% of it.
 
 ## Eval findings (step 5, 2026-10-20)
 
