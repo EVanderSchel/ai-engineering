@@ -7,7 +7,12 @@ import * as actions from 'aws-cdk-lib/aws-codepipeline-actions';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as sns from 'aws-cdk-lib/aws-sns';
 import { Construct } from 'constructs';
+import { ALERTS_TOPIC } from './workflow-stack';
+
+/** What the pipeline deploys (never GrantReviewCdkAccess: a person deploys that, with their own credentials). */
+export const DEPLOYED_STACKS = ['GrantReviewData', 'GrantReviewAuth', 'GrantReviewWorkflow', 'GrantReviewUi'];
 
 export interface PipelineStackProps extends cdk.StackProps {
   /** GitHub owner and repository the pipeline deploys from. */
@@ -25,6 +30,9 @@ export interface PipelineStackProps extends cdk.StackProps {
  * grant-review-workflow/, and then:
  *
  *   Source (GitHub) -> Diff (tests, synth, cdk diff) -> Approve (a person reads the diff) -> Deploy (cdk deploy)
+ *
+ * Since step 8 it deploys the reviewer UI's stacks too, then publishes the UI (ui/: npm run publish), and the
+ * approval request is emailed through the alerts topic to whoever subscribed.
  *
  * Python tests aren't repeated here: main only accepts merges whose GitHub Actions checks passed. The build roles
  * hold no deploy permissions of their own; they may only assume CDK's bootstrap roles, which do the deploying.
@@ -64,13 +72,17 @@ export class PipelineStack extends cdk.Stack {
       description: 'grant-review-workflow: infra tests, cdk synth and cdk diff (read by the approver)',
       privileged: false,
       // --exclusively: never pull in another stack (GrantReviewCdkAccess is deployed by a person only).
-      commands: ['npm test', 'npx cdk synth --strict', 'npx cdk diff GrantReviewData GrantReviewWorkflow --exclusively'],
+      commands: ['npm test', 'npx cdk synth --strict', `npx cdk diff ${DEPLOYED_STACKS.join(' ')} --exclusively`],
       assume: [bootstrapRole('lookup'), bootstrapRole('deploy')],
     });
     const deploy = this.cdkProject('Deploy', {
-      description: 'grant-review-workflow: cdk deploy of the data and workflow stacks',
+      description: 'grant-review-workflow: cdk deploy of the data, auth, workflow and UI stacks, then publish the UI',
       privileged: true, // builds the Lambda container image with Docker
-      commands: ['npx cdk deploy GrantReviewData GrantReviewWorkflow --exclusively --require-approval never'],
+      commands: [
+        `npx cdk deploy ${DEPLOYED_STACKS.join(' ')} --exclusively --require-approval never`,
+        // Build the UI with the deployed stacks' settings, upload it, invalidate CloudFront's index.html.
+        'cd ../ui && npm ci && npm run publish',
+      ],
       assume: [
         bootstrapRole('lookup'),
         bootstrapRole('deploy'),
@@ -78,6 +90,44 @@ export class PipelineStack extends cdk.Stack {
         bootstrapRole('image-publishing'),
       ],
     });
+    // Publishing the UI is the only thing the deploy build does with its own role: read the two stacks' outputs (the
+    // pool's IDs, the bucket, the distribution), upload to the UI's bucket, and invalidate the distribution's copy.
+    const ui = `grant-review-ui-${this.account}`;
+    deploy.addToRolePolicy(
+      new iam.PolicyStatement({
+        sid: 'PublishTheUi',
+        actions: ['s3:PutObject', 's3:ListBucket'],
+        resources: [`arn:aws:s3:::${ui}`, `arn:aws:s3:::${ui}/*`],
+      }),
+    );
+    deploy.addToRolePolicy(
+      new iam.PolicyStatement({
+        sid: 'ReadUiSettings',
+        actions: ['cloudformation:DescribeStacks'],
+        resources: ['GrantReviewAuth', 'GrantReviewUi'].map(
+          (s) => `arn:aws:cloudformation:${this.region}:${this.account}:stack/${s}/*`,
+        ),
+      }),
+    );
+    deploy.addToRolePolicy(
+      new iam.PolicyStatement({
+        sid: 'RefreshTheUi',
+        actions: ['cloudfront:CreateInvalidation'],
+        resources: [`arn:aws:cloudfront::${this.account}:distribution/*`], // the UI's: the account has no other
+      }),
+    );
+    for (const finding of [
+      `Resource::arn:aws:s3:::${ui}/*`,
+      ...['GrantReviewAuth', 'GrantReviewUi'].map(
+        (s) => `Resource::arn:aws:cloudformation:${this.region}:${this.account}:stack/${s}/*`,
+      ),
+      `Resource::arn:aws:cloudfront::${this.account}:distribution/*`,
+    ]) {
+      Validations.of(deploy).acknowledge({
+        id: `AwsSolutions-IAM5[${finding}]`,
+        reason: 'Publishing the UI: its files (names change each build), the two stacks\' outputs, its distribution.',
+      });
+    }
 
     const source = new codepipeline.Artifact('Source');
     const sourceAction = new actions.CodeStarConnectionsSourceAction({
@@ -115,6 +165,12 @@ export class PipelineStack extends cdk.Stack {
               actionName: 'Approve',
               additionalInformation:
                 'Read the Diff stage log (cdk diff) before approving: it lists every resource this deploy changes.',
+              // Emailed to whoever subscribed to the alerts topic (the workflow stack owns it).
+              notificationTopic: sns.Topic.fromTopicArn(
+                this,
+                'Alerts',
+                `arn:aws:sns:${this.region}:${this.account}:${ALERTS_TOPIC}`,
+              ),
             }),
           ],
         },

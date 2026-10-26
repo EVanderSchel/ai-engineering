@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib/core';
 import { Validations } from 'aws-cdk-lib';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 export const REVIEWERS_GROUP = 'reviewers';
@@ -10,6 +11,12 @@ export interface AuthStackProps extends cdk.StackProps {
   readonly domainPrefix: string;
   /** Where the sign-in page may send a reviewer back to: the UI's address, exactly (scheme, host, port, path). */
   readonly callbackUrls: string[];
+  /**
+   * An SSM parameter holding the deployed UI's address (UiStack writes it), added to the callback URLs. Read when this
+   * stack deploys, not when CDK builds it: the UI stack needs the API, the API needs this pool, so a direct reference
+   * would be a cycle. In a new account, deploy this stack once more after the UI stack exists.
+   */
+  readonly uiUrlParameter?: string;
 }
 
 /**
@@ -30,9 +37,16 @@ export class AuthStack extends cdk.Stack {
   readonly userPool: cognito.UserPool;
   readonly client: cognito.UserPoolClient;
   readonly domain: cognito.UserPoolDomain;
+  /** <prefix>.auth.<region>.amazoncognito.com: the hosted sign-in page, token and logout endpoints. */
+  readonly signInDomain: string;
 
   constructor(scope: Construct, id: string, props: AuthStackProps) {
     super(scope, id, props);
+    this.signInDomain = `${props.domainPrefix}.auth.${this.region}.amazoncognito.com`;
+    const callbackUrls = [
+      ...props.callbackUrls,
+      ...(props.uiUrlParameter ? [ssm.StringParameter.valueForStringParameter(this, props.uiUrlParameter)] : []),
+    ];
 
     this.userPool = new cognito.UserPool(this, 'Reviewers', {
       userPoolName: 'grant-review-reviewers',
@@ -80,8 +94,8 @@ export class AuthStack extends cdk.Stack {
       oAuth: {
         flows: { authorizationCodeGrant: true },
         scopes: [cognito.OAuthScope.OPENID, cognito.OAuthScope.EMAIL],
-        callbackUrls: props.callbackUrls,
-        logoutUrls: props.callbackUrls,
+        callbackUrls,
+        logoutUrls: callbackUrls,
       },
       supportedIdentityProviders: [cognito.UserPoolClientIdentityProvider.COGNITO],
       accessTokenValidity: cdk.Duration.minutes(15),
@@ -113,8 +127,6 @@ export class AuthStack extends cdk.Stack {
     // What the UI needs to send reviewers to the sign-in page: identifiers, not secrets.
     new cdk.CfnOutput(this, 'UserPoolId', { value: this.userPool.userPoolId });
     new cdk.CfnOutput(this, 'ClientId', { value: this.client.userPoolClientId });
-    new cdk.CfnOutput(this, 'SignInDomain', {
-      value: `${props.domainPrefix}.auth.${this.region}.amazoncognito.com`,
-    });
+    new cdk.CfnOutput(this, 'SignInDomain', { value: this.signInDomain });
   }
 }

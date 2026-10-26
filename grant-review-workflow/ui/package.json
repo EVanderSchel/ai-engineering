@@ -11,7 +11,8 @@
     "dev:api": "vite --mode api",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
-    "types": "node scripts/types.mjs"
+    "types": "node scripts/types.mjs",
+    "publish": "node scripts/publish.mjs"
   },
   "dependencies": {
     "oidc-client-ts": "^3.5.0",

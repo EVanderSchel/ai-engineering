@@ -73,8 +73,9 @@ test('the build roles can only assume CDK bootstrap roles, the deploy one a few 
     ].sort(),
   );
   for (const prefix of ['DiffRole', 'DeployRole']) {
-    const text = JSON.stringify(roleStatements(prefix));
-    expect(text).not.toMatch(/"(cloudformation|lambda|dynamodb|iam):/); // nothing that deploys directly
+    // Nothing that deploys directly. The deploy build may only *describe* the UI's two stacks (to publish the UI).
+    const text = JSON.stringify(roleStatements(prefix)).replace(/"cloudformation:DescribeStacks"/g, '');
+    expect(text).not.toMatch(/"(cloudformation|lambda|dynamodb|iam):/);
   }
 });
 
@@ -91,4 +92,25 @@ test('only the deploy build runs Docker', () => {
 
 test('every cdk-nag finding is fixed or acknowledged with a reason', () => {
   expect(stack).toBeDefined(); // the synth above throws on an unacknowledged finding
+});
+
+test('the deploy build publishes the UI after deploying, with only what publishing needs', () => {
+  const deploy = Object.values(template.findResources('AWS::CodeBuild::Project')).find(
+    (p: any) => p.Properties.Name === 'grant-review-deploy',
+  ) as any;
+  const spec = deploy.Properties.Source.BuildSpec;
+  expect(spec.indexOf('npx cdk deploy')).toBeLessThan(spec.indexOf('npm run publish'));
+  const own = roleStatements('DeployRole').filter((s) => s.Sid !== 'AssumeCdkBootstrapRoles' && s.Sid);
+  const bySid = Object.fromEntries(own.map((s) => [s.Sid, s]));
+  expect([bySid.PublishTheUi.Action].flat().sort()).toEqual(['s3:ListBucket', 's3:PutObject']);
+  expect(JSON.stringify(bySid.PublishTheUi.Resource)).toContain('grant-review-ui-111122223333');
+  expect(bySid.ReadUiSettings.Action).toBe('cloudformation:DescribeStacks');
+  expect(bySid.RefreshTheUi.Action).toBe('cloudfront:CreateInvalidation');
+  expect(JSON.stringify(own)).not.toMatch(/s3:Delete|cloudfront:(Update|Delete|Create(?!Invalidation))/);
+});
+
+test('approval requests are emailed through the alerts topic', () => {
+  const pipeline = Object.values(template.findResources('AWS::CodePipeline::Pipeline'))[0] as any;
+  const approve = pipeline.Properties.Stages.find((s: any) => s.Name === 'Approve').Actions[0];
+  expect(JSON.stringify(approve.Configuration.NotificationArn)).toContain(':GrantReview-alerts');
 });

@@ -5,7 +5,7 @@ import { Template } from 'aws-cdk-lib/assertions';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { testApp } from './app';
 import { ACCESS_STACK, buildApp } from '../lib/app';
-import { BOUNDARY_POLICY, EXECUTION_POLICY } from '../lib/access-stack';
+import { BOUNDARY_POLICY, EXECUTION_POLICY, EXECUTION_WEB_POLICY } from '../lib/access-stack';
 
 const env = { account: '111122223333', region: 'us-east-2' };
 const app = testApp();
@@ -13,7 +13,8 @@ buildApp(app, env); // the real app: all four stacks, boundary aspect included
 Validations.of(app).addPlugins(new AwsSolutionsChecks(app)); // an unacknowledged finding throws here
 app.synth();
 const templates = Object.fromEntries(
-  ['GrantReviewData', 'GrantReviewWorkflow', 'GrantReviewAuth', 'GrantReviewPipeline', ACCESS_STACK].map((name) => [
+  ['GrantReviewData', 'GrantReviewWorkflow', 'GrantReviewAuth', 'GrantReviewUi', 'GrantReviewPipeline', ACCESS_STACK].map(
+    (name) => [
     name,
     Template.fromStack(app.node.findChild(name) as any),
   ]),
@@ -26,7 +27,8 @@ const policy = (name: string): any[] => {
   ) as any;
   return found.Properties.PolicyDocument.Statement;
 };
-const execution = policy(EXECUTION_POLICY);
+// The role gets both halves of the execution policy: every check below is on what it can do with both.
+const execution = [...policy(EXECUTION_POLICY), ...policy(EXECUTION_WEB_POLICY)];
 const boundary = policy(BOUNDARY_POLICY);
 const list = (v: any) => [v].flat();
 const allows = (statements: any[], action: string) =>
@@ -47,6 +49,7 @@ test('nothing is allowed on every resource except account-level reads, condition
   expect(unscoped(execution).sort()).toEqual([
     'AccountLevelReads',
     'ApiAccessLogDelivery',
+    'CreateCloudFrontPieces',
     'CreateOurUserPool',
     'EncryptionThroughServices',
   ]);
@@ -101,7 +104,7 @@ test('the guardrails deny removing the boundary, changing either policy, and cre
 
 test('every role in the deployable stacks carries the boundary', () => {
   let roles = 0;
-  for (const name of ['GrantReviewData', 'GrantReviewWorkflow', 'GrantReviewAuth', 'GrantReviewPipeline']) {
+  for (const name of ['GrantReviewData', 'GrantReviewWorkflow', 'GrantReviewAuth', 'GrantReviewUi', 'GrantReviewPipeline']) {
     for (const role of Object.values(templates[name].findResources('AWS::IAM::Role')) as any[]) {
       roles += 1;
       expect(JSON.stringify(role.Properties.PermissionsBoundary)).toContain(`policy/${BOUNDARY_POLICY}`);
@@ -118,10 +121,10 @@ test('the access stack deploys with a person\'s credentials, never through the b
   expect(Object.keys(access.findResources('AWS::IAM::Role'))).toEqual([]);
 });
 
-test('the pipeline deploys only the data and workflow stacks', () => {
+test('the pipeline deploys every stack but the access stack', () => {
   const builds = Object.values(templates.GrantReviewPipeline.findResources('AWS::CodeBuild::Project')) as any[];
   const specs = builds.map((b) => b.Properties.Source.BuildSpec).join('\n');
-  expect(specs).toContain('GrantReviewData GrantReviewWorkflow --exclusively');
+  expect(specs).toContain('GrantReviewData GrantReviewAuth GrantReviewWorkflow GrantReviewUi --exclusively');
   expect(specs).not.toContain(ACCESS_STACK);
   expect(builds.map((b) => b.Properties.Name).sort()).toEqual(['grant-review-deploy', 'grant-review-diff']);
 });
@@ -157,4 +160,38 @@ test('the boundary lets a role claim a status record and run our functions, noth
     'lambda:InvokeFunction',
     'arn:aws:lambda:us-east-2:111122223333:function:GrantReview*',
   ]);
+});
+
+test("CloudFront: only the reviewer UI's kinds of resource in this account, and our function by name", () => {
+  const cf = execution.find((s) => s.Sid === 'OurCloudFront');
+  expect(list(cf.Resource).every((r: string) => r.startsWith('arn:aws:cloudfront::111122223333:'))).toBe(true);
+  expect(list(cf.Resource)).toContain('arn:aws:cloudfront::111122223333:function/GrantReview*');
+  const fn = Object.values(templates.GrantReviewUi.findResources('AWS::CloudFront::Function'))[0] as any;
+  expect(fn.Properties.Name).toBe('GrantReview-strip-api'); // what the policy allows
+  const ssmParams = execution.find((s) => s.Sid === 'OurParameters');
+  expect(ssmParams.Resource).toBe('arn:aws:ssm:us-east-2:111122223333:parameter/grant-review/*');
+});
+
+test('the CloudFront creates that need "*" are exactly the four that support no resource', () => {
+  const creates = execution.find((s) => s.Sid === 'CreateCloudFrontPieces');
+  expect([...creates.Action].sort()).toEqual([
+    'cloudfront:CreateCachePolicy',
+    'cloudfront:CreateFunction',
+    'cloudfront:CreateOriginAccessControl',
+    'cloudfront:CreateResponseHeadersPolicy',
+  ]);
+});
+
+test('each managed policy stays well under IAM\'s 6,144-character limit', () => {
+  // IAM counts the policy without whitespace. The limit failed a deploy once (step 8): keep 10% headroom.
+  for (const name of [EXECUTION_POLICY, EXECUTION_WEB_POLICY, BOUNDARY_POLICY]) {
+    const size = JSON.stringify({ Version: '2012-10-17', Statement: policy(name) }).replace(/\s/g, '').length;
+    expect([name, size < 6144 * 0.9]).toEqual([name, true]);
+  }
+});
+
+test('the deploy-time guardrails protect all three policies', () => {
+  const guard = execution.find((s) => s.Sid === 'NeverChangeOurPolicies');
+  expect(JSON.stringify(guard.Resource)).toContain(`policy/${EXECUTION_WEB_POLICY}`);
+  expect(list(guard.Resource)).toHaveLength(3);
 });

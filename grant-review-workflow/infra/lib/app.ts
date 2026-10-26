@@ -4,6 +4,7 @@ import { AccessStack, BOUNDARY_POLICY, PROJECT_TAG } from './access-stack';
 import { AuthStack } from './auth-stack';
 import { DataStack } from './data-stack';
 import { PipelineStack } from './pipeline-stack';
+import { UI_URL_PARAMETER, UiStack } from './ui-stack';
 import { WorkflowStack } from './workflow-stack';
 
 export const ACCESS_STACK = 'GrantReviewCdkAccess';
@@ -27,6 +28,7 @@ export function buildApp(app: cdk.App, env: cdk.Environment): void {
     env,
     domainPrefix: 'prairie-commons-review',
     callbackUrls: ['http://localhost:5174/'], // `npm run dev:api`
+    uiUrlParameter: UI_URL_PARAMETER, // and the deployed UI (GrantReviewUi)
     terminationProtection: true,
     description: 'grant-review-workflow: reviewer accounts and the UI sign-in',
   });
@@ -42,6 +44,14 @@ export function buildApp(app: cdk.App, env: cdk.Environment): void {
         'grant-review-workflow: start, resume and reviewer API functions, the API, upload rule, failed-applications queue',
     });
     workflow.addStackDependency(data); // the bucket is named, not referenced, so state the order explicitly
+
+    // The reviewer UI on the web: its bucket and the CloudFront distribution in front of it and the API (step 8).
+    new UiStack(app, 'GrantReviewUi', {
+      env,
+      api: workflow.httpApi,
+      signInDomain: auth.signInDomain,
+      description: 'grant-review-workflow: the reviewer UI (S3 + CloudFront, /api to the reviewer API)',
+    });
   }
 
 

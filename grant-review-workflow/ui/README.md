@@ -52,5 +52,16 @@ cd ui; npm run types
 `tests/test_ui_contract.py` (Python) fails when the schema or fixtures are stale, and `src/api/types.test.ts`
 fails when the types are.
 
+**On AWS** the UI is served by CloudFront (the `GrantReviewUi` stack's `ReviewerUiUrl` output), which also sends
+`/api/*` to the reviewer API. The pipeline publishes it after each deploy; by hand, after deploying the stacks:
+
+```powershell
+cd grant-review-workflow/ui
+$env:AWS_PROFILE = "agent-toolkit"; npm run publish
+```
+
+It reads the stacks' outputs, builds with the production settings (`VITE_API_URL=/api/` and the pool's IDs, so no
+fixtures), uploads the hashed assets (cached a year) and `index.html` (never cached), and invalidates CloudFront's copy.
+
 **Applicant text** (the form, the narrative, quotes from it) is rendered by React as text, never as HTML or markdown.
 `src/App.test.tsx` checks that a narrative hiding an instruction in an HTML comment shows it as plain text.

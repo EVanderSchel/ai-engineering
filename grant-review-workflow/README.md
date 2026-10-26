@@ -25,7 +25,7 @@ Rules: only public IRS data and ProPublica's JSON API (as in Project 3). Applica
 | 6 | Safety: prompt injection in applicant narratives, Bedrock Guardrails vs. code checks, PII handling, least-privilege roles per step *(done)* | Governance for untrusted and sensitive input |
 | 6.5 | The name check on new data: compare the form's name with the return's own, read the name and title as untrusted, 20 held-out packets scored once *(done)* | Measuring a fix found on test without tuning on test |
 | 7 | Infrastructure as code with CDK (TypeScript): S3 uploads trigger the workflow on Lambda (AgentCore considered), DynamoDB adopted with `cdk import`, a role per function, OpenTelemetry traces, approval-gated deploys through CodePipeline (GitHub OIDC is blocked here), a narrowed CDK execution policy and a permissions boundary *(done)* | IaC, event-driven design, AWS |
-| 8 | Reviewer UI in React + TypeScript: queue, evidence with citations, approve or override (which resumes the workflow) | Full-stack delivery |
+| 8 | Reviewer UI in React + TypeScript: queue, evidence, approve, decline or correct (resumes the workflow), Cognito sign-in with MFA, behind CloudFront with a JWT-authorized API *(done)* | Full-stack delivery |
 | 9 | *(Optional)* The same workflow on Step Functions, compared on evidence | Framework vs. AWS-native orchestration |
 | Final | Held-out test split scored once; cost report; release `grant-review-workflow-v1.0.0` | |
 
@@ -65,6 +65,31 @@ uv run python src/bedrock.py   # one small call per model: access, structured ou
 | Haiku 4.5 | 164/165 | 15/15 | 1 | $0.0056 | 2.5 s |
 
 Haiku's one error (gp-036's total revenue read as $51,306, not $51,308) was caught by the form's own arithmetic, the only return where revenue didn't add up, so it would reach a reviewer as a flag. It also sat $1,306 above the fund's $50,000 revenue minimum: a digit misread near a threshold is how a wrong automatic decline would happen. **Extract uses Sonnet 4.6**: the saving from Haiku is about a cent per application. One run on 15 returns is a small sample; step 5 repeats it.
+
+## Step 8: the reviewer UI
+
+Reviewers now work in a web page: sign in, see the applications waiting for them with the evidence for each, and approve, decline or correct the figures. The page is React and TypeScript ([ui/](ui/)), on AWS behind CloudFront, and every request it makes is checked twice: by API Gateway (is this a valid sign-in?) and by our code (is this person a reviewer?).
+
+```
+browser --> CloudFront --/*------> S3 bucket (the built UI; only CloudFront can read it)
+                       --/api/*--> API Gateway (JWT authorizer: the reviewers' Cognito pool)
+                                     --> API function --reads--> checkpoints, status records
+                                                      --claims a record, then runs--> Resume (Lambda)
+sign-in: Cognito's hosted page (code flow with PKCE, authenticator-app MFA)
+```
+
+- **The queue** (decision 20): after each run the workflow writes one small status record per application (`src/applications.py`, table `grant-review-applications`); the queue is one query on its `by-status` index. The evidence for one application comes from its checkpoints, read by a graph whose model steps refuse to run (`workflow.reader`): looking never calls a model or moves an application on.
+- **Deciding** (decision 21): the reviewer approves or declines with a reason (quoted in the letter), or corrects figures read from the return, which sends the application back through the fund's rules. Who decided comes from the sign-in and when from the server, never from the request. A conditional write claims the application first, so a double click or a second reviewer gets "already being decided". The API function holds no model permissions: it hands the decision to the Resume function. If the letter step fails after the decision went in, a later retry finishes the run, and an alarm emails the alerts topic.
+- **Signing in** (decision 22): a Cognito user pool. Accounts are created by an administrator only; an authenticator app is required; tokens last 15 minutes and refresh for 12 hours (rotated, revocable); signing out revokes them and ends Cognito's own session. The UI uses oidc-client-ts (authorization code with PKCE, tokens in sessionStorage).
+- **One address** (decision 23): CloudFront serves the app and sends `/api/*` to the API (a CloudFront Function strips the prefix), so there's no CORS. Every response carries a strict Content-Security-Policy (the page runs only its own scripts and calls only its own origin and Cognito), HSTS and no-framing headers. Applicant text is only ever shown as text: a test checks that an instruction hidden in an HTML comment appears as plain text.
+- **Deploys** (decision 24): the pipeline deploys the data, auth, workflow and UI stacks, then builds and publishes the UI (`npm run publish`), and emails its approval request through the alerts topic. The deploy permissions grew with each piece, so new resource kinds with generated IDs (user pools, HTTP APIs) are scoped by the project's tag, and the execution policy is split in two to stay under IAM's size limit.
+- **Locally**, without AWS: `npm run dev` shows the dev packets as fixtures made by the real API code; `npm run dev:api` runs against `tests/local_api.py`, a stand-in for API Gateway and the functions that checks real Cognito tokens when the pool is configured. The TypeScript types are generated from the API's Pydantic models, and tests on both sides fail when they drift.
+
+**Found on the way:**
+- IAM managed policies hold 6,144 characters: the execution policy outgrew it (a deploy failed and rolled back), now two policies with a test keeping each under 90% of the limit.
+- A pipeline deploy from `main` ran at the same moment as a deploy from the branch and dropped the new status table from its stack (the table, retained, survived as an orphan). Never let a `main` deploy overlap a branch deploy; merge soon after deploying from a branch.
+- CloudFront's create calls for cache policies, origin access controls, header policies and functions support no resource-level permissions (found with IAM's policy simulator before deploying); `grantInvoke` allows a function's versions and aliases too (cdk-nag); in development mode React ran the sign-in callback twice and exchanged the code twice.
+- Idle cost: about $0 a month (CloudFront's and Cognito's free tiers, on-demand tables, an alarm at $0.10).
 
 ## Step 7: on AWS, as code
 
@@ -269,7 +294,8 @@ v1's focus misses were boundaries in the prompt's own definitions (home help as 
 - `tests/`: unit tests, no network and no AWS calls (Bedrock calls are checked against Bedrock's API definition with botocore's Stubber).
 - `docs/design.md`: the design: fund rules, steps, state, principles, metrics, gold set plan.
 - `docs/data-handling.md`: where application data goes, how long it stays, and the rules (step 6).
-- `infra/`: the CDK app (TypeScript): data, workflow, pipeline and access stacks, with jest tests and cdk-nag. See its README.
+- `infra/`: the CDK app (TypeScript): data, auth, workflow, UI, pipeline and access stacks, with jest tests and cdk-nag. See its README.
+- `ui/`: the reviewer UI (React, TypeScript, Vite), with its own tests. See its README.
 - `Dockerfile`: the Lambda container image (step 7).
 - `data/filings/`: answer keys of the 60 real Form 990s, copied from Project 2 by `src/import_filings.py`.
 - `data/gold/`: the 40 application packets (`src/build_gold.py` writes forms, specs and labels; narratives are written and approved separately) and the 20 held-out packets of step 6.5 (`src/build_holdout.py`). See its README.
