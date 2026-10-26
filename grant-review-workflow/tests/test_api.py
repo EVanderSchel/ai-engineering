@@ -47,13 +47,27 @@ def run(monkeypatch):
     return wire(monkeypatch, right_answers())
 
 
-def get(path, **query):
+REVIEWER = "reviewer@example.org"
+# The claims API Gateway passes from a reviewer's access token: a list claim arrives as text.
+CLAIMS = {"username": REVIEWER, "cognito:groups": "[reviewers]", "token_use": "access"}
+
+
+def signed_in(claims=CLAIMS) -> dict:
+    return {"requestContext": {"authorizer": {"jwt": {"claims": claims}}}} if claims else {}
+
+
+def get(path, claims=CLAIMS, **query):
     """A request as an API Gateway HTTP API delivers it (payload format 2.0)."""
     route, params = path, None
     if path.startswith("/applications/"):
         route, params = "/applications/{application_id}", {"application_id": path.removeprefix("/applications/")}
     response = api.handler(
-        {"routeKey": f"GET {route}", "pathParameters": params, "queryStringParameters": query or None}
+        {
+            "routeKey": f"GET {route}",
+            "pathParameters": params,
+            "queryStringParameters": query or None,
+            **signed_in(claims),
+        }
     )
     assert response["headers"]["content-type"] == "application/json"
     return response["statusCode"], json.loads(response["body"])
@@ -125,9 +139,8 @@ def test_an_unsafe_id_is_refused(run, application_id):
 
 
 def test_an_unknown_route_is_not_found(run):
-    response = api.handler(
-        {"routeKey": "DELETE /applications/{application_id}", "pathParameters": {"application_id": "a"}}
-    )
+    event = {"routeKey": "DELETE /applications/{application_id}", "pathParameters": {"application_id": "a"}}
+    response = api.handler({**event, **signed_in()})
     assert response["statusCode"] == 404
 
 
@@ -144,19 +157,17 @@ def test_the_log_line_has_no_applicant_text(run, tmp_path, caplog):
 
 # --- Decisions (stage 3) ----------------------------------------------------------------------------------------
 
-REVIEWER = "reviewer@example.org"
 APPROVE = {"decision": "approve", "corrections": {}, "reason": "Clear outcomes and a realistic budget."}
 
 
-def post_decision(application_id, body, email=REVIEWER):
+def post_decision(application_id, body, claims=CLAIMS):
     """A decision as API Gateway delivers it, with the claims its JWT authorizer verified (none: not signed in)."""
-    claims = {"requestContext": {"authorizer": {"jwt": {"claims": {"email": email}}}}} if email else {}
     response = api.handler(
         {
             "routeKey": "POST /applications/{application_id}/decision",
             "pathParameters": {"application_id": application_id},
             "body": body if isinstance(body, str) else json.dumps(body),
-            **claims,
+            **signed_in(claims),
         }
     )
     return response["statusCode"], json.loads(response["body"])
@@ -177,7 +188,7 @@ def test_the_reviewer_and_time_come_from_the_sign_in_and_the_server_never_the_bo
     start(application("gp-027", tmp_path))
     status, body = post_decision("gp-027", {**APPROVE, "reviewer": "someone-else@example.org"})
     assert status == 400 and "reviewer: Extra inputs are not permitted" in body["error"]
-    assert post_decision("gp-027", APPROVE, email=None) == (401, {"error": "sign in to decide"})
+    assert post_decision("gp-027", APPROVE, claims=None) == (401, {"error": "sign in first"})
     before = dt.datetime.now(dt.UTC)
     decided_at = dt.datetime.fromisoformat(post_decision("gp-027", APPROVE)[1]["review"]["decided_at"])
     assert before <= decided_at <= dt.datetime.now(dt.UTC)
@@ -276,3 +287,41 @@ def test_the_resume_function_is_invoked_with_the_decision_and_its_errors_raise(m
     with pytest.raises(api.ResumeFailed, match="^ValueError$"):
         api._resume({"application_id": "gp-027", "decision": {}})
     assert calls == [("GrantReviewWorkflow-Resume", {"application_id": "gp-027", "decision": {}})]
+
+
+# --- Sign-in (stage 4) ------------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("path", ["/applications", "/applications/gp-027"])
+def test_reading_needs_a_signed_in_reviewer(run, tmp_path, path):
+    start, _ = run
+    start(application("gp-027", tmp_path))
+    assert get(path, claims=None) == (401, {"error": "sign in first"})
+    outsider = {**CLAIMS, "cognito:groups": "[admins]"}
+    assert get(path, claims=outsider) == (403, {"error": "only reviewers can see or decide applications"})
+    no_groups = {k: v for k, v in CLAIMS.items() if k != "cognito:groups"}
+    assert get(path, claims=no_groups)[0] == 403
+    assert get(path)[0] == 200
+
+
+def test_only_a_reviewer_can_decide(run, tmp_path):
+    start, _ = run
+    start(application("gp-027", tmp_path))
+    assert post_decision("gp-027", APPROVE, claims={**CLAIMS, "cognito:groups": "[]"})[0] == 403
+    assert get("/applications/gp-027")[1]["record"]["status"] == "waiting_for_review"  # nothing claimed
+
+
+@pytest.mark.parametrize(
+    "value, groups",
+    [
+        ("[reviewers]", {"reviewers"}),
+        ("[admins reviewers]", {"admins", "reviewers"}),
+        ('["admins","reviewers"]', {"admins", "reviewers"}),
+        (["reviewers"], {"reviewers"}),
+        ("[]", set()),
+        (None, set()),
+        ("[reviewers-old]", {"reviewers-old"}),  # a group whose name only starts with "reviewers" doesn't count
+    ],
+)
+def test_groups_are_read_however_the_claim_arrives(value, groups):
+    assert api._groups(value) == groups

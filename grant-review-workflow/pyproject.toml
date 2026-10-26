@@ -24,6 +24,7 @@ dev = [
     # Reads the credentials `aws login` stores locally; deployed code uses an IAM role and doesn't need it.
     "botocore[crt]>=1.43.115",
     "opentelemetry-sdk>=1.44,<2",
+    "pyjwt[crypto]>=2.15,<3",
     "pytest>=9.0",
     { include-group = "lint" },
 ]

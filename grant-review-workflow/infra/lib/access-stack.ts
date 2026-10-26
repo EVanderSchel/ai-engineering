@@ -6,6 +6,8 @@ import { Construct } from 'constructs';
 /** Names the other stacks and the bootstrap refer to: fixed, so nothing has to look them up. */
 export const BOUNDARY_POLICY = 'grant-review-workload-boundary';
 export const EXECUTION_POLICY = 'grant-review-cdk-execution';
+/** The tag every resource of the project carries (app.ts). Resources with generated IDs are scoped by it. */
+export const PROJECT_TAG = { key: 'project', value: 'grant-review-workflow' };
 const QUALIFIER = 'hnb659fds'; // cdk bootstrap's default
 
 /**
@@ -138,6 +140,20 @@ export class AccessStack extends cdk.Stack {
           actions: ['codeconnections:*', 'codestar-connections:*'],
           resources: [arn('codeconnections', 'connection/*'), arn('codestar-connections', 'connection/*')],
         }),
+        // User pools get generated IDs (us-east-2_AbC123), so they're scoped by the project tag instead of a name:
+        // a pool may only be created tagged as ours, and only pools tagged as ours may be changed.
+        new iam.PolicyStatement({
+          sid: 'CreateOurUserPool', // CreateUserPool has no resource to scope to before the pool exists
+          actions: ['cognito-idp:CreateUserPool'],
+          resources: ['*'],
+          conditions: { StringEquals: { [`aws:RequestTag/${PROJECT_TAG.key}`]: PROJECT_TAG.value } },
+        }),
+        new iam.PolicyStatement({
+          sid: 'OurUserPools',
+          actions: ['cognito-idp:*'],
+          resources: [arn('cognito-idp', 'userpool/*')],
+          conditions: { StringEquals: { [`aws:ResourceTag/${PROJECT_TAG.key}`]: PROJECT_TAG.value } },
+        }),
         new iam.PolicyStatement({
           sid: 'PullTheLambdaImage', // CreateFunction checks the caller can read the image
           actions: ['ecr:BatchGetImage', 'ecr:GetDownloadUrlForLayer'],
@@ -171,6 +187,7 @@ export class AccessStack extends cdk.Stack {
             'logs:DescribeResourcePolicies',
             'logs:DescribeIndexPolicies',
             'iam:GetAccountSummary',
+            'cognito-idp:DescribeUserPoolDomain', // looked up by domain name, not by pool
           ],
           resources: ['*'],
         }),
@@ -236,6 +253,26 @@ export class AccessStack extends cdk.Stack {
             'iam:UntagPolicy',
           ],
           resources: [boundaryArn, executionArn],
+        }),
+        new iam.PolicyStatement({
+          // Reviewer accounts are managed by people, never by deploys: a merged template must not be able to add an
+          // account to the reviewers group, set a password, or let identities from another provider sign in.
+          sid: 'NeverManageReviewerAccounts',
+          effect: iam.Effect.DENY,
+          actions: [
+            'cognito-idp:AdminCreateUser',
+            'cognito-idp:AdminAddUserToGroup',
+            'cognito-idp:AdminSetUserPassword',
+            'cognito-idp:AdminResetUserPassword',
+            'cognito-idp:AdminUpdateUserAttributes',
+            'cognito-idp:AdminConfirmSignUp',
+            'cognito-idp:AdminEnableUser',
+            'cognito-idp:AdminSetUserMFAPreference',
+            'cognito-idp:AdminLinkProviderForUser',
+            'cognito-idp:CreateIdentityProvider',
+            'cognito-idp:UpdateIdentityProvider',
+          ],
+          resources: ['*'],
         }),
         new iam.PolicyStatement({
           sid: 'NeverCreateUsersOrKeys',

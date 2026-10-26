@@ -2,6 +2,7 @@
 // tests/test_ui_contract.py) while building locally; an API once VITE_API_URL is set: the local one
 // (tests/local_api.py, `npm run dev:api`) or the deployed one (stage 5).
 import { createContext, useContext } from 'react';
+import type { Auth } from '../auth';
 import type { ApplicationRecord, DecisionRequest, Evidence, Queue } from './types';
 
 export type Status = ApplicationRecord['status'];
@@ -29,15 +30,27 @@ export class NotFound extends RequestFailed {
   }
 }
 
-export function httpApi(baseUrl: string, fetchImpl: typeof fetch = fetch.bind(globalThis)): Api {
+/** The API over HTTP. `token` supplies the signed-in reviewer's access token (none: no Authorization header). */
+export function httpApi(
+  baseUrl: string,
+  fetchImpl: typeof fetch = fetch.bind(globalThis),
+  token: () => Promise<string | null> = async () => null,
+): Api {
   async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const accessToken = await token();
     const response = await fetchImpl(new URL(path, baseUrl), {
       ...init,
-      headers: { accept: 'application/json', ...(init.body ? { 'content-type': 'application/json' } : {}) },
+      headers: {
+        accept: 'application/json',
+        ...(init.body ? { 'content-type': 'application/json' } : {}),
+        ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}),
+      },
     });
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
-      const message = typeof body.error === 'string' ? body.error : `HTTP ${response.status}`;
+      // Our API explains itself in {"error": ...}; API Gateway's own refusals say {"message": ...}.
+      const message =
+        typeof body.error === 'string' ? body.error : typeof body.message === 'string' ? body.message : `HTTP ${response.status}`;
       throw response.status === 404 ? new NotFound(message) : new RequestFailed(response.status, message);
     }
     return (await response.json()) as T;
@@ -71,11 +84,12 @@ export function fixtureApi(): Api {
   };
 }
 
-export function defaultApi(): Api {
+export function defaultApi(auth?: Auth): Api {
   const url = import.meta.env.VITE_API_URL;
   if (!url) return fixtureApi();
   // Relative ("/api/", proxied to the local API by the dev server) or absolute; always ending in "/".
-  return httpApi(new URL(url.endsWith('/') ? url : `${url}/`, window.location.href).href);
+  const base = new URL(url.endsWith('/') ? url : `${url}/`, window.location.href).href;
+  return httpApi(base, undefined, auth ? () => auth.accessToken() : undefined);
 }
 
 // No default source: App always provides one. (A default of fixtureApi() would ship the fixtures in every build;

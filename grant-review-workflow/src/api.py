@@ -8,10 +8,12 @@ here with its route key.
 The queue comes from the status records; one application's evidence from its checkpoints, read by a graph whose model
 steps refuse to run (workflow.reader): reading never calls a model or moves an application on.
 
-A decision names who made it from the sign-in (the claims API Gateway's JWT authorizer passes in, stage 4), never
-from the request body, and when from this server's clock. It claims the application (applications.py), so only one
-decision gets through, then runs the Resume function, which holds the model and checkpoint-writing permissions this
-function doesn't have.
+Every route needs a signed-in reviewer. API Gateway's JWT authorizer checks the Cognito access token (signature,
+issuer, app client, expiry) before this code runs and passes its claims in; it doesn't check groups, so this code
+checks the reviewers group, for reading too: the evidence is applicant data. A decision names who made it from the
+token's username, never from the request body, and when from this server's clock. It claims the application
+(applications.py), so only one decision gets through, then runs the Resume function, which holds the model and
+checkpoint-writing permissions this function doesn't have.
 
 Most of an application's evidence comes from the applicant: the form, the narrative, and the model's reading of the
 narrative. The API returns it as data in JSON; the UI must show it as text, never as markup or instructions. Logs get
@@ -130,13 +132,27 @@ def _resume(payload: dict) -> None:
         raise ResumeFailed(error.get("errorType", "error"))  # the type only: its message may quote applicant text
 
 
+REVIEWERS_GROUP = "reviewers"  # infra/lib/auth-stack.ts
+
+
+def _groups(value) -> set[str]:
+    """cognito:groups as API Gateway passes it: a list claim becomes text, "[reviewers admins]"."""
+    if isinstance(value, list):
+        return set(value)
+    if isinstance(value, str):
+        return {g.strip("\"'") for g in value.strip("[]").replace(",", " ").split()}
+    return set()
+
+
 def _reviewer(event: dict) -> str:
-    """The signed-in reviewer, from the claims API Gateway's JWT authorizer verified (stage 4)."""
+    """The signed-in reviewer's username, from the access token API Gateway's JWT authorizer verified."""
     authorizer = (event.get("requestContext") or {}).get("authorizer") or {}
     claims = (authorizer.get("jwt") or {}).get("claims") or {}
-    if not claims.get("email"):
-        raise ApiError(401, "sign in to decide")
-    return claims["email"]
+    if not claims.get("username"):
+        raise ApiError(401, "sign in first")
+    if REVIEWERS_GROUP not in _groups(claims.get("cognito:groups")):
+        raise ApiError(403, "only reviewers can see or decide applications")
+    return claims["username"]
 
 
 def _application_id(value) -> str:
@@ -222,13 +238,14 @@ def handler(event: dict, context=None) -> dict:
     route = event.get("routeKey")
     application_id = (event.get("pathParameters") or {}).get("application_id")
     try:
+        reviewer = _reviewer(event)  # every route: the evidence is applicant data
         if route == "GET /applications":
             params = event.get("queryStringParameters") or {}
             body = queue(params.get("status", "waiting_for_review")).model_dump_json()
         elif route == "GET /applications/{application_id}":
             body = evidence(_application_id(application_id)).model_dump_json()
         elif route == "POST /applications/{application_id}/decision":
-            checked_id, reviewer, request = _application_id(application_id), _reviewer(event), _decision_request(event)
+            checked_id, request = _application_id(application_id), _decision_request(event)
             body = decide(checked_id, request, reviewer, dt.datetime.now(dt.UTC)).model_dump_json()
         else:
             raise ApiError(404, f"no route {route}")

@@ -15,6 +15,7 @@ import {
   money,
   number,
 } from '../format';
+import { LoadError } from '../LoadError';
 import { useLoad } from '../useLoad';
 import { DecisionForm } from './DecisionForm';
 
@@ -29,13 +30,12 @@ export function ApplicationPage() {
         <Link to="/">Back to the queue</Link>
       </p>
       {evidence.state === 'loading' && <p aria-busy="true">Loading...</p>}
-      {evidence.state === 'error' && (
-        <p role="alert">
-          {evidence.error instanceof NotFound
-            ? `There's no application ${applicationId}. It may have expired (records are kept 30 days).`
-            : `Couldn't load the application: ${evidence.error.message}`}
-        </p>
-      )}
+      {evidence.state === 'error' &&
+        (evidence.error instanceof NotFound ? (
+          <p role="alert">There's no application {applicationId}. It may have expired (records are kept 30 days).</p>
+        ) : (
+          <LoadError what="the application" error={evidence.error} />
+        ))}
       {evidence.state === 'done' && <Application key={applicationId} loaded={evidence.value} />}
     </main>
   );

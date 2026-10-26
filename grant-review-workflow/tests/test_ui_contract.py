@@ -63,7 +63,10 @@ def generate(tmp_path, monkeypatch) -> dict[str, str]:
     seed(graph, store, tmp_path)
 
     def body(route, **event):
-        response = api.handler({"routeKey": route, **event})
+        signed_in = {
+            "requestContext": {"authorizer": {"jwt": {"claims": {"username": "r", "cognito:groups": "[reviewers]"}}}}
+        }
+        response = api.handler({"routeKey": route, **event, **signed_in})
         assert response["statusCode"] == 200, response
         return json.dumps(json.loads(response["body"]), indent=2, ensure_ascii=False) + "\n"
 

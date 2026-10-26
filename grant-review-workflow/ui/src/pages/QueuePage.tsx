@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from 'react-router';
 import { STATUSES, type Status, useApi } from '../api/client';
 import { FLAG_LABELS, STATUS_LABELS, dateTime, money } from '../format';
+import { LoadError } from '../LoadError';
 import { useLoad } from '../useLoad';
 
 export function QueuePage() {
@@ -27,7 +28,7 @@ export function QueuePage() {
       </div>
 
       {queue.state === 'loading' && <p aria-busy="true">Loading...</p>}
-      {queue.state === 'error' && <p role="alert">Couldn't load the applications: {queue.error.message}</p>}
+      {queue.state === 'error' && <LoadError what="the applications" error={queue.error} />}
       {queue.state === 'done' && queue.value.applications.length === 0 && <p>No applications.</p>}
       {queue.state === 'done' && queue.value.applications.length > 0 && (
         <table className="queue">
