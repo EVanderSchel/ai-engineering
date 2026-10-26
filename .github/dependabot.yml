@@ -1,9 +1,18 @@
-# Dependabot version updates: weekly PRs that move dependencies, GitHub Actions and Docker base images
-# to newer versions. (Security fixes arrive separately, as soon as they're published.) Each PR runs the
-# usual required checks, so an update that breaks tests, evals or the container smoke test can't merge.
+# Dependabot version updates: PRs that move dependencies, GitHub Actions and Docker base images to newer
+# versions. (Security fixes arrive separately, as soon as they're published.) Each PR runs the usual required
+# checks, so an update that breaks tests, evals or the container smoke test can't merge.
 #
 # Minor and patch updates are grouped into one PR per ecosystem to keep the noise down; major versions
 # get their own PRs, because they're the ones that can break things.
+#
+# Schedule: finished projects (rag, irs-990-extraction, nonprofit-agent, ntee-classification, ci-cd-workflow)
+# update monthly; the active project (grant-review-workflow), GitHub Actions and Docker images update weekly
+# on Monday. Everything runs at the same time so the PRs can be reviewed in one sitting. Dependabot runs
+# monthly updates on the 1st of the month (`day` only applies to weekly ones), so those PRs wait for the next
+# Monday review.
+#
+# Cooldown: a new release isn't proposed until it's 7 days old, so a broken release is usually yanked or
+# patched before it reaches a PR. Cooldown only applies to version updates; security updates aren't delayed.
 version: 2
 updates:
   # rag: pyproject.toml + uv.lock. chromadb is pinned exactly (it must match the Chroma server image in
@@ -11,7 +20,11 @@ updates:
   - package-ecosystem: uv
     directory: /rag
     schedule:
-      interval: weekly
+      interval: monthly
+      time: "06:00"
+      timezone: America/Chicago
+    cooldown:
+      default-days: 7
     groups:
       rag-python:
         update-types: [minor, patch]
@@ -22,14 +35,22 @@ updates:
         patterns: ["*"]
 
   # pymupdf 2.0 adds ML layout packages (onnxruntime, numpy) that page rendering doesn't use, and would grow the
-  # container image; majors are reviewed by hand rather than proposed weekly.
+  # container image; majors are reviewed by hand rather than proposed by Dependabot.
   - package-ecosystem: uv
     directory: /irs-990-extraction
     schedule:
-      interval: weekly
+      interval: monthly
+      time: "06:00"
+      timezone: America/Chicago
+    cooldown:
+      default-days: 7
     groups:
       irs-990-extraction-python:
         update-types: [minor, patch]
+      # Security fixes in one PR, so they can't block each other's audit job (see rag-security).
+      irs-990-extraction-security:
+        applies-to: security-updates
+        patterns: ["*"]
     ignore:
       - dependency-name: pymupdf
         update-types: ["version-update:semver-major"]
@@ -37,27 +58,52 @@ updates:
   - package-ecosystem: uv
     directory: /nonprofit-agent
     schedule:
-      interval: weekly
+      interval: monthly
+      time: "06:00"
+      timezone: America/Chicago
+    cooldown:
+      default-days: 7
     groups:
       nonprofit-agent-python:
         update-types: [minor, patch]
+      # Security fixes in one PR, so they can't block each other's audit job (see rag-security).
+      nonprofit-agent-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   - package-ecosystem: uv
     directory: /ntee-classification
     schedule:
-      interval: weekly
+      interval: monthly
+      time: "06:00"
+      timezone: America/Chicago
+    cooldown:
+      default-days: 7
     groups:
       ntee-classification-python:
         update-types: [minor, patch]
+      # Security fixes in one PR, so they can't block each other's audit job (see rag-security).
+      ntee-classification-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   # pymupdf is pinned below 2 in pyproject.toml for the same reason as irs-990-extraction (see its note above).
   - package-ecosystem: uv
     directory: /grant-review-workflow
     schedule:
       interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    cooldown:
+      default-days: 7
     groups:
       grant-review-workflow-python:
         update-types: [minor, patch]
+      # Security fixes in one PR, so they can't block each other's audit job (see rag-security).
+      grant-review-workflow-security:
+        applies-to: security-updates
+        patterns: ["*"]
     ignore:
       - dependency-name: pymupdf
         update-types: ["version-update:semver-major"]
@@ -68,35 +114,70 @@ updates:
     directory: /grant-review-workflow/infra
     schedule:
       interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    cooldown:
+      default-days: 7
     groups:
       grant-review-workflow-infra-npm:
         update-types: [minor, patch]
+      # Security fixes in one PR, so they can't block each other's audit job (see rag-security).
+      grant-review-workflow-infra-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   # grant-review-workflow's reviewer UI (React, Vite): package.json + package-lock.json.
   - package-ecosystem: npm
     directory: /grant-review-workflow/ui
     schedule:
       interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    cooldown:
+      default-days: 7
     groups:
       grant-review-workflow-ui-npm:
         update-types: [minor, patch]
+      # Security fixes in one PR, so they can't block each other's audit job (see rag-security).
+      grant-review-workflow-ui-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   - package-ecosystem: pip
     directory: /ci-cd-workflow
     schedule:
-      interval: weekly
+      interval: monthly
+      time: "06:00"
+      timezone: America/Chicago
+    cooldown:
+      default-days: 7
     groups:
       ci-cd-workflow-python:
         update-types: [minor, patch]
+      # Security fixes in one PR, so they can't block each other's audit job (see rag-security).
+      ci-cd-workflow-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   # Workflows pin every action to a commit, with the version in a comment; Dependabot updates both.
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    cooldown:
+      default-days: 7
     groups:
       github-actions:
         update-types: [minor, patch]
+      # Security fixes in one PR, so they can't block each other's checks (see rag-security).
+      github-actions-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   # Base images are pinned by digest; Dependabot also proposes new digests when an image is rebuilt
   # (for example, with OS security patches) under the same tag.
@@ -104,6 +185,15 @@ updates:
     directories: [/rag, /ci-cd-workflow, /irs-990-extraction, /grant-review-workflow]
     schedule:
       interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    cooldown:
+      default-days: 7
     groups:
       docker-images:
         update-types: [minor, patch]
+      # Security fixes in one PR, so they can't block each other's checks (see rag-security).
+      docker-images-security:
+        applies-to: security-updates
+        patterns: ["*"]
