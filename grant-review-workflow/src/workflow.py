@@ -226,6 +226,13 @@ class Outcome:
     review_request: dict | None  # what the reviewer is shown, while waiting
 
 
+def unfinished_decision(outcome: Outcome) -> bool:
+    """The reviewer's decision (or corrections) went in, but the run stopped before the letter: an outage in
+    draft_letter, say. It isn't waiting for a reviewer any more, so only carry_on can finish it."""
+    state = outcome.state
+    return not outcome.waiting_for_review and state.review is not None and state.letter is None
+
+
 def thread(application_id: str) -> dict:
     return {"configurable": {"thread_id": application_id}}
 

@@ -12,8 +12,9 @@ the workflow until it finishes or pauses for its reviewer, with checkpoints in D
 asynchronous invocation; a retry finds the thread already saved and continues it from its last checkpoint
 (workflow.carry_on), so steps that had finished aren't paid for twice.
 
-`resume` is invoked directly (step 8's reviewer UI will call it) with the application ID and a ReviewerDecision,
-validated before the graph sees it. Both return a summary, never the narrative: the logs stay free of applicant
+`resume` is invoked by the reviewer UI's API (src/api.py) with the application ID and a ReviewerDecision, validated
+before the graph sees it; or with "finish": true, to complete a run that took a decision but stopped before its
+letter. Both return a summary, never the narrative: the logs stay free of applicant
 text (docs/data-handling.md). After each run both write the application's status record (applications.py), which
 the reviewer UI's queue lists (step 8).
 
@@ -124,14 +125,22 @@ def start(event: dict, context=None) -> dict:
 
 
 def resume(event: dict, context=None) -> dict:
-    """{"application_id": ..., "decision": {ReviewerDecision fields}}, from the reviewer UI."""
+    """{"application_id": ..., "decision": {ReviewerDecision fields}} from the reviewer UI's API, or
+    {"application_id": ..., "finish": true} to complete a run whose decision went in but whose letter wasn't drafted."""
     application_id = applications.check_id(event.get("application_id"))
-    decision = ReviewerDecision.model_validate(event.get("decision"))  # invalid input never reaches the graph
+    finish = event.get("finish") is True
+    # Invalid input never reaches the graph.
+    decision = None if finish else ReviewerDecision.model_validate(event.get("decision"))
     app = _workflow()
     current = workflow.outcome(app, application_id) if app.get_state(workflow.thread(application_id)).values else None
-    if current is None or not current.waiting_for_review:
+    if finish:
+        if current is None or not workflow.unfinished_decision(current):
+            raise ValueError(f"application {application_id} has no decision waiting to be finished")
+        outcome = workflow.carry_on(app, application_id)  # from the last checkpoint: the decision is kept
+    elif current is None or not current.waiting_for_review:
         raise ValueError(f"application {application_id} isn't waiting for a reviewer")
-    outcome = workflow.resume(app, application_id, decision)
+    else:
+        outcome = workflow.resume(app, application_id, decision)
     _record(outcome)
     result = summary(outcome)
     _log("resumed", result)

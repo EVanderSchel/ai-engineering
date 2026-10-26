@@ -105,3 +105,13 @@ def test_resume_can_only_call_the_letter_writers_model():
     functions = iam_policy.runtime()["functions"]
     assert functions["resume"]["inference_profiles"] == ["us.anthropic.claude-haiku-4-5-20251001-v1:0"]
     assert set(functions["resume"]["inference_profiles"]) < set(functions["start"]["inference_profiles"])
+
+
+def test_the_api_reads_checkpoints_and_only_claims_status_records():
+    """The API function never writes a checkpoint, and its only write to a status record is the claim (UpdateItem)."""
+    runtime = iam_policy.runtime()
+    assert set(runtime["checkpoint_read_actions"]) < set(runtime["checkpoint_actions"])
+    assert not any(a.endswith(("PutItem", "WriteItem", "DeleteItem")) for a in runtime["checkpoint_read_actions"])
+    assert [a for a in runtime["api_record_actions"] if not a.endswith(("GetItem", "Query"))] == ["dynamodb:UpdateItem"]
+    assert runtime["workflow_record_actions"] == ["dynamodb:PutItem"]
+    assert (runtime["applications_table"], runtime["applications_index"]) == ("grant-review-applications", "by-status")

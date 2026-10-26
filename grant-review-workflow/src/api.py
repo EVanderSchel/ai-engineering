@@ -209,15 +209,24 @@ def decide(application_id: str, request: DecisionRequest, reviewer: str, now: dt
         raise ApiError(404, f"no application {application_id}")
     if not store.claim(application_id, now):
         raise ApiError(409, f"application {application_id} isn't waiting for a reviewer (decided, or being decided)")
+    # A decision that went in earlier but stopped before its letter is finished, not replaced: the thread isn't
+    # waiting for a new one, and the reviewer sees the recorded decision in what comes back.
+    if workflow.unfinished_decision(workflow.outcome(_workflow(), application_id)):
+        payload = {"application_id": application_id, "finish": True}
+    else:
+        payload = {"application_id": application_id, "decision": decision.model_dump(mode="json")}
     try:
-        _resume({"application_id": application_id, "decision": decision.model_dump(mode="json")})
+        _resume(payload)
     except Exception as e:
         if workflow.outcome(_workflow(), application_id).waiting_for_review:
             store.release(application_id)  # the thread never took the decision: put it back in the queue
             raise ApiError(502, "the decision wasn't applied; nothing changed, try again") from None
         # The thread took the decision but stopped before the letter: it stays claimed for a person to finish.
         log.error("decided, not finished", extra={"event": "resume_failed", "application_id": application_id})
-        raise ApiError(502, "the decision was saved but the letter wasn't drafted; it needs finishing") from e
+        raise ApiError(
+            502,
+            "the decision was saved but the letter wasn't drafted; submitting again in 5 minutes finishes it",
+        ) from e
     return evidence(application_id)
 
 

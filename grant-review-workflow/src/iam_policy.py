@@ -20,7 +20,9 @@ Not here: creating tables or guardrails (admin scripts, run with the developer's
 The roles are created by CDK (step 7, infra/lib/workflow-stack.ts) from infra/runtime.json, which --export writes
 from the same code, so the TypeScript never repeats a model ID (tests/test_iam_policy.py fails if the file is stale).
 Each function gets only what it runs: start runs every step; resume runs only draft_letter's model (the rest of
-a resumed run is code), so its role can't call Sonnet. The account ID is passed in, never committed.
+a resumed run is code), so its role can't call Sonnet. Both write the application's status record (step 8,
+src/applications.py). The reviewer UI's API function (src/api.py) calls no model: it reads checkpoints (never writes
+them), reads and claims status records, and invokes the resume function. The account ID is passed in, never committed.
 """
 
 import argparse
@@ -31,6 +33,7 @@ import sys
 import boto3
 from botocore.exceptions import ClientError
 
+import applications
 import bedrock
 import checkpoint_table
 import paths
@@ -47,6 +50,13 @@ SAVER_ACTIONS = [
 ]
 
 
+# What the saver calls when it only reads (get_state): the API function reads applications' evidence this way.
+CHECKPOINT_READ_ACTIONS = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:BatchGetItem"]
+# Status records: the workflow writes where an application stands after each run; the API reads them, lists the queue
+# (a query on the by-status index) and claims an application (a conditional update) before resuming it.
+WORKFLOW_RECORD_ACTIONS = ["dynamodb:PutItem"]
+API_RECORD_ACTIONS = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:UpdateItem"]
+
 # The model steps a resumed application can reach: eligibility, route and human_review are code, then the letter.
 RESUME_STEPS = ["draft_letter"]
 RUNTIME_FILE = paths.ROOT / "infra" / "runtime.json"
@@ -54,7 +64,7 @@ RUNTIME_FILE = paths.ROOT / "infra" / "runtime.json"
 
 def runtime() -> dict:
     """What each Lambda function's role needs, for CDK: inference profile IDs per function, the profiles' Regions,
-    the checkpoint table and the saver's calls."""
+    the checkpoint table and the saver's calls, and the status table (step 8) with each function's calls on it."""
 
     def profile_ids(steps) -> list[str]:
         return sorted({bedrock.MODELS[workflow.STEP_MODELS[step]].model_id for step in steps})
@@ -65,6 +75,11 @@ def runtime() -> dict:
         "profile_regions": PROFILE_REGIONS,
         "checkpoint_table": checkpoint_table.TABLE,
         "checkpoint_actions": SAVER_ACTIONS,
+        "checkpoint_read_actions": CHECKPOINT_READ_ACTIONS,
+        "applications_table": applications.TABLE,
+        "applications_index": applications.STATUS_INDEX,
+        "workflow_record_actions": WORKFLOW_RECORD_ACTIONS,
+        "api_record_actions": API_RECORD_ACTIONS,
         "functions": {
             "start": {"inference_profiles": profile_ids(workflow.STEP_MODELS)},
             "resume": {"inference_profiles": profile_ids(RESUME_STEPS)},

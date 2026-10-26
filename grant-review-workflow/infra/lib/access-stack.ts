@@ -48,15 +48,21 @@ export class AccessStack extends cdk.Stack {
           resources: [arn('bedrock', 'inference-profile/*'), 'arn:aws:bedrock:*::foundation-model/anthropic.*'],
         }),
         new iam.PolicyStatement({
-          sid: 'Checkpoints',
+          sid: 'Checkpoints', // and status records (step 8): UpdateItem is the reviewer UI's claim
           actions: [
             'dynamodb:GetItem',
             'dynamodb:PutItem',
+            'dynamodb:UpdateItem',
             'dynamodb:Query',
             'dynamodb:BatchGetItem',
             'dynamodb:BatchWriteItem',
           ],
-          resources: [arn('dynamodb', 'table/grant-review-*')],
+          resources: [arn('dynamodb', 'table/grant-review-*')], // indexes too: table/<name>/index/<index>
+        }),
+        new iam.PolicyStatement({
+          sid: 'InvokeOurFunctions', // the reviewer UI's API runs the resume function
+          actions: ['lambda:InvokeFunction'],
+          resources: [arn('lambda', 'function:GrantReview*')],
         }),
         new iam.PolicyStatement({
           sid: 'OurBuckets',
@@ -153,6 +159,45 @@ export class AccessStack extends cdk.Stack {
           actions: ['cognito-idp:*'],
           resources: [arn('cognito-idp', 'userpool/*')],
           conditions: { StringEquals: { [`aws:ResourceTag/${PROJECT_TAG.key}`]: PROJECT_TAG.value } },
+        }),
+        // HTTP APIs get generated IDs too: created only tagged as ours, changed only when tagged as ours. API Gateway
+        // applies an API's tags to its routes, integrations, stages and authorizers when checking permissions.
+        new iam.PolicyStatement({
+          sid: 'CreateOurHttpApi',
+          actions: ['apigateway:POST'],
+          resources: [`arn:aws:apigateway:${r}::/apis`],
+          conditions: { StringEquals: { [`aws:RequestTag/${PROJECT_TAG.key}`]: PROJECT_TAG.value } },
+        }),
+        new iam.PolicyStatement({
+          sid: 'OurHttpApis',
+          actions: ['apigateway:*'],
+          resources: [`arn:aws:apigateway:${r}::/apis/*`, `arn:aws:apigateway:${r}::/tags/*`],
+          conditions: { StringEquals: { [`aws:ResourceTag/${PROJECT_TAG.key}`]: PROJECT_TAG.value } },
+        }),
+        new iam.PolicyStatement({
+          sid: 'ApiAccessLogDelivery', // HTTP API access logs: CloudWatch Logs' delivery calls have no resource
+          actions: [
+            'logs:CreateLogDelivery',
+            'logs:GetLogDelivery',
+            'logs:UpdateLogDelivery',
+            'logs:DeleteLogDelivery',
+            'logs:ListLogDeliveries',
+            'logs:PutResourcePolicy',
+          ],
+          resources: ['*'],
+        }),
+        new iam.PolicyStatement({ sid: 'OurAlarmTopic', actions: ['sns:*'], resources: [arn('sns', 'GrantReview*')] }),
+        new iam.PolicyStatement({
+          sid: 'OurAlarms',
+          actions: [
+            'cloudwatch:PutMetricAlarm',
+            'cloudwatch:DeleteAlarms',
+            'cloudwatch:DescribeAlarms',
+            'cloudwatch:TagResource',
+            'cloudwatch:UntagResource',
+            'cloudwatch:ListTagsForResource',
+          ],
+          resources: [arn('cloudwatch', 'alarm:GrantReview*')],
         }),
         new iam.PolicyStatement({
           sid: 'PullTheLambdaImage', // CreateFunction checks the caller can read the image

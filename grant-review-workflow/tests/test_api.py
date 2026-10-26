@@ -258,19 +258,52 @@ def test_a_resume_that_never_reached_the_graph_puts_the_application_back(run, tm
     assert post_decision("gp-027", APPROVE)[0] == 200  # and the retry goes through
 
 
+def letter_outage_until_fixed():
+    """Stand-in steps whose letter writer fails until `outage["on"]` is set False: an outage that ends."""
+    steps, outage = right_answers(), {"on": True}
+
+    def letter(state):
+        if outage["on"]:
+            raise RuntimeError("Bedrock unavailable")
+        return steps.draft_letter(state)
+
+    return workflow.Steps(steps.extract, steps.research, steps.read_proposal, letter), outage
+
+
 def test_a_decision_taken_but_not_finished_stays_claimed_and_is_logged(monkeypatch, tmp_path, caplog):
-    steps = right_answers()
-
-    def letter_outage(state):
-        raise RuntimeError("Bedrock unavailable")
-
-    start, _ = wire(monkeypatch, workflow.Steps(steps.extract, steps.research, steps.read_proposal, letter_outage))
+    steps, _ = letter_outage_until_fixed()
+    start, _ = wire(monkeypatch, steps)
     start(application("gp-027", tmp_path))
     with caplog.at_level("INFO", logger="grant_review"):
         status, body = post_decision("gp-027", APPROVE)
-    assert status == 502 and "needs finishing" in body["error"]
+    assert status == 502 and "submitting again in 5 minutes finishes it" in body["error"]
     assert get("/applications/gp-027")[1]["record"]["status"] == "deciding"  # not back in the queue: it can't resume
     assert [r.application_id for r in caplog.records if r.levelname == "ERROR"] == ["gp-027"]
+    assert [r.event for r in caplog.records if r.levelname == "ERROR"] == ["resume_failed"]  # what the alarm counts
+
+
+def test_submitting_again_after_the_claim_goes_stale_finishes_the_recorded_decision(monkeypatch, tmp_path):
+    steps, outage = letter_outage_until_fixed()
+    start, _ = wire(monkeypatch, steps)
+    start(application("gp-027", tmp_path))
+    assert post_decision("gp-027", APPROVE)[0] == 502  # approved; the letter step is down
+    outage["on"] = False
+    assert post_decision("gp-027", APPROVE)[0] == 409  # still claimed: someone may be finishing it right now
+    later = dt.datetime.now(dt.UTC) + dt.timedelta(seconds=applications.CLAIM_SECONDS + 1)
+    decline = api.DecisionRequest(decision="decline", corrections={}, reason="Changed my mind.")
+    finished = api.decide("gp-027", decline, "another@example.org", later)
+    # The run is finished with the decision it already took: a second, different decision can't replace it.
+    assert finished.record.status == "decided" and finished.letter == "Letter for gp-027"
+    assert (finished.review.decision, finished.review.reviewer) == ("approve", REVIEWER)
+
+
+def test_finish_refuses_an_application_with_nothing_to_finish(run, tmp_path):
+    start, _ = run
+    start(application("gp-027", tmp_path))  # waiting for a reviewer: no decision yet
+    with pytest.raises(ValueError, match="no decision waiting to be finished"):
+        handlers.resume({"application_id": "gp-027", "finish": True})
+    with pytest.raises(ValueError, match="no decision waiting to be finished"):
+        handlers.resume({"application_id": "gp-999", "finish": True})
 
 
 def test_the_resume_function_is_invoked_with_the_decision_and_its_errors_raise(monkeypatch):

@@ -14,6 +14,21 @@
     "dynamodb:BatchGetItem",
     "dynamodb:BatchWriteItem"
   ],
+  "checkpoint_read_actions": [
+    "dynamodb:GetItem",
+    "dynamodb:Query",
+    "dynamodb:BatchGetItem"
+  ],
+  "applications_table": "grant-review-applications",
+  "applications_index": "by-status",
+  "workflow_record_actions": [
+    "dynamodb:PutItem"
+  ],
+  "api_record_actions": [
+    "dynamodb:GetItem",
+    "dynamodb:Query",
+    "dynamodb:UpdateItem"
+  ],
   "functions": {
     "start": {
       "inference_profiles": [
