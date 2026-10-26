@@ -5,7 +5,7 @@ import { Template } from 'aws-cdk-lib/assertions';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { testApp } from './app';
 import { ACCESS_STACK, buildApp } from '../lib/app';
-import { BOUNDARY_POLICY, EXECUTION_POLICY } from '../lib/access-stack';
+import { BOUNDARY_POLICY, EXECUTION_POLICY, EXECUTION_WEB_POLICY } from '../lib/access-stack';
 
 const env = { account: '111122223333', region: 'us-east-2' };
 const app = testApp();
@@ -27,7 +27,8 @@ const policy = (name: string): any[] => {
   ) as any;
   return found.Properties.PolicyDocument.Statement;
 };
-const execution = policy(EXECUTION_POLICY);
+// The role gets both halves of the execution policy: every check below is on what it can do with both.
+const execution = [...policy(EXECUTION_POLICY), ...policy(EXECUTION_WEB_POLICY)];
 const boundary = policy(BOUNDARY_POLICY);
 const list = (v: any) => [v].flat();
 const allows = (statements: any[], action: string) =>
@@ -179,4 +180,18 @@ test('the CloudFront creates that need "*" are exactly the four that support no 
     'cloudfront:CreateOriginAccessControl',
     'cloudfront:CreateResponseHeadersPolicy',
   ]);
+});
+
+test('each managed policy stays well under IAM\'s 6,144-character limit', () => {
+  // IAM counts the policy without whitespace. The limit failed a deploy once (step 8): keep 10% headroom.
+  for (const name of [EXECUTION_POLICY, EXECUTION_WEB_POLICY, BOUNDARY_POLICY]) {
+    const size = JSON.stringify({ Version: '2012-10-17', Statement: policy(name) }).replace(/\s/g, '').length;
+    expect([name, size < 6144 * 0.9]).toEqual([name, true]);
+  }
+});
+
+test('the deploy-time guardrails protect all three policies', () => {
+  const guard = execution.find((s) => s.Sid === 'NeverChangeOurPolicies');
+  expect(JSON.stringify(guard.Resource)).toContain(`policy/${EXECUTION_WEB_POLICY}`);
+  expect(list(guard.Resource)).toHaveLength(3);
 });

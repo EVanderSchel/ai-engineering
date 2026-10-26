@@ -25,8 +25,11 @@ npx cdk diff GrantReviewData GrantReviewWorkflow --exclusively
 `cdk deploy GrantReviewData GrantReviewWorkflow --exclusively`. The pipeline and access stacks are deployed by hand
 (`npx cdk deploy GrantReviewPipeline --exclusively`, `npx cdk deploy GrantReviewCdkAccess --exclusively`).
 
-**What deploys may do.** CloudFormation's execution role has only `grant-review-cdk-execution` (the bootstrap was
-re-run with `--cloudformation-execution-policies arn:aws:iam::<account>:policy/grant-review-cdk-execution`). It
+**What deploys may do.** CloudFormation's execution role has only `grant-review-cdk-execution` and
+`grant-review-cdk-execution-web`: one list of statements, split in two because IAM caps a managed policy at 6,144
+characters (a test keeps each well under it). The bootstrap was re-run with
+`--cloudformation-execution-policies arn:aws:iam::<account>:policy/grant-review-cdk-execution,arn:aws:iam::<account>:policy/grant-review-cdk-execution-web`
+(the stack's `ExecutionPolicyArns` output). It
 allows the calls our deploys make (`test/cloudtrail-actions.json`, from CloudTrail) on `GrantReview*` /
 `grant-review-*` names, and creates roles only with the `grant-review-workload-boundary` permissions boundary.
 A new resource type, or a name outside those prefixes, needs the policy extended first: change

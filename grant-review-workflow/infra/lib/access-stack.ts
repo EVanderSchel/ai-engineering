@@ -6,6 +6,22 @@ import { Construct } from 'constructs';
 /** Names the other stacks and the bootstrap refer to: fixed, so nothing has to look them up. */
 export const BOUNDARY_POLICY = 'grant-review-workload-boundary';
 export const EXECUTION_POLICY = 'grant-review-cdk-execution';
+/** The reviewer UI's pieces of the execution policy (step 8): one managed policy may hold 6,144 characters at most. */
+export const EXECUTION_WEB_POLICY = 'grant-review-cdk-execution-web';
+/** Statements in the web half: everything the reviewer UI added (Cognito, API Gateway, CloudFront, alerts). */
+const WEB_STATEMENTS = new Set([
+  'CreateOurUserPool',
+  'OurUserPools',
+  'CreateOurHttpApi',
+  'OurHttpApis',
+  'ApiAccessLogDelivery',
+  'OurCloudFront',
+  'CreateCloudFrontPieces',
+  'OurParameters',
+  'OurAlarmTopic',
+  'OurAlarms',
+  'NeverManageReviewerAccounts',
+]);
 /** The tag every resource of the project carries (app.ts). Resources with generated IDs are scoped by it. */
 export const PROJECT_TAG = { key: 'project', value: 'grant-review-workflow' };
 const QUALIFIER = 'hnb659fds'; // cdk bootstrap's default
@@ -27,6 +43,7 @@ const QUALIFIER = 'hnb659fds'; // cdk bootstrap's default
 export class AccessStack extends cdk.Stack {
   readonly boundary: iam.ManagedPolicy;
   readonly execution: iam.ManagedPolicy;
+  readonly executionWeb: iam.ManagedPolicy;
 
   constructor(scope: Construct, id: string, props: cdk.StackProps) {
     super(scope, id, { ...props, synthesizer: new cdk.CliCredentialsStackSynthesizer() });
@@ -36,6 +53,7 @@ export class AccessStack extends cdk.Stack {
     const ourRoles = `arn:aws:iam::${a}:role/GrantReview*`;
     const boundaryArn = `arn:aws:iam::${a}:policy/${BOUNDARY_POLICY}`;
     const executionArn = `arn:aws:iam::${a}:policy/${EXECUTION_POLICY}`;
+    const executionWebArn = `arn:aws:iam::${a}:policy/${EXECUTION_WEB_POLICY}`;
     const ourBuckets = ['arn:aws:s3:::grant-review-*', 'arn:aws:s3:::grantreview*'];
 
     this.boundary = new iam.ManagedPolicy(this, 'WorkloadBoundary', {
@@ -113,10 +131,9 @@ export class AccessStack extends cdk.Stack {
       ],
     });
 
-    this.execution = new iam.ManagedPolicy(this, 'CdkExecution', {
-      managedPolicyName: EXECUTION_POLICY,
-      description: 'What CloudFormation may do when deploying grant-review-workflow (replaces AdministratorAccess)',
-      statements: [
+    // What CloudFormation may do, as one list; it's split into two managed policies below only because IAM limits a
+    // managed policy to 6,144 characters. The role gets both (cdk bootstrap --cloudformation-execution-policies).
+    const executionStatements: iam.PolicyStatement[] = [
         // --- What CloudFormation creates and changes, by our names (from CloudTrail, plus deletes) ---
         new iam.PolicyStatement({
           sid: 'CheckpointTable',
@@ -319,7 +336,7 @@ export class AccessStack extends cdk.Stack {
           resources: ['*'],
         }),
         new iam.PolicyStatement({
-          sid: 'NeverChangeTheseTwoPolicies',
+          sid: 'NeverChangeOurPolicies',
           effect: iam.Effect.DENY,
           actions: [
             'iam:CreatePolicyVersion',
@@ -329,7 +346,7 @@ export class AccessStack extends cdk.Stack {
             'iam:TagPolicy',
             'iam:UntagPolicy',
           ],
-          resources: [boundaryArn, executionArn],
+          resources: [boundaryArn, executionArn, executionWebArn],
         }),
         new iam.PolicyStatement({
           // Reviewer accounts are managed by people, never by deploys: a merged template must not be able to add an
@@ -357,14 +374,23 @@ export class AccessStack extends cdk.Stack {
           actions: ['iam:CreateUser', 'iam:CreateAccessKey', 'iam:CreateLoginProfile', 'iam:AttachUserPolicy'],
           resources: ['*'],
         }),
-      ],
+    ];
+    this.execution = new iam.ManagedPolicy(this, 'CdkExecution', {
+      managedPolicyName: EXECUTION_POLICY,
+      description: 'What CloudFormation may do when deploying grant-review-workflow (replaces AdministratorAccess)',
+      statements: executionStatements.filter((s) => !WEB_STATEMENTS.has(s.sid!)),
+    });
+    this.executionWeb = new iam.ManagedPolicy(this, 'CdkExecutionWeb', {
+      managedPolicyName: EXECUTION_WEB_POLICY,
+      description: 'What CloudFormation may do for the grant-review-workflow reviewer UI (the second half)',
+      statements: executionStatements.filter((s) => WEB_STATEMENTS.has(s.sid!)),
     });
 
     // cdk-nag flags every wildcard. Here they are the design: name-prefix patterns for resources whose generated
     // names aren't known in advance (GrantReview*, grant-review-*), wildcard actions only on those, and in the
     // boundary a ceiling rather than a grant. Each finding is acknowledged individually, from the statements.
     const findings = new Set<string>();
-    for (const doc of [this.boundary.document, this.execution.document]) {
+    for (const doc of [this.boundary.document, this.execution.document, this.executionWeb.document]) {
       for (const s of doc.toJSON().Statement as any[]) {
         if (s.Effect !== 'Allow') continue;
         for (const action of [s.Action].flat()) if (action.includes('*')) findings.add(`Action::${action}`);
@@ -379,8 +405,8 @@ export class AccessStack extends cdk.Stack {
       });
     }
 
-    new cdk.CfnOutput(this, 'ExecutionPolicyArn', {
-      value: this.execution.managedPolicyArn,
+    new cdk.CfnOutput(this, 'ExecutionPolicyArns', {
+      value: cdk.Fn.join(',', [this.execution.managedPolicyArn, this.executionWeb.managedPolicyArn]),
       description: 'cdk bootstrap --cloudformation-execution-policies <this>',
     });
     new cdk.CfnOutput(this, 'BoundaryPolicyArn', { value: this.boundary.managedPolicyArn });
