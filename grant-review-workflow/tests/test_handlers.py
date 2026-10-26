@@ -1,5 +1,5 @@
 """The Lambda handlers, without AWS: stand-in steps (tests/test_workflow.right_answers), an in-memory
-checkpointer, and a fake S3 serving a packet from a temporary folder."""
+checkpointer and status store, and a fake S3 serving a packet from a temporary folder."""
 
 import datetime as dt
 import json
@@ -10,6 +10,7 @@ import pytest
 from pydantic import ValidationError
 from test_workflow import right_answers
 
+import applications
 import handlers
 import workflow
 from intake import gold_packet
@@ -30,6 +31,8 @@ def lambda_env(tmp_path, monkeypatch):
     app = workflow.build(right_answers(), checkpointer=workflow.memory_checkpointer())
     monkeypatch.setattr(handlers, "_workflow", lambda: app)
     monkeypatch.setattr(handlers, "_s3", lambda: FakeS3(tmp_path / "s3"))
+    store = applications.MemoryStore()
+    monkeypatch.setattr(handlers, "_applications", lambda: store)
     monkeypatch.setattr(handlers, "WORK_DIR", tmp_path / "work")
     return tmp_path / "s3" / "intake"
 
@@ -88,6 +91,21 @@ def test_a_decision_resumes_the_application_and_returns_its_letter(lambda_env):
     handlers.start(created("gp-027-app3/form.json"))
     result = handlers.resume({"application_id": "gp-027-app3", "decision": decision()})
     assert not result["waiting_for_review"] and result["letter_ready"] and result["letter"]
+
+
+def test_each_run_writes_where_the_application_now_stands(lambda_env):
+    store = handlers._applications()
+    upload(lambda_env, "gp-027-app7")
+    handlers.start(created("gp-027-app7/form.json"))
+    assert [r.application_id for r in store.list("waiting_for_review")] == ["gp-027-app7"]
+    handlers.resume({"application_id": "gp-027-app7", "decision": decision()})
+    assert store.list("waiting_for_review") == [] and store.get("gp-027-app7").decision == "approve"
+
+
+def test_a_rejected_packet_writes_no_record(lambda_env):
+    upload(lambda_env, "gp-027-app8", narrative="   ")
+    handlers.start(created("gp-027-app8/form.json"))
+    assert handlers._applications().get("gp-027-app8") is None
 
 
 def test_an_invalid_decision_never_reaches_the_graph(lambda_env):

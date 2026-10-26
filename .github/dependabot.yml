@@ -72,6 +72,15 @@ updates:
       grant-review-workflow-infra-npm:
         update-types: [minor, patch]
 
+  # grant-review-workflow's reviewer UI (React, Vite): package.json + package-lock.json.
+  - package-ecosystem: npm
+    directory: /grant-review-workflow/ui
+    schedule:
+      interval: weekly
+    groups:
+      grant-review-workflow-ui-npm:
+        update-types: [minor, patch]
+
   - package-ecosystem: pip
     directory: /ci-cd-workflow
     schedule:

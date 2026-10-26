@@ -1,0 +1,4 @@
+node_modules/
+dist/
+# Vite's per-machine env files (e.g. .env.api.local: this account's user pool IDs)
+*.local

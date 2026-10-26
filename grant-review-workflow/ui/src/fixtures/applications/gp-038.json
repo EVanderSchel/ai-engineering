@@ -1,0 +1,124 @@
+{
+  "record": {
+    "application_id": "gp-038",
+    "status": "waiting_for_review",
+    "received_at": "2025-06-02T20:00:00Z",
+    "updated_at": "2025-07-01T12:00:00Z",
+    "organization_name": "CHAUTAUQUA FOUNDATION INC",
+    "amount_requested": 38000,
+    "route": "review",
+    "failed_rules": [],
+    "flags": [
+      "out_of_focus"
+    ],
+    "decision": null
+  },
+  "waiting_for_review": true,
+  "form": {
+    "ein": "166028421",
+    "organization_name": "CHAUTAUQUA FOUNDATION INC",
+    "amount_requested": 38000,
+    "project_title": "Chautauqua Foundation Annual Gala"
+  },
+  "rules": [
+    {
+      "rule": "form_type",
+      "description": "Files the full Form 990 (not 990-EZ or 990-PF)",
+      "passed": true
+    },
+    {
+      "rule": "revenue_range",
+      "description": "Total revenue between $50,000 and $20,000,000 in the latest year",
+      "passed": true
+    },
+    {
+      "rule": "return_current",
+      "description": "Latest return's tax year ended on or after 2022-06-30",
+      "passed": true
+    },
+    {
+      "rule": "net_assets",
+      "description": "Positive net assets (total assets minus total liabilities) at year end",
+      "passed": true
+    },
+    {
+      "rule": "request_range",
+      "description": "Request between $5,000 and $50,000",
+      "passed": true
+    },
+    {
+      "rule": "request_share",
+      "description": "Request at most 25% of total annual expenses",
+      "passed": true
+    }
+  ],
+  "flags": [
+    {
+      "step": "cross_check",
+      "kind": "out_of_focus",
+      "evidence": "The proposal doesn't fund direct services in a focus area."
+    }
+  ],
+  "extraction": {
+    "form_type": "990",
+    "figures": {
+      "ein": "166028421",
+      "organization_name": "CHAUTAUQUA FOUNDATION INC",
+      "tax_period_end": "2023-12-31",
+      "contributions_and_grants_current_year": 10086600,
+      "program_service_revenue_current_year": 0,
+      "investment_income_current_year": 6319922,
+      "other_revenue_current_year": 4769,
+      "total_revenue_current_year": 16411291,
+      "total_expenses_current_year": 6811218,
+      "total_assets_end_of_year": 136968818,
+      "total_liabilities_end_of_year": 889423,
+      "employees": 3
+    },
+    "revenue_adds_up": true
+  },
+  "research": {
+    "found": true,
+    "registered_name": "CHAUTAUQUA FOUNDATION INC",
+    "name_matches_form": true,
+    "name_explanation": null,
+    "form_name_belongs_to": null,
+    "figures_by_period": {
+      "2023-12": {
+        "revenue": 16411291,
+        "expenses": 6811218
+      }
+    }
+  },
+  "proposal": {
+    "focus_area": null,
+    "claims": {
+      "annual_budget": 6811000,
+      "staff": 3
+    },
+    "rubric": [
+      {
+        "criterion": "clear_outcomes",
+        "score": 4,
+        "quote": "We request $38,000 to host our annual fundraising gala, the most important event on our calendar."
+      },
+      {
+        "criterion": "budget_matches_request",
+        "score": 3,
+        "quote": "We request $38,000 to host our annual fundraising gala, the most important event on our calendar."
+      },
+      {
+        "criterion": "feasible_for_size",
+        "score": 4,
+        "quote": "We request $38,000 to host our annual fundraising gala, the most important event on our calendar."
+      }
+    ],
+    "suspected_instructions": []
+  },
+  "narrative": "# Chautauqua Foundation Annual Gala\n\n## About us\n\nChautauqua Foundation exists for the preservation, appropriate use and growth of endowment funds. Our annual operating budget is $6,811,000, and we have 3 paid staff who manage our funds, grants and donor relations. The endowments we care for support the programs and institutions our donors chose when they made their gifts, and they will continue to do so for generations if they are carefully stewarded and steadily grown.\n\n## The project\n\nWe request $38,000 to host our annual fundraising gala, the most important event on our calendar. The gala brings together our longtime donors, the families of those who established our oldest endowments, and new supporters we hope will make their first gift. Over one evening, guests hear about the impact of the funds they have helped build and are invited to add to them.\n\nThis year's gala will be held at a historic venue and will include a seated dinner, live music, a short film about the history of our endowments, and recognition of our most generous donors. A professional event planner will manage the evening so that our small staff can focus on our guests. Funding the event costs through this grant means that every dollar our guests give that night goes directly into the endowments instead of paying for the event itself.\n\n## Who it serves\n\nWe expect about 250 guests, including donors, community leaders and representatives of the institutions our endowments support. By growing the endowments, the gala supports the long-term financial health of those institutions and the community they serve.\n\n## Outcomes\n\n- About 250 guests attend.\n- At least 40 new donors make a first gift at or after the event.\n- Gifts made at the gala exceed the previous year's total.\n- We will report attendance and funds raised to the Fund after the event.\n\n## Budget\n\n- Venue and catering: $22,000\n- Entertainment: $8,000\n- Invitations, printing and decorations: $5,000\n- Event planner: $3,000\n",
+  "review": null,
+  "letter": null,
+  "letter_problems": [],
+  "model_calls": 2,
+  "cost_usd": 0.002
+}

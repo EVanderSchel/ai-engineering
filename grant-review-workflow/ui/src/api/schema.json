@@ -1,0 +1,826 @@
+{
+  "$defs": {
+    "ApplicationForm": {
+      "description": "What the applicant typed: checked, not trusted.",
+      "properties": {
+        "ein": {
+          "pattern": "^\\d{9}$",
+          "type": "string"
+        },
+        "organization_name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "amount_requested": {
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        },
+        "project_title": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "ein",
+        "organization_name",
+        "amount_requested",
+        "project_title"
+      ],
+      "title": "ApplicationForm",
+      "type": "object"
+    },
+    "ApplicationRecord": {
+      "description": "One row of the queue. organization_name is what the applicant typed: show it as text, never trust it.",
+      "properties": {
+        "application_id": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "waiting_for_review",
+            "deciding",
+            "decided",
+            "declined_by_rules"
+          ],
+          "type": "string"
+        },
+        "received_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "organization_name": {
+          "type": "string"
+        },
+        "amount_requested": {
+          "type": "integer"
+        },
+        "route": {
+          "enum": [
+            "decline_ineligible",
+            "review"
+          ],
+          "type": "string"
+        },
+        "failed_rules": {
+          "items": {
+            "enum": [
+              "form_type",
+              "revenue_range",
+              "return_current",
+              "net_assets",
+              "request_range",
+              "request_share"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "flags": {
+          "items": {
+            "enum": [
+              "budget_mismatch",
+              "staff_mismatch",
+              "name_mismatch",
+              "out_of_focus",
+              "injection",
+              "not_found",
+              "figures_disagree",
+              "arithmetic",
+              "unverified_reading",
+              "sensitive_data"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "decision": {
+          "anyOf": [
+            {
+              "enum": [
+                "approve",
+                "decline"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "application_id",
+        "status",
+        "received_at",
+        "updated_at",
+        "organization_name",
+        "amount_requested",
+        "route",
+        "failed_rules",
+        "flags",
+        "decision"
+      ],
+      "title": "ApplicationRecord",
+      "type": "object"
+    },
+    "Claims": {
+      "description": "Figures the narrative states about the organization (None: it doesn't say).",
+      "properties": {
+        "annual_budget": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "staff": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "Claims",
+      "type": "object",
+      "required": [
+        "annual_budget",
+        "staff"
+      ]
+    },
+    "DecisionRequest": {
+      "additionalProperties": false,
+      "description": "What the reviewer sends. Corrections replace figures read from the return (ReturnFigures field -> value) and send\nthe application back through the rules; with no decision, it pauses again afterwards.",
+      "properties": {
+        "decision": {
+          "anyOf": [
+            {
+              "enum": [
+                "approve",
+                "decline"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "corrections": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "default": {},
+          "type": "object"
+        },
+        "reason": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision",
+        "corrections",
+        "reason"
+      ],
+      "title": "DecisionRequest",
+      "type": "object"
+    },
+    "Evidence": {
+      "description": "One application, as the reviewer sees it.",
+      "properties": {
+        "record": {
+          "$ref": "#/$defs/ApplicationRecord"
+        },
+        "waiting_for_review": {
+          "type": "boolean"
+        },
+        "form": {
+          "$ref": "#/$defs/ApplicationForm"
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/RuleCheck"
+          },
+          "type": "array"
+        },
+        "flags": {
+          "items": {
+            "$ref": "#/$defs/Flag"
+          },
+          "type": "array"
+        },
+        "extraction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Extraction"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "research": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Research"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "proposal": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProposalReading"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "narrative": {
+          "type": "string"
+        },
+        "review": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReviewerDecision"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "letter": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "letter_problems": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "model_calls": {
+          "type": "integer"
+        },
+        "cost_usd": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "record",
+        "waiting_for_review",
+        "form",
+        "rules",
+        "flags",
+        "extraction",
+        "research",
+        "proposal",
+        "narrative",
+        "review",
+        "letter",
+        "letter_problems",
+        "model_calls",
+        "cost_usd"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "Extraction": {
+      "description": "Written by `extract`: the figures read from the return's page images.",
+      "properties": {
+        "form_type": {
+          "type": "string"
+        },
+        "figures": {
+          "$ref": "#/$defs/ReturnFigures"
+        },
+        "revenue_adds_up": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "form_type",
+        "figures",
+        "revenue_adds_up"
+      ],
+      "title": "Extraction",
+      "type": "object"
+    },
+    "Flag": {
+      "description": "Something a reviewer should look at, with the evidence to check it without redoing the work.",
+      "properties": {
+        "step": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "budget_mismatch",
+            "staff_mismatch",
+            "name_mismatch",
+            "out_of_focus",
+            "injection",
+            "not_found",
+            "figures_disagree",
+            "arithmetic",
+            "unverified_reading",
+            "sensitive_data"
+          ],
+          "type": "string"
+        },
+        "evidence": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "step",
+        "kind",
+        "evidence"
+      ],
+      "title": "Flag",
+      "type": "object"
+    },
+    "PeriodFigures": {
+      "description": "One period's figures in the public record (None: not reported).",
+      "properties": {
+        "revenue": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "expenses": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "PeriodFigures",
+      "type": "object",
+      "required": [
+        "revenue",
+        "expenses"
+      ]
+    },
+    "ProposalReading": {
+      "description": "Written by `read_proposal`. The narrative is untrusted: this records what it says, never what it asks.",
+      "properties": {
+        "focus_area": {
+          "anyOf": [
+            {
+              "enum": [
+                "food_security",
+                "health",
+                "education",
+                "housing",
+                "human_services"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "claims": {
+          "$ref": "#/$defs/Claims"
+        },
+        "rubric": {
+          "items": {
+            "$ref": "#/$defs/RubricScore"
+          },
+          "type": "array"
+        },
+        "suspected_instructions": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "focus_area",
+        "claims",
+        "rubric",
+        "suspected_instructions"
+      ],
+      "title": "ProposalReading",
+      "type": "object"
+    },
+    "Queue": {
+      "properties": {
+        "applications": {
+          "items": {
+            "$ref": "#/$defs/ApplicationRecord"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "applications"
+      ],
+      "title": "Queue",
+      "type": "object"
+    },
+    "Research": {
+      "description": "Written by `research`: what the public record (ProPublica, from IRS data) says about the EIN.",
+      "properties": {
+        "found": {
+          "type": "boolean"
+        },
+        "registered_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "name_matches_form": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "name_explanation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "form_name_belongs_to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "figures_by_period": {
+          "additionalProperties": {
+            "$ref": "#/$defs/PeriodFigures"
+          },
+          "default": {},
+          "type": "object"
+        }
+      },
+      "required": [
+        "found",
+        "registered_name",
+        "name_matches_form",
+        "name_explanation",
+        "form_name_belongs_to",
+        "figures_by_period"
+      ],
+      "title": "Research",
+      "type": "object"
+    },
+    "ReturnFigures": {
+      "description": "Part I figures from the latest Form 990, named as in the IRS answer keys (and fund_rules). None means\nthe line is blank on the form, not zero.",
+      "properties": {
+        "ein": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "organization_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tax_period_end": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "contributions_and_grants_current_year": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "program_service_revenue_current_year": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "investment_income_current_year": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "other_revenue_current_year": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "total_revenue_current_year": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "total_expenses_current_year": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "total_assets_end_of_year": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "total_liabilities_end_of_year": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "employees": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "ReturnFigures",
+      "type": "object",
+      "required": [
+        "ein",
+        "organization_name",
+        "tax_period_end",
+        "contributions_and_grants_current_year",
+        "program_service_revenue_current_year",
+        "investment_income_current_year",
+        "other_revenue_current_year",
+        "total_revenue_current_year",
+        "total_expenses_current_year",
+        "total_assets_end_of_year",
+        "total_liabilities_end_of_year",
+        "employees"
+      ]
+    },
+    "ReviewerDecision": {
+      "description": "Written by `human_review`: the person's decision. Corrections replace figures the extraction got wrong\n(field name in ReturnFigures -> corrected value) and send the application back through eligibility.",
+      "properties": {
+        "decision": {
+          "anyOf": [
+            {
+              "enum": [
+                "approve",
+                "decline"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "corrections": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "default": {},
+          "type": "object"
+        },
+        "reason": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "reviewer": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "decided_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision",
+        "corrections",
+        "reason",
+        "reviewer",
+        "decided_at"
+      ],
+      "title": "ReviewerDecision",
+      "type": "object"
+    },
+    "RubricScore": {
+      "properties": {
+        "criterion": {
+          "enum": [
+            "clear_outcomes",
+            "budget_matches_request",
+            "feasible_for_size"
+          ],
+          "type": "string"
+        },
+        "score": {
+          "maximum": 5,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "quote": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "criterion",
+        "score",
+        "quote"
+      ],
+      "title": "RubricScore",
+      "type": "object"
+    },
+    "RuleCheck": {
+      "properties": {
+        "rule": {
+          "enum": [
+            "form_type",
+            "revenue_range",
+            "return_current",
+            "net_assets",
+            "request_range",
+            "request_share"
+          ],
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "passed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "rule",
+        "description",
+        "passed"
+      ],
+      "title": "RuleCheck",
+      "type": "object"
+    }
+  },
+  "title": "ReviewerApi",
+  "type": "object",
+  "properties": {
+    "Queue": {
+      "$ref": "#/$defs/Queue"
+    },
+    "Evidence": {
+      "$ref": "#/$defs/Evidence"
+    },
+    "DecisionRequest": {
+      "$ref": "#/$defs/DecisionRequest"
+    }
+  },
+  "required": [
+    "Queue",
+    "Evidence",
+    "DecisionRequest"
+  ],
+  "additionalProperties": false
+}

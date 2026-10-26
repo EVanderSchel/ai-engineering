@@ -26,6 +26,7 @@ export interface DataStackProps extends cdk.StackProps {
 export class DataStack extends cdk.Stack {
   readonly table: dynamodb.ITable;
   readonly intake?: s3.IBucket;
+  readonly applications?: dynamodb.ITable;
 
   constructor(scope: Construct, id: string, props: DataStackProps = {}) {
     super(scope, id, props);
@@ -68,6 +69,30 @@ export class DataStack extends cdk.Stack {
     };
     cdk.Tags.of(intake).add('purpose', 'application-intake');
     this.intake = intake;
+
+    // Where each application stands (step 8, src/applications.py): what the reviewer UI's queue lists. One record per
+    // application, rewritten after every run; the queue is one query on the by-status index. Records expire with
+    // their checkpoints (30 days, "ttl"), so the queue never lists an application whose evidence is gone.
+    const applications = new dynamodb.Table(this, 'Applications', {
+      tableName: 'grant-review-applications',
+      partitionKey: { name: 'application_id', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      timeToLiveAttribute: 'ttl',
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      deletionProtection: true,
+    });
+    applications.addGlobalSecondaryIndex({
+      indexName: 'by-status',
+      partitionKey: { name: 'status', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'received_at', type: dynamodb.AttributeType.STRING }, // ISO 8601 in UTC: sorts as time
+      projectionType: dynamodb.ProjectionType.ALL, // a record is small; the queue needs every field
+    });
+    cdk.Tags.of(applications).add('purpose', 'review-queue');
+    this.applications = applications;
+    Validations.of(applications).acknowledge({
+      id: 'AwsSolutions-DDB3',
+      reason: 'No point-in-time recovery, as for the checkpoints (decision 8): each record is rewritten by the next run.',
+    });
     Validations.of(intake).acknowledge({
       id: 'AwsSolutions-S1',
       reason: 'No server access logs: one uploader (the fund), and CloudTrail records who changed the bucket.',

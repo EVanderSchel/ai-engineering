@@ -1,0 +1,118 @@
+{
+  "record": {
+    "application_id": "gp-040",
+    "status": "declined_by_rules",
+    "received_at": "2025-06-02T22:00:00Z",
+    "updated_at": "2025-07-01T12:00:00Z",
+    "organization_name": "Yolo County Board of Education Financing Corporation",
+    "amount_requested": 36000,
+    "route": "decline_ineligible",
+    "failed_rules": [
+      "net_assets"
+    ],
+    "flags": [],
+    "decision": null
+  },
+  "waiting_for_review": false,
+  "form": {
+    "ein": "770650770",
+    "organization_name": "Yolo County Board of Education Financing Corporation",
+    "amount_requested": 36000,
+    "project_title": "Summer Bridge Program for Incoming Ninth Graders"
+  },
+  "rules": [
+    {
+      "rule": "form_type",
+      "description": "Files the full Form 990 (not 990-EZ or 990-PF)",
+      "passed": true
+    },
+    {
+      "rule": "revenue_range",
+      "description": "Total revenue between $50,000 and $20,000,000 in the latest year",
+      "passed": true
+    },
+    {
+      "rule": "return_current",
+      "description": "Latest return's tax year ended on or after 2022-06-30",
+      "passed": true
+    },
+    {
+      "rule": "net_assets",
+      "description": "Positive net assets (total assets minus total liabilities) at year end",
+      "passed": false
+    },
+    {
+      "rule": "request_range",
+      "description": "Request between $5,000 and $50,000",
+      "passed": true
+    },
+    {
+      "rule": "request_share",
+      "description": "Request at most 25% of total annual expenses",
+      "passed": true
+    }
+  ],
+  "flags": [],
+  "extraction": {
+    "form_type": "990",
+    "figures": {
+      "ein": "770650770",
+      "organization_name": "Yolo County Board of Education Financing Corporation",
+      "tax_period_end": "2024-06-30",
+      "contributions_and_grants_current_year": 0,
+      "program_service_revenue_current_year": 416815,
+      "investment_income_current_year": 0,
+      "other_revenue_current_year": 0,
+      "total_revenue_current_year": 416815,
+      "total_expenses_current_year": 416815,
+      "total_assets_end_of_year": 4723286,
+      "total_liabilities_end_of_year": 4723286,
+      "employees": 0
+    },
+    "revenue_adds_up": true
+  },
+  "research": {
+    "found": true,
+    "registered_name": "Yolo County Board of Education Financing Corporation",
+    "name_matches_form": true,
+    "name_explanation": null,
+    "form_name_belongs_to": null,
+    "figures_by_period": {
+      "2024-06": {
+        "revenue": 416815,
+        "expenses": 416815
+      }
+    }
+  },
+  "proposal": {
+    "focus_area": "education",
+    "claims": {
+      "annual_budget": 417000,
+      "staff": null
+    },
+    "rubric": [
+      {
+        "criterion": "clear_outcomes",
+        "score": 4,
+        "quote": "We request $36,000 to run a four-week Summer Bridge Program for students about to start ninth grade."
+      },
+      {
+        "criterion": "budget_matches_request",
+        "score": 3,
+        "quote": "We request $36,000 to run a four-week Summer Bridge Program for students about to start ninth grade."
+      },
+      {
+        "criterion": "feasible_for_size",
+        "score": 4,
+        "quote": "We request $36,000 to run a four-week Summer Bridge Program for students about to start ninth grade."
+      }
+    ],
+    "suspected_instructions": []
+  },
+  "narrative": "# Summer Bridge Program for Incoming Ninth Graders\n\n## About us\n\nYolo County Board of Education Financing Corporation assists the Yolo County Board of Education by serving as a conduit for certificate of participation financing, which pays for school facilities. Our annual operating budget is $417,000. Buildings are only part of what students need, and the Board has asked us to help with a program it cannot fund from its regular budget.\n\n## The project\n\nWe request $36,000 to run a four-week Summer Bridge Program for students about to start ninth grade. The move from middle school to high school is where many students who later drop out first fall behind. Ninth graders who fail a class in their first semester are far less likely to graduate on time, and the students most at risk are often the ones who arrive with the weakest math and reading skills and the least sense of what high school expects.\n\nThe program runs five mornings a week for four weeks in July. Students spend each morning in small classes in math and reading taught by credentialed teachers from the high schools they will attend. Afternoons are spent on what high school asks of students beyond the classroom: building a schedule, using the school's online systems, meeting counselors and touring the campus. Each student finishes with a plan for their first semester and a teacher they already know on campus. Lunch and bus transportation are provided, so that cost and distance don't keep anyone away.\n\n## Who it serves\n\nThe program will serve 60 incoming ninth graders, chosen by middle school counselors based on grades, attendance and teacher recommendations. Priority goes to students who would be the first in their family to graduate from high school.\n\n## Outcomes\n\n- At least 50 of the 60 students complete the four weeks.\n- Students improve their math and reading scores between the first and last week.\n- At least 85 percent of participants pass every class in their first semester of high school.\n- We will report attendance, test results and first-semester grades to the Fund.\n\n## Budget\n\n- Teacher stipends: $21,000\n- Curriculum materials: $6,000\n- Student transportation: $6,000\n- Student lunches: $3,000\n",
+  "review": null,
+  "letter": "Letter for gp-040",
+  "letter_problems": [],
+  "model_calls": 3,
+  "cost_usd": 0.003
+}

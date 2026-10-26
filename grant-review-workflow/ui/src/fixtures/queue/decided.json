@@ -1,0 +1,28 @@
+{
+  "applications": [
+    {
+      "application_id": "gp-003",
+      "status": "decided",
+      "received_at": "2025-06-02T09:00:00Z",
+      "updated_at": "2025-07-01T12:00:00Z",
+      "organization_name": "KAPPA SIGMA FRATERNITY 87 GAMMA-GAMMA",
+      "amount_requested": 16500,
+      "route": "review",
+      "failed_rules": [],
+      "flags": [],
+      "decision": "approve"
+    },
+    {
+      "application_id": "gp-028",
+      "status": "decided",
+      "received_at": "2025-06-02T16:00:00Z",
+      "updated_at": "2025-07-01T12:00:00Z",
+      "organization_name": "NEW PRAIRIE ACTIVITY CENTER",
+      "amount_requested": 11500,
+      "route": "review",
+      "failed_rules": [],
+      "flags": [],
+      "decision": "decline"
+    }
+  ]
+}

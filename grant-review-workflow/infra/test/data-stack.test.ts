@@ -81,6 +81,28 @@ describe('after the import', () => {
     template.hasResource('AWS::S3::Bucket', { DeletionPolicy: 'Retain' });
   });
 
+  test('the status table: one record per application, the queue index, expiry with the checkpoints', () => {
+    template.hasResourceProperties('AWS::DynamoDB::Table', {
+      TableName: 'grant-review-applications',
+      KeySchema: [{ AttributeName: 'application_id', KeyType: 'HASH' }],
+      BillingMode: 'PAY_PER_REQUEST',
+      TimeToLiveSpecification: { AttributeName: 'ttl', Enabled: true },
+      DeletionProtectionEnabled: true,
+      GlobalSecondaryIndexes: [
+        {
+          IndexName: 'by-status',
+          KeySchema: [
+            { AttributeName: 'status', KeyType: 'HASH' },
+            { AttributeName: 'received_at', KeyType: 'RANGE' },
+          ],
+          Projection: { ProjectionType: 'ALL' },
+        },
+      ],
+    });
+    template.resourceCountIs('AWS::DynamoDB::Table', 2);
+    template.allResources('AWS::DynamoDB::Table', { DeletionPolicy: 'Retain' });
+  });
+
   test('no helper Lambda is deployed for the bucket notification', () => {
     template.resourceCountIs('AWS::Lambda::Function', 0);
     template.resourceCountIs('AWS::IAM::Role', 0);

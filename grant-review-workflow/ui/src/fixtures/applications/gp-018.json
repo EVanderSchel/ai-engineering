@@ -1,0 +1,118 @@
+{
+  "record": {
+    "application_id": "gp-018",
+    "status": "declined_by_rules",
+    "received_at": "2025-06-02T11:00:00Z",
+    "updated_at": "2025-07-01T12:00:00Z",
+    "organization_name": "CALIFORNIA FIELD IRON WORKERS APPRENTICESHIP AND JOURNEYMAN RETRAINING Fund",
+    "amount_requested": 15500,
+    "route": "decline_ineligible",
+    "failed_rules": [
+      "revenue_range"
+    ],
+    "flags": [],
+    "decision": null
+  },
+  "waiting_for_review": false,
+  "form": {
+    "ein": "956042917",
+    "organization_name": "CALIFORNIA FIELD IRON WORKERS APPRENTICESHIP AND JOURNEYMAN RETRAINING Fund",
+    "amount_requested": 15500,
+    "project_title": "Pre-Apprenticeship Pathway for Returning Citizens"
+  },
+  "rules": [
+    {
+      "rule": "form_type",
+      "description": "Files the full Form 990 (not 990-EZ or 990-PF)",
+      "passed": true
+    },
+    {
+      "rule": "revenue_range",
+      "description": "Total revenue between $50,000 and $20,000,000 in the latest year",
+      "passed": false
+    },
+    {
+      "rule": "return_current",
+      "description": "Latest return's tax year ended on or after 2022-06-30",
+      "passed": true
+    },
+    {
+      "rule": "net_assets",
+      "description": "Positive net assets (total assets minus total liabilities) at year end",
+      "passed": true
+    },
+    {
+      "rule": "request_range",
+      "description": "Request between $5,000 and $50,000",
+      "passed": true
+    },
+    {
+      "rule": "request_share",
+      "description": "Request at most 25% of total annual expenses",
+      "passed": true
+    }
+  ],
+  "flags": [],
+  "extraction": {
+    "form_type": "990",
+    "figures": {
+      "ein": "956042917",
+      "organization_name": "CALIFORNIA FIELD IRON WORKERS APPRENTICESHIP AND JOURNEYMAN RETRAINING Fund",
+      "tax_period_end": "2023-05-31",
+      "contributions_and_grants_current_year": 2213818,
+      "program_service_revenue_current_year": 17012495,
+      "investment_income_current_year": 1287475,
+      "other_revenue_current_year": 240704,
+      "total_revenue_current_year": 20754492,
+      "total_expenses_current_year": 14834068,
+      "total_assets_end_of_year": 84596249,
+      "total_liabilities_end_of_year": 516186,
+      "employees": 124
+    },
+    "revenue_adds_up": true
+  },
+  "research": {
+    "found": true,
+    "registered_name": "CALIFORNIA FIELD IRON WORKERS APPRENTICESHIP AND JOURNEYMAN RETRAINING Fund",
+    "name_matches_form": true,
+    "name_explanation": null,
+    "form_name_belongs_to": null,
+    "figures_by_period": {
+      "2023-05": {
+        "revenue": 20754492,
+        "expenses": 14834068
+      }
+    }
+  },
+  "proposal": {
+    "focus_area": "human_services",
+    "claims": {
+      "annual_budget": 14834000,
+      "staff": 124
+    },
+    "rubric": [
+      {
+        "criterion": "clear_outcomes",
+        "score": 4,
+        "quote": "We request $15,500 to pilot a Pre-Apprenticeship Pathway for adults returning home from incarceration."
+      },
+      {
+        "criterion": "budget_matches_request",
+        "score": 3,
+        "quote": "We request $15,500 to pilot a Pre-Apprenticeship Pathway for adults returning home from incarceration."
+      },
+      {
+        "criterion": "feasible_for_size",
+        "score": 4,
+        "quote": "We request $15,500 to pilot a Pre-Apprenticeship Pathway for adults returning home from incarceration."
+      }
+    ],
+    "suspected_instructions": []
+  },
+  "narrative": "# Pre-Apprenticeship Pathway for Returning Citizens\n\n## About us\n\nThe California Field Iron Workers Apprenticeship and Journeyman Retraining Fund trains apprentice ironworkers and helps journeymen keep their skills current. Our annual operating budget is $14,834,000, and we have 124 paid staff, most of them instructors at our training centers. Every year we see the same gap: people who want a career in the trades but can't get through the door, because they lack the basics an apprenticeship assumes.\n\n## The project\n\nWe request $15,500 to pilot a Pre-Apprenticeship Pathway for adults returning home from incarceration. People leaving prison face some of the steepest barriers to steady work in California, and a union apprenticeship offers what most other options don't: a paycheck from the first day, a clear path to a skilled trade, and a wage that can support a family.\n\nThe pathway is a ten-week, full-time course that prepares participants to apply for and succeed in our apprenticeship. It covers safety certification, basic rigging and welding, construction math, and what a job site expects every day. Participants are referred by county reentry programs and parole offices. A case manager meets each participant weekly to solve problems before they become reasons to drop out: transportation, work clothing, housing referrals and paperwork. Participants who complete the course are guaranteed an interview for the next apprenticeship class.\n\n## Who it serves\n\nThe pilot will serve 15 adults in its first cohort, recently released and living in the region served by our main training center. Most will have no prior construction experience and no recent work history.\n\n## Outcomes\n\n- At least 12 of the 15 participants complete the ten-week course.\n- Every graduate earns the safety certifications required to work on a job site.\n- At least 9 graduates are accepted into an apprenticeship within six months.\n- We will report completion, certification and placement results to the Fund at the end of the cohort and again six months later.\n\n## Budget\n\n- Work boots, gloves and safety gear: $6,000\n- Case management support: $5,500\n- Transportation passes: $2,500\n- Certification fees: $1,500\n",
+  "review": null,
+  "letter": "Letter for gp-018",
+  "letter_problems": [],
+  "model_calls": 3,
+  "cost_usd": 0.003
+}

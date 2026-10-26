@@ -1,0 +1,122 @@
+{
+  "record": {
+    "application_id": "gp-003",
+    "status": "decided",
+    "received_at": "2025-06-02T09:00:00Z",
+    "updated_at": "2025-07-01T12:00:00Z",
+    "organization_name": "KAPPA SIGMA FRATERNITY 87 GAMMA-GAMMA",
+    "amount_requested": 16500,
+    "route": "review",
+    "failed_rules": [],
+    "flags": [],
+    "decision": "approve"
+  },
+  "waiting_for_review": false,
+  "form": {
+    "ein": "840406728",
+    "organization_name": "KAPPA SIGMA FRATERNITY 87 GAMMA-GAMMA",
+    "amount_requested": 16500,
+    "project_title": "Neighbor Day: Home Help for Older and Disabled Residents"
+  },
+  "rules": [
+    {
+      "rule": "form_type",
+      "description": "Files the full Form 990 (not 990-EZ or 990-PF)",
+      "passed": true
+    },
+    {
+      "rule": "revenue_range",
+      "description": "Total revenue between $50,000 and $20,000,000 in the latest year",
+      "passed": true
+    },
+    {
+      "rule": "return_current",
+      "description": "Latest return's tax year ended on or after 2022-06-30",
+      "passed": true
+    },
+    {
+      "rule": "net_assets",
+      "description": "Positive net assets (total assets minus total liabilities) at year end",
+      "passed": true
+    },
+    {
+      "rule": "request_range",
+      "description": "Request between $5,000 and $50,000",
+      "passed": true
+    },
+    {
+      "rule": "request_share",
+      "description": "Request at most 25% of total annual expenses",
+      "passed": true
+    }
+  ],
+  "flags": [],
+  "extraction": {
+    "form_type": "990",
+    "figures": {
+      "ein": "840406728",
+      "organization_name": "KAPPA SIGMA FRATERNITY 87 GAMMA-GAMMA",
+      "tax_period_end": "2023-05-31",
+      "contributions_and_grants_current_year": 0,
+      "program_service_revenue_current_year": 369476,
+      "investment_income_current_year": 0,
+      "other_revenue_current_year": 0,
+      "total_revenue_current_year": 369476,
+      "total_expenses_current_year": 383414,
+      "total_assets_end_of_year": 164040,
+      "total_liabilities_end_of_year": 0,
+      "employees": 0
+    },
+    "revenue_adds_up": true
+  },
+  "research": {
+    "found": true,
+    "registered_name": "KAPPA SIGMA FRATERNITY 87 GAMMA-GAMMA",
+    "name_matches_form": true,
+    "name_explanation": null,
+    "form_name_belongs_to": null,
+    "figures_by_period": {
+      "2023-05": {
+        "revenue": 369476,
+        "expenses": 383414
+      }
+    }
+  },
+  "proposal": {
+    "focus_area": "human_services",
+    "claims": {
+      "annual_budget": 428000,
+      "staff": null
+    },
+    "rubric": [
+      {
+        "criterion": "clear_outcomes",
+        "score": 4,
+        "quote": "We request $16,500 to run Neighbor Day, a monthly home-help program for older adults and people with disabilities who live within a few miles of campus."
+      },
+      {
+        "criterion": "budget_matches_request",
+        "score": 3,
+        "quote": "We request $16,500 to run Neighbor Day, a monthly home-help program for older adults and people with disabilities who live within a few miles of campus."
+      },
+      {
+        "criterion": "feasible_for_size",
+        "score": 4,
+        "quote": "We request $16,500 to run Neighbor Day, a monthly home-help program for older adults and people with disabilities who live within a few miles of campus."
+      }
+    ],
+    "suspected_instructions": []
+  },
+  "narrative": "# Neighbor Day: Home Help for Older and Disabled Residents\n\n## About us\n\nThe Gamma-Gamma chapter of Kappa Sigma Fraternity is a collegiate chapter of a national fraternity. Our chapter house, member programs and events run on an annual operating budget of $428,000, funded almost entirely by member dues. Service has always been part of chapter life, but until now it has meant one-off events. We want to build something our neighbors can count on, week after week, for as long as the chapter exists.\n\n## The project\n\nWe request $16,500 to run Neighbor Day, a monthly home-help program for older adults and people with disabilities who live within a few miles of campus. On one Saturday each month during the school year, teams of members will visit homes to do the work that keeps people safe and independent: clearing gutters and walkways, raking and mowing, moving heavy furniture, installing grab bars and handrails, replacing smoke detector batteries and hauling away junk.\n\nRequests will come through the county's area agency on aging and two senior centers, which already keep lists of residents who need help and can't afford a contractor. Each team will have a trained crew lead, and anything that needs a licensed tradesperson will be referred back to the agency instead of attempted by students. Members will sign up for the program at the start of each semester, so the work doesn't depend on who happens to be free that weekend.\n\n## Who it serves\n\nWe plan to complete about 120 home visits over the school year, helping 70 to 80 households, most of them older adults living alone. Many have been on the agency's waiting list for months, and some have been putting off small repairs that are now becoming safety hazards.\n\n## Outcomes\n\n- 120 completed visits by the end of the school year.\n- Every visit includes a basic safety check, with any hazard reported to the agency.\n- At least 90 percent of residents rate the help as useful in a follow-up call.\n- We will share a list of visits and work completed with the Fund at mid-year and at year end.\n\n## Budget\n\n- Tools and equipment: $4,500\n- Building and yard materials: $7,000\n- Truck and trailer rental: $2,500\n- Safety training and gear: $2,500\n",
+  "review": {
+    "decision": "approve",
+    "corrections": {},
+    "reason": "Checked the return.",
+    "reviewer": "me",
+    "decided_at": "2025-07-01T00:00:00Z"
+  },
+  "letter": "Letter for gp-003",
+  "letter_problems": [],
+  "model_calls": 3,
+  "cost_usd": 0.003
+}

@@ -1,0 +1,124 @@
+{
+  "record": {
+    "application_id": "gp-002",
+    "status": "waiting_for_review",
+    "received_at": "2025-06-02T08:00:00Z",
+    "updated_at": "2025-07-01T12:00:00Z",
+    "organization_name": "TANEYTOWN VOLUNTEER FIRE CO 1",
+    "amount_requested": 43000,
+    "route": "review",
+    "failed_rules": [],
+    "flags": [
+      "staff_mismatch"
+    ],
+    "decision": null
+  },
+  "waiting_for_review": true,
+  "form": {
+    "ein": "526050518",
+    "organization_name": "TANEYTOWN VOLUNTEER FIRE CO 1",
+    "amount_requested": 43000,
+    "project_title": "Fire Recovery Assistance for Displaced Families"
+  },
+  "rules": [
+    {
+      "rule": "form_type",
+      "description": "Files the full Form 990 (not 990-EZ or 990-PF)",
+      "passed": true
+    },
+    {
+      "rule": "revenue_range",
+      "description": "Total revenue between $50,000 and $20,000,000 in the latest year",
+      "passed": true
+    },
+    {
+      "rule": "return_current",
+      "description": "Latest return's tax year ended on or after 2022-06-30",
+      "passed": true
+    },
+    {
+      "rule": "net_assets",
+      "description": "Positive net assets (total assets minus total liabilities) at year end",
+      "passed": true
+    },
+    {
+      "rule": "request_range",
+      "description": "Request between $5,000 and $50,000",
+      "passed": true
+    },
+    {
+      "rule": "request_share",
+      "description": "Request at most 25% of total annual expenses",
+      "passed": true
+    }
+  ],
+  "flags": [
+    {
+      "step": "cross_check",
+      "kind": "staff_mismatch",
+      "evidence": "The proposal states 9 paid staff; the return reports 18 employees."
+    }
+  ],
+  "extraction": {
+    "form_type": "990",
+    "figures": {
+      "ein": "526050518",
+      "organization_name": "TANEYTOWN VOLUNTEER FIRE CO 1",
+      "tax_period_end": "2022-06-30",
+      "contributions_and_grants_current_year": 0,
+      "program_service_revenue_current_year": 1274388,
+      "investment_income_current_year": -7534,
+      "other_revenue_current_year": 3500,
+      "total_revenue_current_year": 1270354,
+      "total_expenses_current_year": 1047361,
+      "total_assets_end_of_year": 2826522,
+      "total_liabilities_end_of_year": 0,
+      "employees": 18
+    },
+    "revenue_adds_up": true
+  },
+  "research": {
+    "found": true,
+    "registered_name": "TANEYTOWN VOLUNTEER FIRE CO 1",
+    "name_matches_form": true,
+    "name_explanation": null,
+    "form_name_belongs_to": null,
+    "figures_by_period": {
+      "2022-06": {
+        "revenue": 1270354,
+        "expenses": 1047361
+      }
+    }
+  },
+  "proposal": {
+    "focus_area": "human_services",
+    "claims": {
+      "annual_budget": 1047000,
+      "staff": 9
+    },
+    "rubric": [
+      {
+        "criterion": "clear_outcomes",
+        "score": 4,
+        "quote": "We request $43,000 to start a Fire Recovery Assistance program for households displaced by residential fires in our first-due area."
+      },
+      {
+        "criterion": "budget_matches_request",
+        "score": 3,
+        "quote": "We request $43,000 to start a Fire Recovery Assistance program for households displaced by residential fires in our first-due area."
+      },
+      {
+        "criterion": "feasible_for_size",
+        "score": 4,
+        "quote": "We request $43,000 to start a Fire Recovery Assistance program for households displaced by residential fires in our first-due area."
+      }
+    ],
+    "suspected_instructions": []
+  },
+  "narrative": "# Fire Recovery Assistance for Displaced Families\n\n## About us\n\nTaneytown Volunteer Fire Company No. 1 provides fire protection, fire prevention and ambulance service to Taneytown and the surrounding community. Our annual operating budget is $1,047,000, and we have 9 paid staff who work alongside a large roster of volunteer firefighters and emergency medical technicians. Every call we answer ends the same way for us: the fire is out and the engine goes back to the station. For the family standing in the yard, that is when the hardest part begins.\n\n## The project\n\nWe request $43,000 to start a Fire Recovery Assistance program for households displaced by residential fires in our first-due area. Today, when a family loses the use of their home, our crews can offer a blanket, a phone call to a relative and a referral number. Many of the families we see are renters, older adults living alone, or parents working hourly jobs, and they often have no savings to cover the first nights away from home.\n\nThe program will give our officers a way to act on the scene. With the family's consent, the officer in charge will open a case that night. A part-time recovery coordinator will follow up within 24 hours to arrange emergency lodging, replace clothing, medication supplies and school items, and connect the family with insurance claims help, the county housing office and local churches that offer longer-term support. Each case stays open until the family has a stable place to stay.\n\n## Who it serves\n\nOur district averages between 30 and 40 residential fires a year, and roughly half leave a household unable to return home for at least a week. We expect to serve 18 to 22 households in the first year, around 60 people in all, with priority for families with children, older adults and people with disabilities.\n\n## Outcomes\n\n- Every displaced household is offered help on the night of the fire.\n- Each household has safe lodging within 24 hours.\n- At least 80 percent of households are in stable housing within 30 days.\n- We will report case counts, time to lodging and housing outcomes to the Fund every six months.\n\n## Budget\n\n- Emergency lodging vouchers: $22,000\n- Clothing and household essentials: $9,500\n- Part-time recovery coordinator: $8,500\n- Outreach and printed materials: $3,000\n",
+  "review": null,
+  "letter": null,
+  "letter_problems": [],
+  "model_calls": 2,
+  "cost_usd": 0.002
+}

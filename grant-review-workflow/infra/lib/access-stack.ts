@@ -6,6 +6,8 @@ import { Construct } from 'constructs';
 /** Names the other stacks and the bootstrap refer to: fixed, so nothing has to look them up. */
 export const BOUNDARY_POLICY = 'grant-review-workload-boundary';
 export const EXECUTION_POLICY = 'grant-review-cdk-execution';
+/** The tag every resource of the project carries (app.ts). Resources with generated IDs are scoped by it. */
+export const PROJECT_TAG = { key: 'project', value: 'grant-review-workflow' };
 const QUALIFIER = 'hnb659fds'; // cdk bootstrap's default
 
 /**
@@ -46,15 +48,21 @@ export class AccessStack extends cdk.Stack {
           resources: [arn('bedrock', 'inference-profile/*'), 'arn:aws:bedrock:*::foundation-model/anthropic.*'],
         }),
         new iam.PolicyStatement({
-          sid: 'Checkpoints',
+          sid: 'Checkpoints', // and status records (step 8): UpdateItem is the reviewer UI's claim
           actions: [
             'dynamodb:GetItem',
             'dynamodb:PutItem',
+            'dynamodb:UpdateItem',
             'dynamodb:Query',
             'dynamodb:BatchGetItem',
             'dynamodb:BatchWriteItem',
           ],
-          resources: [arn('dynamodb', 'table/grant-review-*')],
+          resources: [arn('dynamodb', 'table/grant-review-*')], // indexes too: table/<name>/index/<index>
+        }),
+        new iam.PolicyStatement({
+          sid: 'InvokeOurFunctions', // the reviewer UI's API runs the resume function
+          actions: ['lambda:InvokeFunction'],
+          resources: [arn('lambda', 'function:GrantReview*')],
         }),
         new iam.PolicyStatement({
           sid: 'OurBuckets',
@@ -138,6 +146,59 @@ export class AccessStack extends cdk.Stack {
           actions: ['codeconnections:*', 'codestar-connections:*'],
           resources: [arn('codeconnections', 'connection/*'), arn('codestar-connections', 'connection/*')],
         }),
+        // User pools get generated IDs (us-east-2_AbC123), so they're scoped by the project tag instead of a name:
+        // a pool may only be created tagged as ours, and only pools tagged as ours may be changed.
+        new iam.PolicyStatement({
+          sid: 'CreateOurUserPool', // CreateUserPool has no resource to scope to before the pool exists
+          actions: ['cognito-idp:CreateUserPool'],
+          resources: ['*'],
+          conditions: { StringEquals: { [`aws:RequestTag/${PROJECT_TAG.key}`]: PROJECT_TAG.value } },
+        }),
+        new iam.PolicyStatement({
+          sid: 'OurUserPools',
+          actions: ['cognito-idp:*'],
+          resources: [arn('cognito-idp', 'userpool/*')],
+          conditions: { StringEquals: { [`aws:ResourceTag/${PROJECT_TAG.key}`]: PROJECT_TAG.value } },
+        }),
+        // HTTP APIs get generated IDs too: created only tagged as ours, changed only when tagged as ours. API Gateway
+        // applies an API's tags to its routes, integrations, stages and authorizers when checking permissions.
+        new iam.PolicyStatement({
+          sid: 'CreateOurHttpApi',
+          actions: ['apigateway:POST'],
+          resources: [`arn:aws:apigateway:${r}::/apis`],
+          conditions: { StringEquals: { [`aws:RequestTag/${PROJECT_TAG.key}`]: PROJECT_TAG.value } },
+        }),
+        new iam.PolicyStatement({
+          sid: 'OurHttpApis',
+          actions: ['apigateway:*'],
+          resources: [`arn:aws:apigateway:${r}::/apis/*`, `arn:aws:apigateway:${r}::/tags/*`],
+          conditions: { StringEquals: { [`aws:ResourceTag/${PROJECT_TAG.key}`]: PROJECT_TAG.value } },
+        }),
+        new iam.PolicyStatement({
+          sid: 'ApiAccessLogDelivery', // HTTP API access logs: CloudWatch Logs' delivery calls have no resource
+          actions: [
+            'logs:CreateLogDelivery',
+            'logs:GetLogDelivery',
+            'logs:UpdateLogDelivery',
+            'logs:DeleteLogDelivery',
+            'logs:ListLogDeliveries',
+            'logs:PutResourcePolicy',
+          ],
+          resources: ['*'],
+        }),
+        new iam.PolicyStatement({ sid: 'OurAlarmTopic', actions: ['sns:*'], resources: [arn('sns', 'GrantReview*')] }),
+        new iam.PolicyStatement({
+          sid: 'OurAlarms',
+          actions: [
+            'cloudwatch:PutMetricAlarm',
+            'cloudwatch:DeleteAlarms',
+            'cloudwatch:DescribeAlarms',
+            'cloudwatch:TagResource',
+            'cloudwatch:UntagResource',
+            'cloudwatch:ListTagsForResource',
+          ],
+          resources: [arn('cloudwatch', 'alarm:GrantReview*')],
+        }),
         new iam.PolicyStatement({
           sid: 'PullTheLambdaImage', // CreateFunction checks the caller can read the image
           actions: ['ecr:BatchGetImage', 'ecr:GetDownloadUrlForLayer'],
@@ -171,6 +232,7 @@ export class AccessStack extends cdk.Stack {
             'logs:DescribeResourcePolicies',
             'logs:DescribeIndexPolicies',
             'iam:GetAccountSummary',
+            'cognito-idp:DescribeUserPoolDomain', // looked up by domain name, not by pool
           ],
           resources: ['*'],
         }),
@@ -236,6 +298,26 @@ export class AccessStack extends cdk.Stack {
             'iam:UntagPolicy',
           ],
           resources: [boundaryArn, executionArn],
+        }),
+        new iam.PolicyStatement({
+          // Reviewer accounts are managed by people, never by deploys: a merged template must not be able to add an
+          // account to the reviewers group, set a password, or let identities from another provider sign in.
+          sid: 'NeverManageReviewerAccounts',
+          effect: iam.Effect.DENY,
+          actions: [
+            'cognito-idp:AdminCreateUser',
+            'cognito-idp:AdminAddUserToGroup',
+            'cognito-idp:AdminSetUserPassword',
+            'cognito-idp:AdminResetUserPassword',
+            'cognito-idp:AdminUpdateUserAttributes',
+            'cognito-idp:AdminConfirmSignUp',
+            'cognito-idp:AdminEnableUser',
+            'cognito-idp:AdminSetUserMFAPreference',
+            'cognito-idp:AdminLinkProviderForUser',
+            'cognito-idp:CreateIdentityProvider',
+            'cognito-idp:UpdateIdentityProvider',
+          ],
+          resources: ['*'],
         }),
         new iam.PolicyStatement({
           sid: 'NeverCreateUsersOrKeys',

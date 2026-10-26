@@ -1,0 +1,116 @@
+{
+  "record": {
+    "application_id": "gp-027",
+    "status": "waiting_for_review",
+    "received_at": "2025-06-02T15:00:00Z",
+    "updated_at": "2025-07-01T12:00:00Z",
+    "organization_name": "CALIFORNIA SERVICE DOG ACADEMY",
+    "amount_requested": 49500,
+    "route": "review",
+    "failed_rules": [],
+    "flags": [],
+    "decision": null
+  },
+  "waiting_for_review": true,
+  "form": {
+    "ein": "824033461",
+    "organization_name": "CALIFORNIA SERVICE DOG ACADEMY",
+    "amount_requested": 49500,
+    "project_title": "Service Dogs for Veterans with Disabilities"
+  },
+  "rules": [
+    {
+      "rule": "form_type",
+      "description": "Files the full Form 990 (not 990-EZ or 990-PF)",
+      "passed": true
+    },
+    {
+      "rule": "revenue_range",
+      "description": "Total revenue between $50,000 and $20,000,000 in the latest year",
+      "passed": true
+    },
+    {
+      "rule": "return_current",
+      "description": "Latest return's tax year ended on or after 2022-06-30",
+      "passed": true
+    },
+    {
+      "rule": "net_assets",
+      "description": "Positive net assets (total assets minus total liabilities) at year end",
+      "passed": true
+    },
+    {
+      "rule": "request_range",
+      "description": "Request between $5,000 and $50,000",
+      "passed": true
+    },
+    {
+      "rule": "request_share",
+      "description": "Request at most 25% of total annual expenses",
+      "passed": true
+    }
+  ],
+  "flags": [],
+  "extraction": {
+    "form_type": "990",
+    "figures": {
+      "ein": "824033461",
+      "organization_name": "CALIFORNIA SERVICE DOG ACADEMY",
+      "tax_period_end": "2023-12-31",
+      "contributions_and_grants_current_year": 598654,
+      "program_service_revenue_current_year": 0,
+      "investment_income_current_year": 0,
+      "other_revenue_current_year": 0,
+      "total_revenue_current_year": 598654,
+      "total_expenses_current_year": 712427,
+      "total_assets_end_of_year": 250687,
+      "total_liabilities_end_of_year": 12822,
+      "employees": 0
+    },
+    "revenue_adds_up": true
+  },
+  "research": {
+    "found": true,
+    "registered_name": "CALIFORNIA SERVICE DOG ACADEMY",
+    "name_matches_form": true,
+    "name_explanation": null,
+    "form_name_belongs_to": null,
+    "figures_by_period": {
+      "2023-12": {
+        "revenue": 598654,
+        "expenses": 712427
+      }
+    }
+  },
+  "proposal": {
+    "focus_area": "human_services",
+    "claims": {
+      "annual_budget": 712000,
+      "staff": null
+    },
+    "rubric": [
+      {
+        "criterion": "clear_outcomes",
+        "score": 4,
+        "quote": "We request $49,500 to train and place service dogs with veterans who have mobility disabilities or post-traumatic stress."
+      },
+      {
+        "criterion": "budget_matches_request",
+        "score": 3,
+        "quote": "We request $49,500 to train and place service dogs with veterans who have mobility disabilities or post-traumatic stress."
+      },
+      {
+        "criterion": "feasible_for_size",
+        "score": 4,
+        "quote": "We request $49,500 to train and place service dogs with veterans who have mobility disabilities or post-traumatic stress."
+      }
+    ],
+    "suspected_instructions": []
+  },
+  "narrative": "# Service Dogs for Veterans with Disabilities\n\n## About us\n\nCalifornia Service Dog Academy breeds, raises and trains service dogs and places them with people with disabilities. Our annual operating budget is $712,000. A fully trained service dog changes what a person can do on their own: opening doors, retrieving dropped items, steadying a person who is losing balance, or waking someone from a nightmare. Our waiting list is long, and the cost of training each dog is the main thing that keeps people on it.\n\n## The project\n\nWe request $49,500 to train and place service dogs with veterans who have mobility disabilities or post-traumatic stress. Veterans make up a large part of our waiting list, and many have been told elsewhere that they would wait years for a dog.\n\nEach dog completes about eighteen months of training: basic obedience and public access skills first, then tasks matched to a specific veteran's needs. Once a match is made, the veteran spends two weeks training with the dog at our facility, learning to handle it at home, in stores and on public transportation. We stay in touch after placement, with check-ins at one, three and six months and a yearly recertification of the team. Every dog is placed at no cost to the veteran, and we cover the dog's medical care through the first year.\n\n## Who it serves\n\nThis grant will fund the training and placement of three dogs with veterans this year, chosen from our waiting list. The veterans we serve include people who use wheelchairs, people with balance and mobility limits after injuries, and people whose post-traumatic stress keeps them from leaving home.\n\n## Outcomes\n\n- Three trained service dogs placed with veterans by the end of the grant year.\n- Every team passes the public access test before graduating.\n- Every veteran completes follow-up check-ins at one, three and six months.\n- We will report each placement and the veterans' feedback to the Fund.\n\n## Budget\n\n- Dog purchase and medical care: $18,000\n- Professional training: $21,000\n- Handler training and placement: $7,500\n- Follow-up support after placement: $3,000\n",
+  "review": null,
+  "letter": null,
+  "letter_problems": [],
+  "model_calls": 2,
+  "cost_usd": 0.002
+}

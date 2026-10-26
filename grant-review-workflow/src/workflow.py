@@ -201,6 +201,16 @@ def build(steps: Steps, checkpointer: BaseCheckpointSaver | None = None):
     return graph.compile(checkpointer=checkpointer)
 
 
+def reader(checkpointer: BaseCheckpointSaver):
+    """The graph for reading saved applications only (the reviewer UI's API): its model steps refuse to run, so a
+    read can never call a model, and the API never invokes it."""
+
+    def refuse(state: ApplicationState) -> dict:
+        raise RuntimeError("this graph only reads saved applications")
+
+    return build(Steps(refuse, refuse, refuse, refuse), checkpointer=checkpointer)
+
+
 def diagram() -> str:
     """The compiled graph drawn as Mermaid by LangGraph itself (the README's copy is checked against it)."""
     shape_only = Steps(*(lambda state: {},) * 4)  # the graph is drawn, never run
@@ -214,6 +224,13 @@ class Outcome:
     state: ApplicationState
     waiting_for_review: bool
     review_request: dict | None  # what the reviewer is shown, while waiting
+
+
+def unfinished_decision(outcome: Outcome) -> bool:
+    """The reviewer's decision (or corrections) went in, but the run stopped before the letter: an outage in
+    draft_letter, say. It isn't waiting for a reviewer any more, so only carry_on can finish it."""
+    state = outcome.state
+    return not outcome.waiting_for_review and state.review is not None and state.letter is None
 
 
 def thread(application_id: str) -> dict:

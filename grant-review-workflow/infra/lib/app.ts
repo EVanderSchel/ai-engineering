@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib/core';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import { AccessStack, BOUNDARY_POLICY } from './access-stack';
+import { AccessStack, BOUNDARY_POLICY, PROJECT_TAG } from './access-stack';
+import { AuthStack } from './auth-stack';
 import { DataStack } from './data-stack';
 import { PipelineStack } from './pipeline-stack';
 import { WorkflowStack } from './workflow-stack';
@@ -20,15 +21,29 @@ export function buildApp(app: cdk.App, env: cdk.Environment): void {
     description: 'grant-review-workflow: checkpoint table and intake bucket',
   });
 
+  // Who may review (step 8): the reviewers' user pool and the UI's sign-in. Deployed by hand from the branch in
+  // stage 4; the pipeline takes it over in stage 5, with the UI's own address added to the callback URLs.
+  const auth = new AuthStack(app, 'GrantReviewAuth', {
+    env,
+    domainPrefix: 'prairie-commons-review',
+    callbackUrls: ['http://localhost:5174/'], // `npm run dev:api`
+    terminationProtection: true,
+    description: 'grant-review-workflow: reviewer accounts and the UI sign-in',
+  });
+
   if (!adopting) {
     // The code that uses the data; replaceable at any time, unlike the data stack.
     const workflow = new WorkflowStack(app, 'GrantReviewWorkflow', {
       env,
       table: data.table,
-      description: 'grant-review-workflow: start and resume functions, upload rule, failed-applications queue',
+      applications: data.applications!,
+      reviewers: { userPool: auth.userPool, client: auth.client },
+      description:
+        'grant-review-workflow: start, resume and reviewer API functions, the API, upload rule, failed-applications queue',
     });
     workflow.addStackDependency(data); // the bucket is named, not referenced, so state the order explicitly
   }
+
 
   // Deploys the two stacks above on merge to main, after a person approves the diff (stage 6). Deployed once from a
   // laptop; it doesn't deploy itself.
@@ -54,5 +69,5 @@ export function buildApp(app: cdk.App, env: cdk.Environment): void {
       );
     }
   }
-  cdk.Tags.of(app).add('project', 'grant-review-workflow');
+  cdk.Tags.of(app).add(PROJECT_TAG.key, PROJECT_TAG.value); // the execution policy scopes user pools by it
 }

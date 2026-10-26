@@ -1,0 +1,401 @@
+:root {
+  --bg: #ffffff;
+  --surface: #f6f7f9;
+  --text: #1c2024;
+  --muted: #5d6670;
+  --border: #d9dde3;
+  --link: #1f5fbf;
+  --pass: #1d7a46;
+  --fail: #b42318;
+  --warning-bg: #fff6e0;
+  --warning-border: #e2a400;
+  --danger-bg: #fdecea;
+  --danger-border: #d93025;
+  --accent: #2f4a6d;
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15181c;
+    --surface: #1e2328;
+    --text: #e6e9ec;
+    --muted: #9aa4ae;
+    --border: #353c44;
+    --link: #8ab4f8;
+    --pass: #5cc489;
+    --fail: #f28b82;
+    --warning-bg: #3a2f12;
+    --warning-border: #c9a227;
+    --danger-bg: #3d1c1a;
+    --danger-border: #e46962;
+    --accent: #9cb6d8;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+main {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+}
+
+a {
+  color: var(--link);
+}
+
+h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.6rem;
+}
+
+h2 {
+  margin: 2rem 0 0.75rem;
+  font-size: 1.15rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.25rem;
+}
+
+h3 {
+  font-size: 1rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.banner {
+  background: var(--accent);
+  color: var(--bg);
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 1.1rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs button {
+  font: inherit;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--muted);
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+}
+
+.tabs button[aria-selected='true'] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+thead th {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.badge {
+  display: inline-block;
+  margin: 0 0.25rem 0.25rem 0;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+}
+
+.badge.danger {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+}
+
+.decision {
+  text-transform: capitalize;
+  font-weight: 600;
+}
+
+.decision.approve {
+  color: var(--pass);
+}
+
+.decision.decline {
+  color: var(--fail);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0.75rem 0;
+}
+
+.facts dt {
+  color: var(--muted);
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.status {
+  font-weight: 600;
+}
+
+.flags,
+.rules,
+.rubric {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.flags li {
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  border-left: 4px solid var(--warning-border);
+  background: var(--warning-bg);
+}
+
+.flags li.danger {
+  border-left-color: var(--danger-border);
+  background: var(--danger-bg);
+}
+
+.flags p {
+  margin: 0.25rem 0 0;
+}
+
+.rules li {
+  padding: 0.25rem 0;
+}
+
+.verdict {
+  display: inline-block;
+  min-width: 3.5rem;
+  font-weight: 600;
+}
+
+.rules .pass .verdict {
+  color: var(--pass);
+}
+
+.rules .fail .verdict {
+  color: var(--fail);
+}
+
+.rubric li {
+  margin-bottom: 0.75rem;
+}
+
+.score {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+blockquote {
+  margin: 0.25rem 0 0 1rem;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+}
+
+.callout {
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  border-left: 4px solid var(--warning-border);
+  background: var(--warning-bg);
+}
+
+.callout.danger {
+  border-left-color: var(--danger-border);
+  background: var(--danger-bg);
+}
+
+.callout h3 {
+  margin-top: 0;
+}
+
+/* Applicant text: shown as written, wrapped, never interpreted. */
+pre.untrusted,
+pre.letter {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.9rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 1rem;
+  max-height: 40rem;
+  overflow: auto;
+}
+
+pre.letter {
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.untrusted-inline {
+  overflow-wrap: anywhere;
+}
+
+footer {
+  margin-top: 3rem;
+}
+
+@media (max-width: 40rem) {
+  .queue thead {
+    display: none;
+  }
+  .queue tr {
+    display: block;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .queue td {
+    display: block;
+    border: none;
+    padding: 0.1rem 0;
+    text-align: left;
+  }
+  .figures {
+    font-size: 0.85rem;
+  }
+}
+
+.decision-form fieldset {
+  border: 1px solid var(--border);
+  padding: 1rem;
+  margin: 0;
+}
+
+.choice {
+  display: block;
+  margin: 0.25rem 0;
+}
+
+.reason-label {
+  display: block;
+  font-weight: 600;
+  margin-top: 1rem;
+}
+
+.decision-form textarea {
+  width: 100%;
+  font: inherit;
+  padding: 0.5rem;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.corrections input {
+  width: 100%;
+  max-width: 12rem;
+  font: inherit;
+  padding: 0.25rem 0.5rem;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.decision-form button {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.5rem 1.25rem;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  cursor: pointer;
+}
+
+.decision-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.decision-form [role='alert'] {
+  color: var(--fail);
+  font-weight: 600;
+}
+
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.banner button,
+.sign-in button,
+[role='alert'] button,
+main > button {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.sign-in button {
+  padding: 0.5rem 1.25rem;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+}

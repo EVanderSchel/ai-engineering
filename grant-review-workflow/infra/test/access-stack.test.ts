@@ -13,7 +13,7 @@ buildApp(app, env); // the real app: all four stacks, boundary aspect included
 Validations.of(app).addPlugins(new AwsSolutionsChecks(app)); // an unacknowledged finding throws here
 app.synth();
 const templates = Object.fromEntries(
-  ['GrantReviewData', 'GrantReviewWorkflow', 'GrantReviewPipeline', ACCESS_STACK].map((name) => [
+  ['GrantReviewData', 'GrantReviewWorkflow', 'GrantReviewAuth', 'GrantReviewPipeline', ACCESS_STACK].map((name) => [
     name,
     Template.fromStack(app.node.findChild(name) as any),
   ]),
@@ -41,13 +41,28 @@ test('the execution policy allows every call CloudFormation made in our deploys'
   expect(allows(execution, 'iam:PassRole')).toBe(true); // a permission check, not an API call: not in CloudTrail
 });
 
-test('nothing is allowed on every resource except account-level reads, KMS through our services, and traces', () => {
+test('nothing is allowed on every resource except account-level reads, conditioned calls, and traces', () => {
   const unscoped = (statements: any[]) =>
     statements.filter((s) => s.Effect === 'Allow' && list(s.Resource).includes('*')).map((s) => s.Sid);
-  expect(unscoped(execution).sort()).toEqual(['AccountLevelReads', 'EncryptionThroughServices']);
+  expect(unscoped(execution).sort()).toEqual([
+    'AccountLevelReads',
+    'ApiAccessLogDelivery',
+    'CreateOurUserPool',
+    'EncryptionThroughServices',
+  ]);
   expect(unscoped(boundary)).toEqual(['Traces']);
   const kms = execution.find((s) => s.Sid === 'EncryptionThroughServices');
   expect(Object.keys(kms.Condition.StringEquals)).toEqual(['kms:ViaService']);
+});
+
+test('user pools: created only tagged as ours, changed only when tagged as ours', () => {
+  const create = execution.find((s) => s.Sid === 'CreateOurUserPool');
+  expect(create.Action).toBe('cognito-idp:CreateUserPool');
+  expect(create.Condition).toEqual({ StringEquals: { 'aws:RequestTag/project': 'grant-review-workflow' } });
+  const change = execution.find((s) => s.Sid === 'OurUserPools');
+  expect(change.Condition).toEqual({ StringEquals: { 'aws:ResourceTag/project': 'grant-review-workflow' } });
+  const pool = Object.values(templates.GrantReviewAuth.findResources('AWS::Cognito::UserPool'))[0] as any;
+  expect(pool.Properties.UserPoolTags).toEqual({ project: 'grant-review-workflow' }); // what the conditions check
 });
 
 test('no statement grants every action of IAM, STS or the whole account', () => {
@@ -86,13 +101,13 @@ test('the guardrails deny removing the boundary, changing either policy, and cre
 
 test('every role in the deployable stacks carries the boundary', () => {
   let roles = 0;
-  for (const name of ['GrantReviewData', 'GrantReviewWorkflow', 'GrantReviewPipeline']) {
+  for (const name of ['GrantReviewData', 'GrantReviewWorkflow', 'GrantReviewAuth', 'GrantReviewPipeline']) {
     for (const role of Object.values(templates[name].findResources('AWS::IAM::Role')) as any[]) {
       roles += 1;
       expect(JSON.stringify(role.Properties.PermissionsBoundary)).toContain(`policy/${BOUNDARY_POLICY}`);
     }
   }
-  expect(roles).toBe(9); // the two Lambda roles and the pipeline's seven, as CloudTrail recorded them
+  expect(roles).toBe(10); // the three Lambda roles (the reviewer API's since step 8) and the pipeline's seven
 });
 
 test('the access stack deploys with a person\'s credentials, never through the bootstrap roles', () => {
@@ -109,4 +124,37 @@ test('the pipeline deploys only the data and workflow stacks', () => {
   expect(specs).toContain('GrantReviewData GrantReviewWorkflow --exclusively');
   expect(specs).not.toContain(ACCESS_STACK);
   expect(builds.map((b) => b.Properties.Name).sort()).toEqual(['grant-review-deploy', 'grant-review-diff']);
+});
+
+test('deploys can never manage reviewer accounts or add an identity provider', () => {
+  const denied = execution.filter((s) => s.Effect === 'Deny').flatMap((s) => list(s.Action));
+  expect(denied).toEqual(
+    expect.arrayContaining([
+      'cognito-idp:AdminCreateUser',
+      'cognito-idp:AdminAddUserToGroup',
+      'cognito-idp:AdminSetUserPassword',
+      'cognito-idp:CreateIdentityProvider',
+    ]),
+  );
+});
+
+test('HTTP APIs: created only tagged as ours, changed only when tagged as ours', () => {
+  const create = execution.find((s) => s.Sid === 'CreateOurHttpApi');
+  expect([create.Action, create.Resource]).toEqual(['apigateway:POST', 'arn:aws:apigateway:us-east-2::/apis']);
+  expect(create.Condition).toEqual({ StringEquals: { 'aws:RequestTag/project': 'grant-review-workflow' } });
+  const change = execution.find((s) => s.Sid === 'OurHttpApis');
+  expect(change.Condition).toEqual({ StringEquals: { 'aws:ResourceTag/project': 'grant-review-workflow' } });
+  const api = Object.values(templates.GrantReviewWorkflow.findResources('AWS::ApiGatewayV2::Api'))[0] as any;
+  expect(api.Properties.Tags).toEqual({ project: 'grant-review-workflow' }); // what the conditions check
+});
+
+test('the boundary lets a role claim a status record and run our functions, nothing wider', () => {
+  const checkpoints = boundary.find((s) => s.Sid === 'Checkpoints');
+  expect(checkpoints.Action).toContain('dynamodb:UpdateItem');
+  expect(checkpoints.Action).not.toContain('dynamodb:DeleteItem');
+  const invoke = boundary.find((s) => s.Sid === 'InvokeOurFunctions');
+  expect([invoke.Action, invoke.Resource]).toEqual([
+    'lambda:InvokeFunction',
+    'arn:aws:lambda:us-east-2:111122223333:function:GrantReview*',
+  ]);
 });
