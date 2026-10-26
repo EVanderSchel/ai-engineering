@@ -125,12 +125,23 @@ def _run_with_patience(app, application, sleep=time.sleep):
 
 def run_case(app, packet_id: str, rep: int, run_id: str, sleep=time.sleep) -> dict:
     """One application end to end, with everything the metrics need."""
-    _, _, key = _gold(packet_id)
     form, narrative, pdf = gold_packet(packet_id)
     started = time.perf_counter()
     application_id = f"{packet_id}-{run_id}-r{rep}"
     state, survived = _run_with_patience(app, intake(form, narrative, pdf, application_id=application_id), sleep)
     seconds = time.perf_counter() - started
+    return {
+        **case_row(packet_id, rep, state),
+        "seconds": round(seconds, 2),
+        "stages": workflow.stage_timings(app, application_id),
+        "transient_errors_survived": survived,
+    }
+
+
+def case_row(packet_id: str, rep: int, state) -> dict:
+    """What score() needs from a finished application's state, however it was run (step 9 scores the Step Functions
+    version with it too)."""
+    _, _, key = _gold(packet_id)
     proposal = state.proposal
     return {
         "packet_id": packet_id,
@@ -147,7 +158,6 @@ def run_case(app, packet_id: str, rep: int, run_id: str, sleep=time.sleep) -> di
         "rubric": {s.criterion: s.score for s in proposal.rubric},
         "letter_problems": state.letter_problems,
         "cost_usd": round(state.cost_usd, 5),
-        "seconds": round(seconds, 2),
         "calls": [
             {
                 "step": c.step,
@@ -159,8 +169,6 @@ def run_case(app, packet_id: str, rep: int, run_id: str, sleep=time.sleep) -> di
             }
             for c in state.calls
         ],
-        "stages": workflow.stage_timings(app, application_id),
-        "transient_errors_survived": survived,
     }
 
 
