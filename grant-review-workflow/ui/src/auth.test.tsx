@@ -7,7 +7,7 @@ import { type Auth, type Session, cognitoLogoutUrl, isRedirectBack, issuerFor } 
 // --- Cognito's specifics -------------------------------------------------------------------------------------
 
 test('the issuer is the pool in its own region', () => {
-  expect(issuerFor('us-east-2_FjnKKFBir')).toBe('https://cognito-idp.us-east-2.amazonaws.com/us-east-2_FjnKKFBir');
+  expect(issuerFor('us-east-2_Example123')).toBe('https://cognito-idp.us-east-2.amazonaws.com/us-east-2_Example123');
 });
 
 test("Cognito's logout gets client_id and logout_uri", () => {
