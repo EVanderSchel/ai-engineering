@@ -1,3 +1,5 @@
 # Claude Code context files (kept local, not published)
 CLAUDE.md
+# Claude Code's local folder: the desktop app's worktrees (whole checkouts) and dev-server launch settings
+.claude/
 .vscode/

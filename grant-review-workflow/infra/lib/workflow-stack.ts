@@ -40,6 +40,15 @@ export function loadRuntime(file = path.join(__dirname, '..', 'runtime.json')): 
   return JSON.parse(fs.readFileSync(file, 'utf8')) as Runtime;
 }
 
+/** The workflow's container image (../Dockerfile) with one handler as its command: one image, many functions. */
+export function workflowImage(handler: string): lambda.DockerImageCode {
+  // Built from the project folder; .dockerignore keeps everything but pyproject, uv.lock, src/ and prompts/ out.
+  return lambda.DockerImageCode.fromImageAsset(path.join(__dirname, '..', '..'), {
+    cmd: [handler],
+    platform: ecrAssets.Platform.LINUX_AMD64,
+  });
+}
+
 export interface WorkflowStackProps extends cdk.StackProps {
   readonly table: dynamodb.ITable;
   /** Where each application stands (step 8): the workflow writes it, the reviewer API reads and claims it. */
@@ -80,12 +89,6 @@ export class WorkflowStack extends cdk.Stack {
     super(scope, id, props);
     const runtime = props.runtime ?? loadRuntime();
 
-    // Built from the project folder; .dockerignore keeps everything but pyproject, uv.lock, src/ and prompts/ out.
-    const image = (handler: string) =>
-      lambda.DockerImageCode.fromImageAsset(path.join(__dirname, '..', '..'), {
-        cmd: [handler],
-        platform: ecrAssets.Platform.LINUX_AMD64,
-      });
 
     // Applications that still fail after Lambda's retries land here (the event, not the applicant's files),
     // so nothing is lost silently. Kept 14 days, the queue's maximum.
@@ -99,9 +102,9 @@ export class WorkflowStack extends cdk.Stack {
       reason: 'This queue is itself the dead-letter destination for failed applications.',
     });
 
-    this.start = this.workflowFunction('Start', {
+    this.start = workflowFunction(this, 'Start', {
       handler: 'handlers.start',
-      image: image('handlers.start'),
+      image: workflowImage('handlers.start'),
       profiles: runtime.functions.start.inference_profiles,
       runtime,
       checkpoints: { table: props.table, actions: runtime.checkpoint_actions },
@@ -144,9 +147,9 @@ export class WorkflowStack extends cdk.Stack {
       targets: [new targets.LambdaFunction(this.start, { retryAttempts: 2, maxEventAge: cdk.Duration.hours(1) })],
     });
 
-    this.resume = this.workflowFunction('Resume', {
+    this.resume = workflowFunction(this, 'Resume', {
       handler: 'handlers.resume',
-      image: image('handlers.resume'),
+      image: workflowImage('handlers.resume'),
       profiles: runtime.functions.resume.inference_profiles,
       runtime,
       checkpoints: { table: props.table, actions: runtime.checkpoint_actions },
@@ -157,9 +160,9 @@ export class WorkflowStack extends cdk.Stack {
     // --- The reviewer API (step 8) -----------------------------------------------------------------------------
 
     // No model calls: reads checkpoints (never writes them), reads and claims status records, runs `resume`.
-    this.api = this.workflowFunction('Api', {
+    this.api = workflowFunction(this, 'Api', {
       handler: 'api.handler',
-      image: image('api.handler'),
+      image: workflowImage('api.handler'),
       profiles: [],
       runtime,
       checkpoints: { table: props.table, actions: runtime.checkpoint_read_actions },
@@ -258,56 +261,60 @@ export class WorkflowStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'ResumeFunctionName', { value: this.resume.functionName });
     new cdk.CfnOutput(this, 'FailedApplicationsQueue', { value: this.failed.queueUrl });
   }
+}
 
-  /** A function on the shared image with its own log group and a role holding only what runtime.json lists. */
-  private workflowFunction(
-    id: string,
-    opts: {
-      handler: string;
-      image: lambda.DockerImageCode;
-      profiles: string[]; // none: the function calls no model
-      runtime: Runtime;
-      checkpoints: { table: dynamodb.ITable; actions: string[] };
-      records: { table: dynamodb.ITable; actions: string[]; index?: string };
-      timeout: cdk.Duration;
-      environment?: Record<string, string>;
-    },
-  ): lambda.Function {
-    const logGroup = new logs.LogGroup(this, `${id}Logs`, {
-      retention: logs.RetentionDays.ONE_MONTH, // the same 30 days as the checkpoints
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
+/** A function on the shared image with its own log group and a role holding only what runtime.json lists. */
+export function workflowFunction(
+  scope: Construct,
+  id: string,
+  opts: {
+    handler: string;
+    image: lambda.DockerImageCode;
+    profiles: string[]; // none: the function calls no model
+    runtime: Runtime;
+    checkpoints?: { table: dynamodb.ITable; actions: string[] }; // none: the function keeps no checkpoints
+    records?: { table: dynamodb.ITable; actions: string[]; index?: string }; // none: it writes no status records
+    timeout: cdk.Duration;
+    environment?: Record<string, string>;
+  },
+): lambda.Function {
+  const stack = cdk.Stack.of(scope);
+  const logGroup = new logs.LogGroup(scope, `${id}Logs`, {
+    retention: logs.RetentionDays.ONE_MONTH, // the same 30 days as the checkpoints
+    removalPolicy: cdk.RemovalPolicy.DESTROY,
+  });
 
-    // No AWS managed policies (AWSLambdaBasicExecutionRole allows logging to any group): everything is listed.
-    const role = new iam.Role(this, `${id}Role`, {
-      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-      description: `grant-review-workflow ${opts.handler}: its Bedrock profiles, the checkpoint table, its logs`,
-    });
-    logGroup.grantWrite(role);
+  // No AWS managed policies (AWSLambdaBasicExecutionRole allows logging to any group): everything is listed.
+  const role = new iam.Role(scope, `${id}Role`, {
+    assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+    description: `grant-review-workflow ${opts.handler}: its Bedrock profiles, the checkpoint table, its logs`,
+  });
+  logGroup.grantWrite(role);
 
-    if (opts.profiles.length > 0) {
-      const profileArns = opts.profiles.map(
-        (p) => `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${p}`,
-      );
-      const modelArns = opts.profiles.flatMap((p) =>
-        opts.runtime.profile_regions.map((r) => `arn:aws:bedrock:${r}::foundation-model/${p.replace(/^us\./, '')}`),
-      );
-      role.addToPolicy(
-        new iam.PolicyStatement({
-          sid: 'InvokeItsInferenceProfiles',
-          actions: ['bedrock:InvokeModel'],
-          resources: profileArns,
-        }),
-      );
-      role.addToPolicy(
-        new iam.PolicyStatement({
-          sid: 'InvokeTheirModelsOnlyThroughThoseProfiles',
-          actions: ['bedrock:InvokeModel'],
-          resources: modelArns,
-          conditions: { StringEquals: { 'bedrock:InferenceProfileArn': profileArns } },
-        }),
-      );
-    }
+  if (opts.profiles.length > 0) {
+    const profileArns = opts.profiles.map(
+      (p) => `arn:aws:bedrock:${stack.region}:${stack.account}:inference-profile/${p}`,
+    );
+    const modelArns = opts.profiles.flatMap((p) =>
+      opts.runtime.profile_regions.map((r) => `arn:aws:bedrock:${r}::foundation-model/${p.replace(/^us\./, '')}`),
+    );
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        sid: 'InvokeItsInferenceProfiles',
+        actions: ['bedrock:InvokeModel'],
+        resources: profileArns,
+      }),
+    );
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        sid: 'InvokeTheirModelsOnlyThroughThoseProfiles',
+        actions: ['bedrock:InvokeModel'],
+        resources: modelArns,
+        conditions: { StringEquals: { 'bedrock:InferenceProfileArn': profileArns } },
+      }),
+    );
+  }
+  if (opts.checkpoints) {
     role.addToPolicy(
       new iam.PolicyStatement({
         sid: 'Checkpoints',
@@ -315,6 +322,8 @@ export class WorkflowStack extends cdk.Stack {
         resources: [opts.checkpoints.table.tableArn],
       }),
     );
+  }
+  if (opts.records) {
     role.addToPolicy(
       new iam.PolicyStatement({
         sid: 'StatusRecords',
@@ -325,42 +334,42 @@ export class WorkflowStack extends cdk.Stack {
         ],
       }),
     );
-
-    const fn = new lambda.DockerImageFunction(this, id, {
-      code: opts.image,
-      role,
-      logGroup,
-      architecture: lambda.Architecture.X86_64,
-      memorySize: 1024, // page rendering and the LangGraph imports; more memory also means more CPU
-      timeout: opts.timeout,
-      description: `grant-review-workflow ${opts.handler}`,
-      // Observability (stage 5). Active tracing runs Lambda's X-Ray daemon (and grants the role permission to
-      // write to it); the ADOT wrapper unpacked into the image sends each step's span and the AWS SDK calls inside
-      // it there over UDP. No CloudWatch Transaction Search is needed.
-      tracing: lambda.Tracing.ACTIVE,
-      environment: {
-        AWS_LAMBDA_EXEC_WRAPPER: '/opt/otel-instrument',
-        OTEL_SERVICE_NAME: 'grant-review-workflow',
-        OTEL_AWS_APPLICATION_SIGNALS_ENABLED: 'false', // on by default; needs a broad managed policy
-        // Lite mode: a small SDK sending spans over UDP to the X-Ray daemon, instrumenting botocore, requests and
-        // urllib3 only. The full auto-instrumentation bootstrap took longer than Lambda's 10-second init limit.
-        OTEL_AWS_LAMBDA_FAST_START: 'true',
-        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: 'false', // never copy prompts or answers into spans
-        ...opts.environment,
-      },
-      // Every log line is a JSON object with the request ID; the handlers' summaries add their fields and trace ID.
-      loggingFormat: lambda.LoggingFormat.JSON,
-      applicationLogLevelV2: lambda.ApplicationLogLevel.INFO,
-      systemLogLevelV2: lambda.SystemLogLevel.INFO, // Lambda's own START/REPORT records: duration, memory, init
-    });
-    Validations.of(role).acknowledge({
-      id: 'AwsSolutions-IAM5[Resource::*]',
-      reason: 'X-Ray trace writes (PutTraceSegments, PutTelemetryRecords) do not support resource-level permissions.',
-    });
-    Validations.of(role).acknowledge({
-      id: `AwsSolutions-IAM5[Resource::<${cdk.Names.uniqueId(logGroup)}>:*]`,
-      reason: 'Log streams in this function\'s own log group: stream names are created by Lambda.',
-    });
-    return fn;
   }
+
+  const fn = new lambda.DockerImageFunction(scope, id, {
+    code: opts.image,
+    role,
+    logGroup,
+    architecture: lambda.Architecture.X86_64,
+    memorySize: 1024, // page rendering and the LangGraph imports; more memory also means more CPU
+    timeout: opts.timeout,
+    description: `grant-review-workflow ${opts.handler}`,
+    // Observability (stage 5). Active tracing runs Lambda's X-Ray daemon (and grants the role permission to
+    // write to it); the ADOT wrapper unpacked into the image sends each step's span and the AWS SDK calls inside
+    // it there over UDP. No CloudWatch Transaction Search is needed.
+    tracing: lambda.Tracing.ACTIVE,
+    environment: {
+      AWS_LAMBDA_EXEC_WRAPPER: '/opt/otel-instrument',
+      OTEL_SERVICE_NAME: 'grant-review-workflow',
+      OTEL_AWS_APPLICATION_SIGNALS_ENABLED: 'false', // on by default; needs a broad managed policy
+      // Lite mode: a small SDK sending spans over UDP to the X-Ray daemon, instrumenting botocore, requests and
+      // urllib3 only. The full auto-instrumentation bootstrap took longer than Lambda's 10-second init limit.
+      OTEL_AWS_LAMBDA_FAST_START: 'true',
+      OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: 'false', // never copy prompts or answers into spans
+      ...opts.environment,
+    },
+    // Every log line is a JSON object with the request ID; the handlers' summaries add their fields and trace ID.
+    loggingFormat: lambda.LoggingFormat.JSON,
+    applicationLogLevelV2: lambda.ApplicationLogLevel.INFO,
+    systemLogLevelV2: lambda.SystemLogLevel.INFO, // Lambda's own START/REPORT records: duration, memory, init
+  });
+  Validations.of(role).acknowledge({
+    id: 'AwsSolutions-IAM5[Resource::*]',
+    reason: 'X-Ray trace writes (PutTraceSegments, PutTelemetryRecords) do not support resource-level permissions.',
+  });
+  Validations.of(role).acknowledge({
+    id: `AwsSolutions-IAM5[Resource::<${cdk.Names.uniqueId(logGroup)}>:*]`,
+    reason: 'Log streams in this function\'s own log group: stream names are created by Lambda.',
+  });
+  return fn;
 }

@@ -164,9 +164,14 @@ def human_review(state: ApplicationState) -> dict:
     Command(resume=decision) makes interrupt() return that decision, and this node finishes. (On resume the
     node runs again from its start, so nothing before interrupt() may have side effects.)"""
     decision = ReviewerDecision.model_validate(interrupt(review_request(state)))
-    if state.review is not None:  # a later round keeps the corrections made in earlier ones
-        decision = decision.model_copy(update={"corrections": {**state.review.corrections, **decision.corrections}})
-    return {"review": decision}
+    return {"review": with_earlier_corrections(state, decision)}
+
+
+def with_earlier_corrections(state: ApplicationState, decision: ReviewerDecision) -> ReviewerDecision:
+    """A later round of review keeps the corrections made in earlier ones (the Step Functions version too)."""
+    if state.review is None:
+        return decision
+    return decision.model_copy(update={"corrections": {**state.review.corrections, **decision.corrections}})
 
 
 def build(steps: Steps, checkpointer: BaseCheckpointSaver | None = None):

@@ -26,7 +26,7 @@ Rules: only public IRS data and ProPublica's JSON API (as in Project 3). Applica
 | 6.5 | The name check on new data: compare the form's name with the return's own, read the name and title as untrusted, 20 held-out packets scored once *(done)* | Measuring a fix found on test without tuning on test |
 | 7 | Infrastructure as code with CDK (TypeScript): S3 uploads trigger the workflow on Lambda (AgentCore considered), DynamoDB adopted with `cdk import`, a role per function, OpenTelemetry traces, approval-gated deploys through CodePipeline (GitHub OIDC is blocked here), a narrowed CDK execution policy and a permissions boundary *(done)* | IaC, event-driven design, AWS |
 | 8 | Reviewer UI in React + TypeScript: queue, evidence, approve, decline or correct (resumes the workflow), Cognito sign-in with MFA, behind CloudFront with a JWT-authorized API *(done)* | Full-stack delivery |
-| 9 | *(Optional)* The same workflow on Step Functions, compared on evidence | Framework vs. AWS-native orchestration |
+| 9 | The same workflow on Step Functions, run beside the LangGraph version on the dev packets with the same decisions, compared on correctness, latency, cost and failure handling *(done)* | Framework vs. AWS-native orchestration |
 | Final | Held-out test split scored once; cost report; release `grant-review-workflow-v1.0.0` | |
 
 ## Step 1: design and gold set
@@ -66,7 +66,39 @@ uv run python src/bedrock.py   # one small call per model: access, structured ou
 
 Haiku's one error (gp-036's total revenue read as $51,306, not $51,308) was caught by the form's own arithmetic, the only return where revenue didn't add up, so it would reach a reviewer as a flag. It also sat $1,306 above the fund's $50,000 revenue minimum: a digit misread near a threshold is how a wrong automatic decline would happen. **Extract uses Sonnet 4.6**: the saving from Haiku is about a cent per application. One run on 15 returns is a small sample; step 5 repeats it.
 
-## Step 8: the reviewer UI
+## Step 9: LangGraph or Step Functions?
+
+The same workflow, orchestrated by AWS Step Functions instead of LangGraph, run beside it on the 15 dev packets with the same reviewer decisions. Plain language: the steps are the cooks and the orchestrator is the kitchen's ticket system. LangGraph is a ticket system we run inside our own function, writing each finished dish into a notebook (the checkpoints); Step Functions is AWS's, which hands each dish from station to station and keeps the ledger itself. The question was whether swapping the ticket system changes the food, the speed or the bill.
+
+```
+Intake -> Read (Parallel: Extract | Research | ReadProposal) -> Join -> CrossCheck -> Eligibility -> Route
+  Route: declined by the rules -> DraftLetter
+         otherwise -> HumanReview (waits for a task token) -> ApplyReview
+           decided -> DraftLetter;  corrections only -> Eligibility (the rules again)
+```
+
+- **The same steps** (`src/sfn_steps.py`): one Lambda function runs any step on the state as JSON, with the code the graph runs. What LangGraph did for us became explicit: `join` merges the three parallel branches as the graph's reducers do, and the reviewer's wait leaves a task token in a table (`await_review`) until someone sends the decision with `SendTaskSuccess`. A test walks every dev packet through the state machine's path and the graph with stand-in steps and requires the same ending.
+- **The state machine** (`infra/lib/step-functions-stack.ts`, stack `GrantReviewStepFunctions`, never in the pipeline): Standard (Express can't wait for a reviewer), JSONata, X-Ray; model steps retry an outage after 30 s, then 90 s. Its execution history holds the applications' text, so it has no extra log group and was deleted after the comparison.
+- **The comparison** (`src/compare.py`): one upload starts both versions on the same objects at the same moment; the script answers each reviewer wait the same way in both (approve; gp-027 gets corrections, then a decline).
+
+| Dev packets, 15 | LangGraph on Lambda | Step Functions |
+|---|---|---|
+| Same outcome as the other | 15/15 | 15/15 |
+| Route, flags, extraction against the labels | 100% | 100% |
+| Upload to the reviewer (or the letter), median | 10.3 s | 6.7 s |
+| Decision to the letter, median | 2.1 s | 4.4 s |
+| Model calls | $0.49 | $0.49 |
+| Lambda invocations | 25 | 159 |
+| Orchestration cost | (checkpoint writes) | 198 transitions, $0.005 |
+
+What it showed (decision 25): the orchestrator doesn't change the answers. Step Functions reached the reviewer faster (no EventBridge hop or checkpoint writes; each parallel step gets its own function) and finished after a decision more slowly (two more invocations). Its declared Retry recovered two Bedrock throttling outages with no code (those two packets took 44-48 s). LangGraph stays: the reviewer UI reads the checkpoints, and the whole graph runs in a test in memory. Step Functions would win for a workflow made mostly of AWS service calls, with long waits, or run by a team that watches executions in the console.
+
+**Found on the way:**
+- Step Functions' DynamoDB integration can't wait for a task token; CDK quietly built a plain `putItem` that would have carried on at once. A test caught it, and a Lambda task now does the waiting.
+- LangGraph's state snapshot lists as `next` only the tasks without saved results, so between the parallel steps' last write and the next checkpoint it looks finished. The first comparison run stopped on it at packet 10 ($0.65 spent); "finished" now means no tasks left, and results are saved after every packet.
+- A failed task's model call never reaches Step Functions' state, so its cost and retries are missing from the run's records (the history has the error, not the tokens).
+- Running both versions at once doubled the load on Sonnet's quota: the throttling it caused landed on both, which is part of the latency spread.
+
 
 Reviewers now work in a web page: sign in, see the applications waiting for them with the evidence for each, and approve, decline or correct the figures. The page is React and TypeScript ([ui/](ui/)), on AWS behind CloudFront, and every request it makes is checked twice: by API Gateway (is this a valid sign-in?) and by our code (is this person a reviewer?).
 
@@ -294,7 +326,7 @@ v1's focus misses were boundaries in the prompt's own definitions (home help as 
 - `tests/`: unit tests, no network and no AWS calls (Bedrock calls are checked against Bedrock's API definition with botocore's Stubber).
 - `docs/design.md`: the design: fund rules, steps, state, principles, metrics, gold set plan.
 - `docs/data-handling.md`: where application data goes, how long it stays, and the rules (step 6).
-- `infra/`: the CDK app (TypeScript): data, auth, workflow, UI, pipeline and access stacks, with jest tests and cdk-nag. See its README.
+- `infra/`: the CDK app (TypeScript): data, auth, workflow, UI, pipeline and access stacks (and step 9's Step Functions stack, not deployed), with jest tests and cdk-nag. See its README.
 - `ui/`: the reviewer UI (React, TypeScript, Vite), with its own tests. See its README.
 - `Dockerfile`: the Lambda container image (step 7).
 - `data/filings/`: answer keys of the 60 real Form 990s, copied from Project 2 by `src/import_filings.py`.
