@@ -15,7 +15,7 @@ Each step is merged on its own; numbers are measured, not assumed.
 | Step | What | Concept |
 |---|---|---|
 | 0 | Scaffolding: uv project, ruff, pytest, CI with change detection, dependency audit; local tools (kind, Helm, k6) *(done)* | |
-| 1 | Design doc ([docs/design.md](docs/design.md)): API shape, routing and failure rules, data model, what gets measured, the memory budget for this PC | What a gateway is responsible for, and what it isn't |
+| 1 | Design doc ([docs/design.md](docs/design.md)): API shape, routing and failure rules, data model, what gets measured, the memory budget for this PC *(done)* | What a gateway is responsible for, and what it isn't |
 | 2 | A minimal gateway: one endpoint, one provider (Anthropic API), streaming, API keys, a stub provider for tests | The request path, streaming through a proxy |
 | 3 | Providers and resilience: Bedrock and self-hosted models behind one interface; routing rules; timeouts, retries with backoff, a circuit breaker, fallback; fault-injection tests | Failure handling as code, measured under injected outages |
 | 4 | Governance in PostgreSQL: teams, hashed keys, rate limits (token bucket), monthly budgets, a usage ledger with the cost of every call, an audit log; migrations | Multi-tenant limits that hold under concurrency |
@@ -27,6 +27,16 @@ Each step is merged on its own; numbers are measured, not assumed.
 | 10 | Build vs. adopt: the same tests and load against LiteLLM's proxy; a LangChain app that uses the gateway unchanged | When to build a platform piece and when to adopt one |
 | 11 | Optional: the chart on Amazon EKS for a short, measured window (infrastructure as code), then torn down | Managed Kubernetes and its cost |
 | Final | Write-up, cost report, release `ai-gateway-v1.0.0` | |
+
+## Step 1: design
+
+[docs/design.md](docs/design.md) sets out what the gateway is responsible for and the 15 decisions the later steps build on. The ones that shape everything else:
+
+- **`model` names a route** (`smart`, `fast`, `local`, `classify`), not a provider model. Each route lists candidates tried in order, so a client's code doesn't change when the model behind a route does, and the response always says which model actually answered (on this AWS account, `smart` falls back from Sonnet 5.5 on the Anthropic API to Sonnet 4.6 on Bedrock: a different model, so it's never hidden).
+- **No fallback after the first streamed byte.** Before it, a slow or failing provider is skipped; after it, switching would splice two answers together, so the stream ends with an error instead.
+- **Budgets are reserved before a call and settled after**, like a hotel holding an amount on a card at check-in, so fifty requests arriving at once can't overspend a team's budget together.
+- **Shared state lives in PostgreSQL, rate limits included**, so gateway replicas can scale without multiplying anyone's limit.
+- **It has to fit this PC**: about 3.1 GB estimated for the whole cluster (kind node, two gateway replicas, PostgreSQL, a 0.5B model on llama-server, the NTEE classifier on ONNX Runtime, monitoring) against Docker's 3.8 GB, so only the smallest model variants run in the cluster.
 
 ## Setup
 
