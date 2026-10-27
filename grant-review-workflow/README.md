@@ -27,7 +27,7 @@ Rules: only public IRS data and ProPublica's JSON API (as in Project 3). Applica
 | 7 | Infrastructure as code with CDK (TypeScript): S3 uploads trigger the workflow on Lambda (AgentCore considered), DynamoDB adopted with `cdk import`, a role per function, OpenTelemetry traces, approval-gated deploys through CodePipeline (GitHub OIDC is blocked here), a narrowed CDK execution policy and a permissions boundary *(done)* | IaC, event-driven design, AWS |
 | 8 | Reviewer UI in React + TypeScript: queue, evidence, approve, decline or correct (resumes the workflow), Cognito sign-in with MFA, behind CloudFront with a JWT-authorized API *(done)* | Full-stack delivery |
 | 9 | The same workflow on Step Functions, run beside the LangGraph version on the dev packets with the same decisions, compared on correctness, latency, cost and failure handling *(done)* | Framework vs. AWS-native orchestration |
-| Final | Held-out test split scored once; cost report; release `grant-review-workflow-v1.0.0` | |
+| Final | Held-out splits scored once (test in step 5, held out in step 6.5); cost report ([docs/costs.md](docs/costs.md)); release `grant-review-workflow-v1.0.0` *(done)* | |
 
 ## Step 1: design and gold set
 
@@ -326,6 +326,7 @@ v1's focus misses were boundaries in the prompt's own definitions (home help as 
 - `tests/`: unit tests, no network and no AWS calls (Bedrock calls are checked against Bedrock's API definition with botocore's Stubber).
 - `docs/design.md`: the design: fund rules, steps, state, principles, metrics, gold set plan.
 - `docs/data-handling.md`: where application data goes, how long it stays, and the rules (step 6).
+- `docs/costs.md`: what an application costs, what building it cost, and the idle cost per month.
 - `infra/`: the CDK app (TypeScript): data, auth, workflow, UI, pipeline and access stacks (and step 9's Step Functions stack, not deployed), with jest tests and cdk-nag. See its README.
 - `ui/`: the reviewer UI (React, TypeScript, Vite), with its own tests. See its README.
 - `Dockerfile`: the Lambda container image (step 7).

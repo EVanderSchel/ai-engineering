@@ -4,8 +4,15 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 ## [Unreleased]
 
+Add entries here as you make notable changes. Move them under a new version heading when you cut a release.
+
+## [1.0.0] - 2026-10-27
+
+First release: a grant-review workflow for a fictional fund on Amazon Bedrock, orchestrated with LangGraph. Three steps read each application in parallel (the return's page image, the public record, the narrative); code cross-checks, applies the fund's rules and routes; a reviewer decides in a React UI behind Cognito and CloudFront; a letter is drafted. Durable checkpoints in DynamoDB, evals on dev, test and held-out splits (0 wrong automatic declines on each), a red team, infrastructure as code with an approval-gated pipeline, a measured comparison with Step Functions, and a cost report (`docs/costs.md`: about $0.035 per application, about $0.35 a month idle).
+
 ### Added
 
+- A cost report (`docs/costs.md`): per application, what building it cost (about $13 in model calls), and the idle cost per month
 - The workflow on AWS Step Functions (step 9), compared with the LangGraph version: one steps function on the shared image (`src/sfn_steps.py`), a Standard JSONata state machine with a task-token wait for the reviewer (`GrantReviewStepFunctions`, outside the pipeline, deleted after the run), and a harness that runs both on the dev packets with the same decisions (`src/compare.py`, `results/compare-sfn.md`): identical outcomes 15/15, faster to the reviewer (6.7 s vs 10.3 s median), slower after a decision (4.4 s vs 2.1 s), same model cost. LangGraph stays (decision 25)
 - The reviewer UI (step 8): a queue of applications by status and an evidence page for each, where a reviewer approves, declines or corrects figures (`ui/`, React and TypeScript, types generated from the API's models); status records (`src/applications.py`, `GrantReviewData`); the reviewer API (`src/api.py`) behind an HTTP API with a JWT authorizer, a claim so one decision gets through, and a finish path with an alarm for a decision whose letter failed (`GrantReviewWorkflow`); Cognito sign-in with MFA (`GrantReviewAuth`); the UI on S3 and CloudFront with `/api` routing and security headers (`GrantReviewUi`); the pipeline deploys and publishes all of it and emails approval requests; `tests/local_api.py` for local development; the execution policy split in two (IAM's size limit)
 - On AWS as code (step 7, `infra/`, CDK in TypeScript): the checkpoint table adopted with `cdk import` and an intake bucket (`GrantReviewData`); start and resume Lambda functions on one container image, each with its own role from `infra/runtime.json`, started by S3 uploads through EventBridge, with retries and a failed-applications queue (`GrantReviewWorkflow`); OpenTelemetry spans per step through ADOT in lite mode and JSON logs with trace IDs; an approval-gated CodePipeline deploying on merge through a CodeConnections GitHub App (`GrantReviewPipeline`); a CDK execution policy built from CloudTrail and a permissions boundary on every role (`GrantReviewCdkAccess`). `src/handlers.py`, `src/tracing.py`, `Dockerfile`; jest tests with cdk-nag
