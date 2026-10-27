@@ -16,7 +16,7 @@ Each step is merged on its own; numbers are measured, not assumed.
 |---|---|---|
 | 0 | Scaffolding: uv project, ruff, pytest, CI with change detection, dependency audit; local tools (kind, Helm, k6) *(done)* | |
 | 1 | Design doc ([docs/design.md](docs/design.md)): API shape, routing and failure rules, data model, what gets measured, the memory budget for this PC *(done)* | What a gateway is responsible for, and what it isn't |
-| 2 | A minimal gateway: one endpoint, one provider (Anthropic API), streaming, API keys, a stub provider for tests | The request path, streaming through a proxy |
+| 2 | A minimal gateway: one endpoint, one provider (Anthropic API), streaming, API keys, a stub provider for tests *(done)* | The request path, streaming through a proxy |
 | 3 | Providers and resilience: Bedrock and self-hosted models behind one interface; routing rules; timeouts, retries with backoff, a circuit breaker, fallback; fault-injection tests | Failure handling as code, measured under injected outages |
 | 4 | Governance in PostgreSQL: teams, hashed keys, rate limits (token bucket), monthly budgets, a usage ledger with the cost of every call, an audit log; migrations | Multi-tenant limits that hold under concurrency |
 | 5 | Guardrails: PII redaction, prompt-injection screening, output validation, per-route policy (reusing what Projects 3 and 5 measured) | Reusable safety checks at the platform layer |
@@ -37,6 +37,49 @@ Each step is merged on its own; numbers are measured, not assumed.
 - **Budgets are reserved before a call and settled after**, like a hotel holding an amount on a card at check-in, so fifty requests arriving at once can't overspend a team's budget together.
 - **Shared state lives in PostgreSQL, rate limits included**, so gateway replicas can scale without multiplying anyone's limit.
 - **It has to fit this PC**: about 3.1 GB estimated for the whole cluster (kind node, two gateway replicas, PostgreSQL, a 0.5B model on llama-server, the NTEE classifier on ONNX Runtime, monitoring) against Docker's 3.8 GB, so only the smallest model variants run in the cluster.
+
+## Step 2: a minimal gateway
+
+One endpoint, `POST /v1/chat/completions`, in the format OpenAI clients speak, with Claude behind it. Plain language: a receptionist who takes requests in one standard form, checks the caller's badge, passes the request to the right specialist in that specialist's own language, and hands the answer back in the standard form, word by word if the caller wants it streamed.
+
+The request path:
+
+```
+request -> request id -> API key (hash lookup) -> validate (unknown fields refused by name) -> route
+        -> max_tokens required and under the route's ceiling -> temperature/top_p allowed on this route?
+        -> translate to the provider's request -> provider (Claude API, or the stub) -> OpenAI-shaped answer
+```
+
+- **Routes** ([config/routes.yaml](config/routes.yaml)): `smart` is Claude Sonnet 5.5, `fast` is Claude Haiku 4.5, and `stub` echoes the message back offline for free. `smart` turns on the Claude API's server-side refusal fallback: if Sonnet 5.5 declines, the API re-runs the request on another model in the same call, and the response's `model` names whichever answered.
+- **Streaming** waits for the provider's first event before answering. An error before any output is still a proper HTTP status (503, 504, ...); after the first byte the status is fixed at 200, so a later failure ends the stream with an error event instead of `[DONE]` (decision 10). Step 3 adds the fallback that this waiting makes possible.
+- **API keys** are random `gw_...` strings; only their SHA-256 hash is configured (`GATEWAY_KEYS="team:hash,..."`), so a leaked config holds no working key. `uv run python src/keys.py new <team>` makes one.
+- **The API moved under the project.** The Anthropic SDK 2.x sends API version 2026-10-21, which rejects `temperature` and `top_p` on every Claude model. Routes with a Claude candidate now refuse those fields with a 400 that says why, rather than dropping them silently (decision 16, added to the design doc).
+- **No retries yet**: the SDK's own retries are off, because step 3 puts retries and fallback in the gateway, and two layers of retries multiply waits and costs.
+- **Tested with the official OpenAI Python client** ([tests/test_openai_client.py](tests/test_openai_client.py)): completions, streams with usage, `/v1/models`, the gateway's own options via `extra_body`, and gateway errors arriving as the client's own exception classes, all with only the base URL changed. The client's HTTP goes straight into the app in memory, so tests never touch a network.
+
+New files:
+
+| File | What it does |
+|---|---|
+| `src/app.py` | The web service: `/v1/chat/completions` (streamed or not), `/v1/models`, `/healthz`, `/readyz`, request ids, OpenAI-style errors |
+| `src/schemas.py` | The request format it accepts (strictly checked) and the response, chunk and error shapes it sends |
+| `src/providers.py` | The shapes every provider adapter uses (request, answer, stream events, error kinds), so the rest is written once |
+| `src/translate.py` | OpenAI messages to that common request (system prompt pulled out, same-role messages merged); Claude's stop reasons to OpenAI's finish reasons |
+| `src/anthropic_provider.py` | The Claude API adapter: calls the official SDK, turns on refusal fallback per route, maps SDK errors to the gateway's error kinds |
+| `src/stub_provider.py` | A free, offline provider that echoes the message; can be told to fail, for tests and load tests |
+| `src/config.py`, `config/routes.yaml` | The routes and their limits, validated at start |
+| `src/keys.py` | Makes API keys and checks them by hash |
+| `tests/` | 71 tests: the API, translation, the Claude adapter against a fake SDK client, config and keys, and the OpenAI client |
+
+**Checked live** (2026-10-27): four short calls through a local gateway with the official OpenAI client, `smart` and `fast`, plain and streamed, all `finish_reason: stop`, about $0.002 in total. First streamed text arrived after 0.6 s (Sonnet 5.5) and 0.4 s (Haiku 4.5); whole answers took 0.7-1.6 s. One finding for step 4: the API reports Haiku as `claude-haiku-4-5-20251001`, the dated snapshot, not the `claude-haiku-4-5` alias the route names, so prices must be looked up by the model that answered, aliases included.
+
+Run it locally (the stub route needs no Anthropic key; `smart` and `fast` use `ANTHROPIC_API_KEY` from the environment):
+
+```powershell
+uv run python src/keys.py new local          # prints a key once, and the GATEWAY_KEYS line
+$env:GATEWAY_KEYS = "local:<hash from above>"
+uv run uvicorn app:create_app --factory --app-dir src --port 8000
+```
 
 ## Setup
 
