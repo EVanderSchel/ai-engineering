@@ -1,0 +1,197 @@
+# Design: ai-gateway
+
+Step 1. What the gateway does, what it deliberately doesn't, and how each step will be judged. Numbered decisions are referred to from code and later steps; when one changes, it's amended here with the reason, not silently rewritten.
+
+## 1. The problem
+
+Plain language: when several teams each call AI models directly, each one stores its own provider keys, picks its own models, handles outages its own way (or not at all), and nobody can say what the company spent last week or stop one team's runaway script before the bill arrives. A gateway puts one front door in front of every model, so those jobs are done once, the same way, for everyone.
+
+What it is responsible for:
+
+| Job | Question it answers |
+|---|---|
+| Authentication | Who is calling? (a team's API key) |
+| Routing | Which model answers this request, and which ones stand in if it fails? |
+| Resilience | What happens when a provider is slow, throttling or down? |
+| Limits and budgets | Is this team over its rate limit or its monthly spend? |
+| Guardrails | Does the request or the answer carry personal data or an injection attempt? |
+| Accounting | What did this call cost, and whose budget pays for it? |
+| Observability | How fast, how reliable and how expensive is each route right now? |
+| Quality | Did a prompt or model change make answers worse? |
+
+What it is not: an application. It holds no business logic, no conversation history and no documents; apps send complete requests and get complete answers. (Decision 1.)
+
+## 2. Architecture
+
+```
+ apps / SDKs / LangChain                                   (OpenAI-compatible clients, base URL changed)
+          |
+          v
+ +-------------------- gateway (FastAPI, 2+ replicas) --------------------+
+ | auth -> rate limit -> budget reserve -> input guardrails -> router ---+ |
+ |                                                                      | |
+ |   provider adapters:  anthropic | bedrock | llama-server | stub      | |
+ |                                                                      | |
+ | <- output guardrails <- usage + cost <- (stream or full response) <--+ |
+ +------|---------------------------|--------------------------|----------+
+        | keys, limits, budgets,    | traces, metrics          | model calls
+        v usage ledger, audit log   v                          v
+   PostgreSQL               OpenTelemetry collector     Anthropic API, Amazon Bedrock,
+                            -> Prometheus -> Grafana     llama-server (Qwen2.5-0.5B-Instruct, GGUF),
+                                                         classifier (NTEE, ONNX Runtime)
+```
+
+Everything except the hosted providers runs in one local Kubernetes cluster (kind) from step 8; before that, the same containers run under Docker Compose or straight from `uv run`.
+
+- **Stateless gateway replicas** (decision 2). All shared state (keys, limits, budgets, ledger) lives in PostgreSQL, so any replica can serve any request and Kubernetes can add or remove replicas freely. Rate-limit counters are the exception worth naming: they're updated in PostgreSQL too, not in each replica's memory, because per-replica counters would let a team get N times its limit with N replicas.
+- **Self-hosted models are separate services**, not code inside the gateway (decision 3). They need far more memory than the gateway, scale differently, and llama-server already speaks the OpenAI format, so the gateway treats it like any other provider.
+
+## 3. The API (decision 4: OpenAI-compatible)
+
+Chosen in step 0 because nearly every SDK, LangChain and LiteLLM can use it by changing one base URL.
+
+| Endpoint | What |
+|---|---|
+| `POST /v1/chat/completions` | Text chat, streaming (server-sent events, ending `data: [DONE]`) or not |
+| `GET /v1/models` | The routes this key may use |
+| `POST /v1/classifications` | NTEE classification (not part of the OpenAI API; documented as the gateway's own) |
+| `GET /healthz`, `GET /readyz` | Liveness (the process runs) and readiness (it can reach PostgreSQL); Kubernetes uses both |
+| `GET /metrics` | Prometheus metrics (cluster-internal only) |
+
+- **`model` names a route, not a provider model** (decision 5): `smart`, `fast`, `local`, `classify`. The route decides the actual model and its fallbacks (section 4). A client asking for `smart` doesn't change when the route moves to a newer model, which is what lets step 9's eval canary gate model changes.
+- **Request fields supported in v1:** `messages` (system, user, assistant; text content), `max_tokens` (required by the gateway, with a per-route ceiling: it bounds the cost reservation, section 5), `temperature`, `top_p`, `stop`, `stream`, `response_format` (`json_schema` validated on output, section 6), `user`. Unsupported fields (tools, images, `n` > 1, logprobs) are rejected with a 400 naming the field, never silently dropped (decision 6).
+- **Claude-specific options** go in an `extra_body`-style `gateway` object: `{"gateway": {"cache_system_prompt": true}}`. Prompt caching is off unless asked, because a cache write costs 25% more than plain input and only pays off when the same prompt repeats.
+- **Translation to Anthropic's format** (for the Anthropic API and Bedrock's Converse): system messages move to the `system` field, consecutive same-role messages are merged, stop reasons map to OpenAI's `finish_reason` (`end_turn` -> `stop`, `max_tokens` -> `length`, `refusal` -> `content_filter`), and usage maps to `prompt_tokens` / `completion_tokens`.
+- **Errors use OpenAI's error shape** (`{"error": {"message", "type", "code"}}`) with honest status codes: 401 bad key, 403 route not allowed, 400 invalid request, 413 too large, 429 rate limit or budget (with `Retry-After`; `code` says which), 502 a provider answered wrongly, 503 every candidate failed, 504 timed out.
+- **Every response carries `x-request-id`**, and the response's `model` field names the provider model that actually answered, so a fallback is never invisible to the caller.
+
+## 4. Routing and resilience
+
+Routes live in a versioned YAML file (`config/routes.yaml`), loaded at start and validated by a schema; a bad file stops the gateway from starting rather than routing wrongly (decision 7).
+
+```yaml
+smart:
+  candidates:              # tried in order
+    - {provider: anthropic, model: claude-sonnet-5-5}
+    - {provider: bedrock,   model: us.anthropic.claude-sonnet-4-6}
+  max_tokens_ceiling: 4096
+  timeout: {connect: 3s, first_token: 20s, total: 120s}
+fast:
+  candidates:
+    - {provider: bedrock,   model: us.anthropic.claude-haiku-4-5-20251001-v1:0}
+    - {provider: anthropic, model: claude-haiku-4-5}
+    - {provider: local,     model: qwen2.5-0.5b-instruct}
+local:
+  candidates:
+    - {provider: local,     model: qwen2.5-0.5b-instruct}
+```
+
+- **A fallback can be a different model** (decision 8). On this account Bedrock serves Claude 4.x only (Claude 5.x quotas are 0), so `smart` falls back from Sonnet 5.5 to Sonnet 4.6. That's a quality change, so it is recorded on the response (`model`), in the ledger and in metrics, and each route's candidates are checked against the eval set in step 9.
+- **What is retried** (decision 9): connection errors, timeouts, 429 and 5xx from a provider. Never 400-class errors (the request itself is wrong and will fail everywhere) and never a guardrail block.
+- **How**: one retry on the same candidate with jittered exponential backoff for 429/5xx (honoring `Retry-After` up to a cap), then the next candidate. A request has a total deadline; no retry starts if it can't finish before it.
+- **Streaming can't be retried once it has started** (decision 10). After the first token reaches the client, a failure ends the stream with an error event; switching providers mid-answer would splice two different answers together. Fallback therefore happens only before the first byte, which is why `first_token` has its own timeout.
+- **Circuit breaker per provider and model** (decision 11): after 5 failures in 30 seconds the breaker opens and that candidate is skipped (no waiting on a dead provider) for 30 seconds, then one trial request is let through (half-open); success closes it. Breaker state is per replica, which is acceptable: each replica learns about an outage within a few requests.
+- **Measured in step 3** with a fault-injecting stub provider (errors, slow first tokens, dropped connections at chosen rates): requests served during an injected outage of the primary, added latency of a fallback, and that no request exceeds its deadline.
+
+## 5. Teams, keys, limits and budgets (PostgreSQL)
+
+| Table | Holds |
+|---|---|
+| `teams` | name, monthly budget (USD), allowed routes, guardrail policy |
+| `api_keys` | team, SHA-256 hash of the key, a short visible prefix, created/revoked times (the key itself is shown once and never stored) |
+| `rate_limits` | per key: requests per minute and tokens per minute (token bucket state) |
+| `budgets` | per team and month: spent and reserved (USD) |
+| `prices` | per provider model: input, output, cache read/write per million tokens, with the date they took effect |
+| `usage` | one row per request: time, request id, team, key prefix, route, provider model that answered, attempts, tokens, cost, latency, outcome |
+| `audit_log` | key creation and revocation, budget changes, guardrail blocks |
+
+- **Budgets are reserved before a call and settled after it** (decision 12). Before calling a provider, the gateway reserves the most the request could cost (input tokens counted locally plus `max_tokens` of output, at the candidate's price) in one atomic statement that fails if spent + reserved + this reservation exceeds the budget. After the call, the reservation is replaced by the actual cost. Plain language: like a hotel holding an amount on your card at check-in and charging the real bill at check-out. Without the hold, fifty requests arriving at once could each see room in the budget and together overspend it.
+- **Rate limits are token buckets** updated in the same transaction style, so they hold across replicas.
+- **Costs use the prices table, not hard-coded numbers**, so a price change is a new row with a date and old ledger rows keep the price that applied. Self-hosted models get a cost too (their share of the node's hourly price at measured throughput, from step 6), so cheaper routing is visible in dollars.
+- **Measured in step 4**: a test fires concurrent requests at a team with a small budget and checks it is never exceeded by more than zero cents, and that the ledger adds up to the provider-reported usage.
+
+## 6. Guardrails
+
+Policy per team and route: `off`, `flag` (allow, record in the audit log and metrics) or `block` (refuse with a 400 explaining which check). (Decision 13.)
+
+- **Input:** personal-data detection (US SSNs, card numbers that pass the Luhn check, email addresses, phone numbers) with `redact` as an extra option that replaces them with placeholders before the request leaves; a prompt-injection screen reusing the patterns and labeled attacks from Projects 3 and 5.
+- **Output:** the same personal-data check, and `json_schema` validation when the request asked for it (an answer that doesn't match is a 502, not a silently wrong 200).
+- **Streaming and output checks conflict** (decision 14): a streamed answer has been shown before it's complete. Routes with output policy `block` therefore buffer the answer and stream it only after it passes; routes with `flag` stream immediately and check at the end. The trade-off (time to first token) is measured in step 5.
+- **Prompts and answers aren't logged by default** (decision 15). Traces and the ledger hold sizes, tokens and outcomes, not content; a team can turn on content logging for debugging, and the audit log records who did.
+- Measured with labeled cases: detection rate on planted PII and injections, false alarms on clean text, added latency per check.
+
+## 7. Self-hosted inference (step 6)
+
+Two models the project serves itself, chosen to fit this PC (no NVIDIA GPU, Docker limited to about 3.8 GB):
+
+- **Qwen2.5-0.5B-Instruct on llama-server** (llama.cpp's server: OpenAI-compatible, continuous batching, parallel slots, `/health` and Prometheus `/metrics`; CPU image `ghcr.io/ggml-org/llama.cpp:server`). Quantizations compared: Q4_K_M (491 MB), Q8_0 (676 MB) and F16 (1.27 GB) from Qwen's official GGUF repository (downloads asked for first).
+- **The NTEE classifier from Project 4** (LoRA Qwen2.5-0.5B with a classification head), exported to ONNX in Colab and served with ONNX Runtime on CPU, fp32 vs. int8. Accuracy is measured on Project 4's dev split only: its test split has been used.
+- **Measured:** time to first token, tokens per second, latency p50/p95 and throughput at 1, 4, 8 and 16 concurrent requests; memory; accuracy or answer quality per quantization; cost per 1,000 requests at the measured throughput. The same instruct model on vLLM on a Colab T4 gives the GPU comparison point.
+- What a 0.5B model is for, honestly: short, simple tasks (classification, extraction from short text, routing). It's the `local` route and the last fallback of `fast`, not a substitute for Claude.
+
+## 8. Observability
+
+- **Traces** (OpenTelemetry): one span per request, with child spans for auth, limits, each guardrail, each provider attempt (provider, model, outcome, retry number) and the ledger write. Attributes carry team, route, tokens and cost; never content (decision 15).
+- **Metrics** (Prometheus): requests, errors and latency by route, provider and outcome; time to first token; tokens and cost by team; fallbacks and open breakers; budget used per team; guardrail flags and blocks.
+- **Alerts** (step 7): error rate, p95 latency, a breaker open for more than 5 minutes, and a cost spike (a team's spend in the last hour well above its usual hour).
+- **Logs**: one JSON line per request with the request id, matching the trace.
+
+## 9. Kubernetes (step 8) and the memory budget
+
+The cluster has to fit in Docker's 3.8 GB. Estimated working set (to be replaced by measurements):
+
+| Component | Memory |
+|---|---|
+| kind node (control plane, kubelet, system pods) | ~700 MB |
+| gateway, 2 replicas | ~300 MB |
+| PostgreSQL | ~150 MB |
+| llama-server, Qwen2.5-0.5B Q4_K_M | ~700 MB |
+| classifier, ONNX int8 | ~700 MB |
+| OpenTelemetry collector | ~100 MB |
+| Prometheus + Grafana (plain charts, not the full kube-prometheus stack) | ~450 MB |
+| **Total** | **~3.1 GB** |
+
+- It fits only with the smallest model variants, so the fp32 and F16 measurements in step 6 run outside the cluster, one at a time.
+- Every pod sets memory requests and limits; a pod over its limit is killed and restarted rather than starving the node. The autoscaler (HPA) scales the gateway on CPU between 2 and 4 replicas; the model servers stay at one replica here (on a real cluster they would scale on queue depth).
+- Secrets (Anthropic key, AWS credentials) come from the local environment into Kubernetes Secrets at deploy time; nothing secret is in the chart or the repo. AWS credentials in the cluster are short-lived ones exported from the `agent-toolkit` login.
+
+## 10. Quality over time (step 9)
+
+- **Prompt registry**: named prompts (for apps that use the gateway's templates) as versioned, immutable files with fingerprints, the pattern from the rag project.
+- **Eval canary**: a change to a route's candidates or a prompt runs a fixed eval set (drawn from the earlier projects' dev data with known answers) through the gateway and is rejected if accuracy drops beyond a set margin; it runs in CI on changes to `config/routes.yaml` and the prompt files.
+- **Drift monitor**: a small sample of live requests on routes that opt in is scored by a judge model; a falling score alerts.
+
+## 11. Testing
+
+- Tests never reach a provider, a database server or a cluster: the stub provider stands in for models, and PostgreSQL logic is tested against a disposable database in CI (a service container) and locally under Docker, with pure-logic tests (cost, token buckets, translation, breaker states) running everywhere.
+- Load tests (k6) run against the stub provider, so they cost nothing and measure the gateway, not the provider.
+
+## 12. Not in scope (v1)
+
+Tool/function calling, images, embeddings, the Responses API, user sign-in (keys only; teams are created by an admin command), an admin UI, multi-region deployment, and semantic caching. Each could be a later step; leaving them out keeps the core measurable.
+
+## 13. Decisions
+
+| # | Decision | Why |
+|---|---|---|
+| 1 | The gateway holds no application state or business logic | It serves every app; logic belongs in the apps |
+| 2 | Gateway replicas are stateless; shared state is in PostgreSQL, rate limits included | Replicas can scale freely without multiplying limits |
+| 3 | Self-hosted models run as separate services | Different memory and scaling; llama-server is already OpenAI-compatible |
+| 4 | OpenAI-compatible API | Every common client works by changing the base URL |
+| 5 | `model` names a route, not a provider model | Models change behind a stable name, gated by evals |
+| 6 | Unsupported request fields are rejected, not dropped | Silent drops change behavior without telling the caller |
+| 7 | Routes are a validated, versioned YAML file | A bad config fails at start, not on live traffic |
+| 8 | A fallback may be a different model, and the response says which answered | Quality changes must be visible |
+| 9 | Retry only connection errors, timeouts, 429 and 5xx | A bad request fails everywhere; retrying it wastes money |
+| 10 | No fallback after the first streamed byte | Two providers' answers can't be spliced together |
+| 11 | Circuit breaker per provider model, per replica | Stop waiting on a dead provider; simple and good enough |
+| 12 | Budgets are reserved before a call and settled after | Concurrent requests can't overspend together |
+| 13 | Guardrail policy per team and route: off, flag or block | Teams differ in what they handle |
+| 14 | Output-blocking routes buffer before streaming | A shown answer can't be taken back |
+| 15 | No prompt or answer content in logs or traces by default | They may hold personal data |
+
+## 14. Open questions
+
+- **Bedrock from inside kind**: short-lived credentials exported into a Secret need refreshing (they expire within hours). Fine for demos; step 8 decides whether to automate the refresh or keep Bedrock calls to local runs.
+- **The NTEE export**: exporting the classification head to ONNX in Colab needs the adapter from Google Drive; if export fails, the classifier runs on plain PyTorch on CPU in the cluster, at a larger memory cost.
+- **Docker's memory**: if measurements in step 6 exceed the budget above, Docker's WSL2 limit can be raised (a setting the user changes), at the cost of the rest of the PC.
