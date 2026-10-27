@@ -1,0 +1,14 @@
+.venv/
+venv*/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.env
+# Self-hosted model files (GGUF, ONNX): hundreds of MB, downloaded or exported again when needed, never committed.
+models/
+*.gguf
+*.onnx
+# kind cluster kubeconfigs and Helm's packaged charts: made locally, never committed.
+*.kubeconfig
+*.tgz

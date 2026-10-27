@@ -1,0 +1,29 @@
+[project]
+name = "ai-gateway"
+version = "0.1.0"
+description = "An AI gateway with self-hosted, optimized inference on Kubernetes: one OpenAI-compatible API in front of hosted and self-hosted models, with routing, fallback, per-team limits and budgets, guardrails, cost tracking and observability"
+requires-python = ">=3.14,<3.15"
+# Direct dependencies; exact versions with checksums live in uv.lock. Install with `uv sync`.
+# Added by the steps that need them (the gateway service in step 2, PostgreSQL in step 4, ...).
+dependencies = []
+
+[dependency-groups]
+lint = [
+    "ruff>=0.16",
+]
+dev = [
+    "pytest>=9.0",
+    { include-group = "lint" },
+]
+
+[tool.uv]
+# An application, not a library: install its dependencies, don't build or install it as a package.
+package = false
+
+[tool.ruff]
+line-length = 120
+target-version = "py314"
+
+[tool.ruff.lint]
+# Same rules as the other projects: E/W style, F real bugs, I import order, B likely bugs, UP modern syntax.
+select = ["E", "W", "F", "I", "B", "UP"]

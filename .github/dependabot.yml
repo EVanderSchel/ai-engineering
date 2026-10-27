@@ -5,11 +5,11 @@
 # Minor and patch updates are grouped into one PR per ecosystem to keep the noise down; major versions
 # get their own PRs, because they're the ones that can break things.
 #
-# Schedule: finished projects (rag, irs-990-extraction, nonprofit-agent, ntee-classification, ci-cd-workflow)
-# update monthly; the active project (grant-review-workflow), GitHub Actions and Docker images update weekly
-# on Monday. Everything runs at the same time so the PRs can be reviewed in one sitting. Dependabot runs
-# monthly updates on the 1st of the month (`day` only applies to weekly ones), so those PRs wait for the next
-# Monday review.
+# Schedule: finished projects (rag, irs-990-extraction, nonprofit-agent, ntee-classification,
+# grant-review-workflow, ci-cd-workflow) update monthly; the active project (ai-gateway), GitHub Actions and
+# Docker images update weekly on Monday. Everything runs at the same time so the PRs can be reviewed in one
+# sitting. Dependabot runs monthly updates on the 1st of the month (`day` only applies to weekly ones), so
+# those PRs wait for the next Monday review.
 #
 # Cooldown: a new release isn't proposed until it's 7 days old, so a broken release is usually yanked or
 # patched before it reaches a PR. Cooldown only applies to version updates; security updates aren't delayed.
@@ -91,8 +91,7 @@ updates:
   - package-ecosystem: uv
     directory: /grant-review-workflow
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
       time: "06:00"
       timezone: America/Chicago
     cooldown:
@@ -113,8 +112,7 @@ updates:
   - package-ecosystem: npm
     directory: /grant-review-workflow/infra
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
       time: "06:00"
       timezone: America/Chicago
     cooldown:
@@ -131,8 +129,7 @@ updates:
   - package-ecosystem: npm
     directory: /grant-review-workflow/ui
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
       time: "06:00"
       timezone: America/Chicago
     cooldown:
@@ -142,6 +139,23 @@ updates:
         update-types: [minor, patch]
       # Security fixes in one PR, so they can't block each other's audit job (see rag-security).
       grant-review-workflow-ui-security:
+        applies-to: security-updates
+        patterns: ["*"]
+
+  - package-ecosystem: uv
+    directory: /ai-gateway
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    cooldown:
+      default-days: 7
+    groups:
+      ai-gateway-python:
+        update-types: [minor, patch]
+      # Security fixes in one PR, so they can't block each other's audit job (see rag-security).
+      ai-gateway-security:
         applies-to: security-updates
         patterns: ["*"]
 
