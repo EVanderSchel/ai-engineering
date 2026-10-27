@@ -1,0 +1,23 @@
+# Routes: the names clients send as `model`, and the models behind them (design decisions 5 and 7).
+# Candidates are listed in order of preference; step 2 uses the first, step 3 falls back to the rest.
+
+smart:
+  candidates:
+    # Claude API's server-side fallback re-runs a refused request on another model in the same call; the
+    # response's `model` then names the model that answered.
+    - {provider: anthropic, model: claude-sonnet-5-5, refusal_fallback: true}
+  max_tokens_ceiling: 8192
+  timeout: {total: 120}
+
+fast:
+  candidates:
+    - {provider: anthropic, model: claude-haiku-4-5}
+  max_tokens_ceiling: 4096
+  timeout: {total: 60}
+
+# Offline and free: answers by echoing the last message. For local development and load tests.
+stub:
+  candidates:
+    - {provider: stub, model: stub-echo}
+  max_tokens_ceiling: 4096
+  timeout: {total: 10}

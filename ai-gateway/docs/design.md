@@ -1,6 +1,6 @@
 # Design: ai-gateway
 
-Step 1. What the gateway does, what it deliberately doesn't, and how each step will be judged. Numbered decisions are referred to from code and later steps; when one changes, it's amended here with the reason, not silently rewritten.
+Step 1 (amended in step 2: decision 16). What the gateway does, what it deliberately doesn't, and how each step will be judged. Numbered decisions are referred to from code and later steps; when one changes, it's amended here with the reason, not silently rewritten.
 
 ## 1. The problem
 
@@ -59,7 +59,8 @@ Chosen in step 0 because nearly every SDK, LangChain and LiteLLM can use it by c
 | `GET /metrics` | Prometheus metrics (cluster-internal only) |
 
 - **`model` names a route, not a provider model** (decision 5): `smart`, `fast`, `local`, `classify`. The route decides the actual model and its fallbacks (section 4). A client asking for `smart` doesn't change when the route moves to a newer model, which is what lets step 9's eval canary gate model changes.
-- **Request fields supported in v1:** `messages` (system, user, assistant; text content), `max_tokens` (required by the gateway, with a per-route ceiling: it bounds the cost reservation, section 5), `temperature`, `top_p`, `stop`, `stream`, `response_format` (`json_schema` validated on output, section 6), `user`. Unsupported fields (tools, images, `n` > 1, logprobs) are rejected with a 400 naming the field, never silently dropped (decision 6).
+- **Request fields supported in v1:** `messages` (system, user, assistant; text content), `max_tokens` or `max_completion_tokens` (required by the gateway, with a per-route ceiling: it bounds the cost reservation, section 5), `temperature` and `top_p` (only on some routes, decision 16), `stop`, `stream`, `stream_options.include_usage`, `response_format` (`json_schema` validated on output, section 6; added in step 5), `user`, and `n` only as 1. Unsupported fields (tools, images, `n` > 1, logprobs) are rejected with a 400 naming the field, never silently dropped (decision 6).
+- **Sampling settings depend on the route** (decision 16, added in step 2). From API version 2026-10-21 (the Anthropic SDK's default from release 2.0.0), the Claude API rejects `temperature`, `top_p` and `top_k` on every model, and Claude models from 4.7 on accept only their defaults anyway. A route therefore accepts `temperature` and `top_p` only if every one of its candidates does (today, the self-hosted and stub ones); on a route with a Claude candidate they're a 400 that says so, rather than being dropped and silently changing what the caller asked for.
 - **Claude-specific options** go in an `extra_body`-style `gateway` object: `{"gateway": {"cache_system_prompt": true}}`. Prompt caching is off unless asked, because a cache write costs 25% more than plain input and only pays off when the same prompt repeats.
 - **Translation to Anthropic's format** (for the Anthropic API and Bedrock's Converse): system messages move to the `system` field, consecutive same-role messages are merged, stop reasons map to OpenAI's `finish_reason` (`end_turn` -> `stop`, `max_tokens` -> `length`, `refusal` -> `content_filter`), and usage maps to `prompt_tokens` / `completion_tokens`.
 - **Errors use OpenAI's error shape** (`{"error": {"message", "type", "code"}}`) with honest status codes: 401 bad key, 403 route not allowed, 400 invalid request, 413 too large, 429 rate limit or budget (with `Retry-After`; `code` says which), 502 a provider answered wrongly, 503 every candidate failed, 504 timed out.
@@ -172,6 +173,8 @@ Tool/function calling, images, embeddings, the Responses API, user sign-in (keys
 
 ## 13. Decisions
 
+Decisions 1-15 were made in step 1; later ones say which step added them.
+
 | # | Decision | Why |
 |---|---|---|
 | 1 | The gateway holds no application state or business logic | It serves every app; logic belongs in the apps |
@@ -189,6 +192,7 @@ Tool/function calling, images, embeddings, the Responses API, user sign-in (keys
 | 13 | Guardrail policy per team and route: off, flag or block | Teams differ in what they handle |
 | 14 | Output-blocking routes buffer before streaming | A shown answer can't be taken back |
 | 15 | No prompt or answer content in logs or traces by default | They may hold personal data |
+| 16 | `temperature` and `top_p` only on routes whose every candidate accepts them | The Claude API removed them in version 2026-10-21; dropping them silently would change the request (added in step 2) |
 
 ## 14. Open questions
 
