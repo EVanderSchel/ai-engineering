@@ -7,7 +7,9 @@ requires-python = ">=3.14,<3.15"
 # Added by the steps that need them (the gateway service in step 2, PostgreSQL in step 4, ...).
 dependencies = [
     "anthropic>=2.3.0",
+    "boto3>=1.40",
     "fastapi>=0.120",
+    "httpx2>=2.16",
     "pyyaml>=6.0.3",
     "uvicorn>=0.38",
 ]
@@ -17,6 +19,7 @@ lint = [
     "ruff>=0.16",
 ]
 dev = [
+    "botocore[crt]>=1.43.115",
     "httpx>=0.28",
     "openai>=2.0",
     "pytest>=9.0",

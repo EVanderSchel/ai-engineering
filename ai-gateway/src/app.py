@@ -2,8 +2,9 @@
 
     uv run uvicorn app:create_app --factory --app-dir src --port 8000
 
-Step 2's request path: check the key, validate the request, pick the route's first candidate, call it, and answer as
-OpenAI would, streamed or not. Limits, budgets, guardrails and fallback are added by later steps along this path.
+The request path: check the key, validate the request, try the route's candidates in order (router.py: retries,
+fallback, circuit breakers), and answer as OpenAI would, streamed or not. Limits, budgets and guardrails are added
+by later steps along this path.
 """
 
 import asyncio
@@ -20,8 +21,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 
 import anthropic_provider
+import bedrock_provider
 import config
 import keys
+import openai_compatible_provider
+import router
 import schemas
 from providers import Finish, Provider, ProviderError, StreamEvent, TextDelta
 from stub_provider import StubProvider
@@ -51,7 +55,7 @@ class GatewayError(Exception):
         return JSONResponse(body, status_code=self.status, headers=self.headers)
 
 
-# How each provider error kind reaches the caller. No fallback yet (step 3), so a failing provider is the answer.
+# How a provider error kind reaches the caller, when it's the one that decides the answer (a refused request).
 PROVIDER_ERRORS = {
     "timeout": (504, "timeout_error", "provider_timeout"),
     "unavailable": (503, "service_unavailable_error", "provider_unavailable"),
@@ -72,16 +76,26 @@ def create_app(
     routes: dict[str, config.Route] | None = None,
     providers: dict[str, Provider] | None = None,
     api_keys: dict[str, str] | None = None,
+    breakers: router.Breakers | None = None,
+    policy: router.Policy | None = None,
 ) -> FastAPI:
     """Everything the app depends on can be passed in, so tests run with the stub provider and test keys."""
     routes = routes if routes is not None else config.load_routes()
     if providers is None:
-        providers = {"stub": StubProvider(), "anthropic": anthropic_provider.AnthropicProvider(make_anthropic())}
+        providers = {
+            "stub": StubProvider(),
+            "anthropic": anthropic_provider.AnthropicProvider(anthropic_provider.make_client()),
+            "bedrock": bedrock_provider.BedrockProvider(bedrock_provider.make_client()),
+            # llama-server (step 6). Nothing connects until a route uses it.
+            "local": openai_compatible_provider.OpenAICompatibleProvider(openai_compatible_provider.make_client()),
+        }
     api_keys = api_keys if api_keys is not None else keys.parse_keys(os.environ.get("GATEWAY_KEYS", ""))
     for name, route in routes.items():
         for candidate in route.candidates:
             if candidate.provider not in providers:
                 raise ValueError(f"route {name!r} uses provider {candidate.provider!r}, which isn't configured")
+    breakers = breakers or router.Breakers()
+    policy = policy or router.Policy()
 
     app = FastAPI(title="ai-gateway", docs_url=None, redoc_url=None)
 
@@ -157,52 +171,73 @@ def create_app(
                     "default sampling", "invalid_request_error", "unsupported_parameter", param=field,
                 )  # fmt: skip
 
-        candidate = route.candidates[0]
-        provider = providers[candidate.provider]
-        try:
-            provider_request = to_provider_request(
+        def build(candidate: config.Candidate):
+            return to_provider_request(
                 body, candidate.model, limit, effort=candidate.effort, refusal_fallback=candidate.refusal_fallback
             )
+
+        try:
+            build(route.candidates[0])  # the message checks don't depend on the candidate: fail before any call
         except InvalidMessages as error:
             raise GatewayError(400, str(error), "invalid_request_error", "invalid_messages", "messages") from None
 
-        log.info(
-            "request %s team=%s route=%s provider=%s model=%s stream=%s",
-            request.state.request_id, team, body.model, provider.name, candidate.model, body.stream,
-        )  # fmt: skip
-        headers = {"x-gateway-route": body.model, "x-gateway-provider": provider.name}
         deadline = asyncio.get_running_loop().time() + route.timeout.total
-
-        if not body.stream:
-            try:
-                async with asyncio.timeout_at(deadline):
-                    completion = await provider.complete(provider_request)
-            except TimeoutError:
-                raise GatewayError(504, "the provider didn't answer in time", "timeout_error", "timeout") from None
-            except ProviderError as error:
-                raise from_provider_error(error) from None
-            return JSONResponse(schemas.completion_body(schemas.completion_id(), completion), headers=headers)
-
-        # Streaming: wait for the first event before answering, so an error that happens before any output can
-        # still be a proper HTTP status (and, in step 3, a fallback to the next candidate). Once the first byte is
-        # sent the status is fixed at 200, and a later failure ends the stream with an error event (decision 10).
-        events = provider.stream(provider_request)
         try:
-            async with asyncio.timeout_at(deadline):
-                first = await anext(events)
-        except TimeoutError:
-            await events.aclose()
-            raise GatewayError(504, "the provider didn't start answering in time", "timeout_error", "timeout") from None
-        except ProviderError as error:
-            raise from_provider_error(error) from None
+            if body.stream:
+                # Waits for the first event, so an error before any output can still move on to the next candidate
+                # or be a proper HTTP status. After the first byte the status is fixed at 200 (decision 10).
+                (first, events), result = await router.stream(route, providers, breakers, build, deadline, policy)
+            else:
+                completion, result = await router.complete(route, providers, breakers, build, deadline, policy)
+        except router.AllFailed as failure:
+            log_attempts(request, team, body.model, failure.attempts, "failed")
+            raise from_all_failed(failure) from None
+
+        log_attempts(request, team, body.model, result.attempts, "ok")
+        headers = {
+            "x-gateway-route": body.model,
+            "x-gateway-provider": result.candidate.provider,
+            "x-gateway-attempts": str(len(result.attempts)),
+            "x-gateway-fallback": "true" if result.candidate != route.candidates[0] else "false",
+        }
+        if not body.stream:
+            return JSONResponse(schemas.completion_body(schemas.completion_id(), completion), headers=headers)
         include_usage = bool(body.stream_options and body.stream_options.include_usage)
         return StreamingResponse(
-            sse(first, events, deadline, candidate.model, include_usage),
+            sse(first, events, deadline, result.candidate.model, include_usage),
             media_type="text/event-stream",
             headers={**headers, "cache-control": "no-cache"},
         )
 
+    app.state.breakers = breakers
+    app.state.providers = providers
     return app
+
+
+def log_attempts(request: Request, team: str, route: str, attempts: list[router.Attempt], outcome: str) -> None:
+    tried = ", ".join(f"{a.provider}/{a.model}={a.outcome}" for a in attempts) or "none"
+    log.info("request %s team=%s route=%s %s attempts: %s", request.state.request_id, team, route, outcome, tried)
+
+
+def from_all_failed(failure: router.AllFailed) -> GatewayError:
+    """What the caller sees when no candidate answered."""
+    error = failure.error
+    if error is not None and error.kind in router.STOP:
+        return from_provider_error(error)  # the request itself was refused: say why, as the provider did
+    tried = [a for a in failure.attempts if a.outcome != "skipped"]
+    summary = "; ".join(f"{a.provider}/{a.model}: {a.outcome}" for a in failure.attempts)
+    if not tried:
+        return GatewayError(
+            503, f"every candidate is paused after repeated failures ({summary})", "service_unavailable_error",
+            "all_candidates_paused", headers={"retry-after": "30"},
+        )  # fmt: skip
+    if failure.timed_out or all(a.outcome == "timeout" for a in tried):
+        return GatewayError(504, f"no candidate answered in time ({summary})", "timeout_error", "timeout")
+    headers = {"retry-after": str(int(error.retry_after))} if error and error.retry_after else None
+    return GatewayError(
+        503, f"every candidate failed ({summary})", "service_unavailable_error", "all_candidates_failed",
+        headers=headers,
+    )  # fmt: skip
 
 
 async def sse(
@@ -237,7 +272,3 @@ async def sse(
     finally:
         await events.aclose()
     yield data(schemas.error_body(error.message, error.type, error.code))
-
-
-def make_anthropic():
-    return anthropic_provider.make_client()

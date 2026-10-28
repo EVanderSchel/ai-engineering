@@ -1,14 +1,14 @@
 """Routes: which model answers each route name, loaded from a versioned YAML file (design decision 7).
 
 The file is validated when the gateway starts; a mistake stops it from starting rather than sending live traffic to
-the wrong place. Step 2 uses each route's first candidate; step 3 adds trying the rest in order.
+the wrong place. Candidates are tried in order (router.py).
 """
 
 import pathlib
 from typing import Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 import paths
 
@@ -20,14 +20,25 @@ class Strict(BaseModel):
 
 
 class Candidate(Strict):
-    provider: Literal["anthropic", "stub"]
+    provider: str  # a configured provider's name; checked when the app starts
     model: str
+    # Claude API options: Bedrock's Converse and other providers have no equivalent, so they're refused elsewhere.
     effort: Literal["low", "medium", "high", "xhigh", "max"] | None = None
     refusal_fallback: bool = False
 
+    @model_validator(mode="after")
+    def claude_api_options_only_on_the_claude_api(self):
+        if self.provider != "anthropic" and (self.effort or self.refusal_fallback):
+            raise ValueError(f"effort and refusal_fallback only apply to provider anthropic, not {self.provider!r}")
+        return self
+
 
 class Timeouts(Strict):
-    total: float = Field(default=120.0, gt=0)  # seconds, from request to the last byte
+    """Seconds. `first_token` and `attempt` are per candidate, so a slow one leaves time to fall back."""
+
+    total: float = Field(default=120.0, gt=0)  # from request to the last byte, across every attempt
+    first_token: float = Field(default=20.0, gt=0)  # a stream's first event from one candidate
+    attempt: float = Field(default=60.0, gt=0)  # a whole non-streamed answer from one candidate
 
 
 class Route(Strict):

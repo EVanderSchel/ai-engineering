@@ -1,6 +1,6 @@
 # Design: ai-gateway
 
-Step 1 (amended in step 2: decision 16). What the gateway does, what it deliberately doesn't, and how each step will be judged. Numbered decisions are referred to from code and later steps; when one changes, it's amended here with the reason, not silently rewritten.
+Step 1 (amended in step 2: decision 16; in step 3: timeouts per candidate). What the gateway does, what it deliberately doesn't, and how each step will be judged. Numbered decisions are referred to from code and later steps; when one changes, it's amended here with the reason, not silently rewritten.
 
 ## 1. The problem
 
@@ -76,7 +76,7 @@ smart:
     - {provider: anthropic, model: claude-sonnet-5-5}
     - {provider: bedrock,   model: us.anthropic.claude-sonnet-4-6}
   max_tokens_ceiling: 4096
-  timeout: {connect: 3s, first_token: 20s, total: 120s}
+  timeout: {first_token: 20, attempt: 90, total: 120}   # seconds
 fast:
   candidates:
     - {provider: bedrock,   model: us.anthropic.claude-haiku-4-5-20251001-v1:0}
@@ -89,7 +89,8 @@ local:
 
 - **A fallback can be a different model** (decision 8). On this account Bedrock serves Claude 4.x only (Claude 5.x quotas are 0), so `smart` falls back from Sonnet 5.5 to Sonnet 4.6. That's a quality change, so it is recorded on the response (`model`), in the ledger and in metrics, and each route's candidates are checked against the eval set in step 9.
 - **What is retried** (decision 9): connection errors, timeouts, 429 and 5xx from a provider. Never 400-class errors (the request itself is wrong and will fail everywhere) and never a guardrail block.
-- **How**: one retry on the same candidate with jittered exponential backoff for 429/5xx (honoring `Retry-After` up to a cap), then the next candidate. A request has a total deadline; no retry starts if it can't finish before it.
+- **How**: one retry on the same candidate with jittered exponential backoff for 429/5xx (honoring `Retry-After` up to a cap), then the next candidate. A request has a total deadline; no retry starts if it can't finish before it. A timeout moves straight to the next candidate (a slow provider is unlikely to be fast a moment later), as does a misconfigured one.
+- **Timeouts per candidate** (amended in step 3): `first_token` for a stream's first event and `attempt` for a whole non-streamed answer, both per candidate, so one slow candidate can't use up the whole `total`. (The step 1 draft had a `connect` timeout too; the provider clients' own connect timeouts cover it.)
 - **Streaming can't be retried once it has started** (decision 10). After the first token reaches the client, a failure ends the stream with an error event; switching providers mid-answer would splice two different answers together. Fallback therefore happens only before the first byte, which is why `first_token` has its own timeout.
 - **Circuit breaker per provider and model** (decision 11): after 5 failures in 30 seconds the breaker opens and that candidate is skipped (no waiting on a dead provider) for 30 seconds, then one trial request is let through (half-open); success closes it. Breaker state is per replica, which is acceptable: each replica learns about an outage within a few requests.
 - **Measured in step 3** with a fault-injecting stub provider (errors, slow first tokens, dropped connections at chosen rates): requests served during an injected outage of the primary, added latency of a fallback, and that no request exceeds its deadline.

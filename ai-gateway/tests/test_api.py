@@ -126,22 +126,26 @@ def test_misplaced_messages_are_400(client):
     assert chat(client, messages=prefill).status_code == 400
 
 
-def test_provider_errors_map_to_honest_statuses(client, stub):
-    cases = [
-        (ProviderError("timeout", "slow", "stub"), 504),
-        (ProviderError("unavailable", "rate limit", "stub", retry_after=7), 503),
-        (ProviderError("rejected", "bad input", "stub"), 400),
-        (ProviderError("too_large", "too big", "stub"), 413),
-        (ProviderError("misconfigured", "bad key", "stub"), 502),
-    ]
-    for error, status in cases:
-        stub.fail = error
-        response = chat(client)
-        assert response.status_code == status, error.kind
-        assert response.json()["error"]["message"] == f"stub: {error.message}"
-    assert response.headers.get("retry-after") is None
-    stub.fail = cases[1][0]
-    assert chat(client).headers["retry-after"] == "7"
+@pytest.mark.parametrize(
+    "error, status, code",
+    [
+        (ProviderError("timeout", "slow", "stub"), 504, "timeout"),
+        (ProviderError("unavailable", "rate limit", "stub", retry_after=7), 503, "all_candidates_failed"),
+        (ProviderError("misconfigured", "bad key", "stub"), 503, "all_candidates_failed"),
+        (ProviderError("rejected", "bad input", "stub"), 400, "provider_rejected_request"),
+        (ProviderError("too_large", "too big", "stub"), 413, "request_too_large"),
+    ],
+)
+def test_when_no_candidate_answers_the_status_says_why(client, stub, error, status, code):
+    stub.fail = error
+    response = chat(client)
+    assert response.status_code == status
+    assert response.json()["error"]["code"] == code
+    if error.kind in ("rejected", "too_large"):
+        assert response.json()["error"]["message"] == f"stub: {error.message}"  # the provider's own reason
+    else:
+        assert "stub/stub-echo" in response.json()["error"]["message"]  # which candidates were tried
+    assert response.headers.get("retry-after") == ("7" if error.retry_after else None)
 
 
 def test_a_stream_is_openai_chunks_ending_with_done(client):
@@ -177,7 +181,7 @@ def test_a_stream_that_fails_before_output_gets_a_real_status(client, stub):
     stub.fail = ProviderError("unavailable", "down", "stub")
     response = chat(client, stream=True)
     assert response.status_code == 503
-    assert response.json()["error"]["code"] == "provider_unavailable"
+    assert response.json()["error"]["code"] == "all_candidates_failed"
 
 
 def test_a_stream_that_fails_partway_ends_with_an_error_event(client, stub):

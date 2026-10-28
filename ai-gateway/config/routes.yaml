@@ -1,23 +1,29 @@
 # Routes: the names clients send as `model`, and the models behind them (design decisions 5 and 7).
-# Candidates are listed in order of preference; step 2 uses the first, step 3 falls back to the rest.
+# Candidates are tried in order (router.py): a temporary error is retried once, then the next candidate is tried.
+# Timeouts are seconds: `first_token` (a stream's first event) and `attempt` (a whole non-streamed answer) are per
+# candidate, so a slow one leaves time to fall back; `total` covers every attempt.
+#
+# Bedrock models are called through `us.` inference profiles (requests stay in US Regions). This AWS project has
+# Claude 4.x only on Bedrock, so a fallback there can be a different model; the response's `model` says which one.
 
 smart:
   candidates:
-    # Claude API's server-side fallback re-runs a refused request on another model in the same call; the
-    # response's `model` then names the model that answered.
+    # Claude API's server-side fallback re-runs a refused request on another model in the same call.
     - {provider: anthropic, model: claude-sonnet-5-5, refusal_fallback: true}
+    - {provider: bedrock, model: us.anthropic.claude-sonnet-4-6}
   max_tokens_ceiling: 8192
-  timeout: {total: 120}
+  timeout: {first_token: 20, attempt: 90, total: 120}
 
 fast:
   candidates:
+    - {provider: bedrock, model: us.anthropic.claude-haiku-4-5-20251001-v1:0}
     - {provider: anthropic, model: claude-haiku-4-5}
   max_tokens_ceiling: 4096
-  timeout: {total: 60}
+  timeout: {first_token: 10, attempt: 30, total: 60}
 
 # Offline and free: answers by echoing the last message. For local development and load tests.
 stub:
   candidates:
     - {provider: stub, model: stub-echo}
   max_tokens_ceiling: 4096
-  timeout: {total: 10}
+  timeout: {first_token: 5, attempt: 5, total: 10}

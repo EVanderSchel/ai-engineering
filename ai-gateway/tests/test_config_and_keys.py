@@ -15,7 +15,6 @@ def test_the_committed_routes_file_is_valid():
     "text",
     [
         "smart: {candidates: [], max_tokens_ceiling: 10}",  # no candidates
-        "smart: {candidates: [{provider: openai, model: x}], max_tokens_ceiling: 10}",  # unknown provider
         "smart: {candidates: [{provider: stub, model: x, temprature: 1}], max_tokens_ceiling: 10}",  # typo
         "smart: {candidates: [{provider: stub, model: x}]}",  # no ceiling
         "[]",
