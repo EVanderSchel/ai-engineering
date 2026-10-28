@@ -80,6 +80,23 @@ jobs:
       run:
         working-directory: ai-gateway
 
+    # A throwaway PostgreSQL for the database tests, the same image as docker-compose.yml. It lives only for this
+    # job and is reachable only from it, so its password is a fixed test value, not a secret.
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b
+        env:
+          POSTGRES_USER: gateway
+          POSTGRES_DB: gateway
+          POSTGRES_PASSWORD: ci-only-throwaway
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U gateway -d gateway"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+
     steps:
       - name: Check out code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -118,7 +135,11 @@ jobs:
       - name: Check uv.lock matches pyproject.toml
         run: uv lock --check
 
+      # REQUIRE_DATABASE makes a missing database fail the database tests instead of skipping them.
       - name: Run tests
+        env:
+          DATABASE_URL: postgresql://gateway:ci-only-throwaway@127.0.0.1:5432/gateway
+          REQUIRE_DATABASE: "1"
         run: python -m pytest -v
 
   # Every locked production dependency is checked for known vulnerabilities. Fails on any that isn't

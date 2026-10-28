@@ -27,16 +27,31 @@ def test_a_bad_routes_file_fails_at_load(tmp_path, text):
         config.load_routes(path)
 
 
-def test_new_keys_are_random_and_only_their_hash_identifies_a_team():
+def test_the_bearer_key_is_read_from_the_header():
+    key = keys.new_key()
+    assert keys.bearer_key(f"Bearer {key}") == key
+    assert keys.bearer_key(f"bearer  {key} ") == key
+    assert keys.bearer_key(key) is None  # no scheme
+    assert keys.bearer_key("Bearer sk-not-a-gateway-key") is None
+    assert keys.bearer_key(None) is None
+
+
+@pytest.mark.anyio
+async def test_new_keys_are_random_and_only_their_hash_identifies_a_team():
     a, b = keys.new_key(), keys.new_key()
     assert a != b and a.startswith("gw_") and len(a) > 40
     table = keys.parse_keys(f"team-a:{keys.key_hash(a)}, team-b:{keys.key_hash(b)}")
-    assert keys.team_for(f"Bearer {a}", table) == "team-a"
-    assert keys.team_for(f"bearer {b}", table) == "team-b"
-    assert keys.team_for(a, table) is None  # no scheme
-    assert keys.team_for(f"Bearer {a}x", table) is None
-    assert keys.team_for(None, table) is None
+    store = keys.MemoryKeyStore(table)
+    assert (await store.team_for(a)).name == "team-a"
+    assert (await store.team_for(b)).name == "team-b"
+    assert await store.team_for(a + "x") is None
     assert a not in str(table)
+
+
+def test_a_team_may_use_its_routes():
+    assert keys.Team(1, "t").may_use("anything")
+    limited = keys.Team(1, "t", ("fast",))
+    assert limited.may_use("fast") and not limited.may_use("smart")
 
 
 @pytest.mark.parametrize("value", ["team-a", "team-a:abc", ":" + "0" * 64, "team:" + "G" * 64])
