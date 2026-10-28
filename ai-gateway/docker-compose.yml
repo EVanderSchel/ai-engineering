@@ -1,0 +1,30 @@
+# Local PostgreSQL for development and the database tests (step 4). In the Kubernetes cluster (step 8) PostgreSQL runs
+# from the Helm chart instead.
+#
+#     docker compose up -d db        # start (data kept in the gateway-pgdata volume)
+#     docker compose down            # stop (add -v to delete the data)
+#
+# The password comes from .env (gitignored). Published on 127.0.0.1:5433 (5432 is taken by a PostgreSQL installed on
+# this PC), on localhost only: nothing outside this PC can reach it.
+services:
+  db:
+    # Official image, pinned by digest so an updated tag can't change the database underneath (update by hand).
+    image: postgres:17-alpine@sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b
+    environment:
+      POSTGRES_USER: gateway
+      POSTGRES_DB: gateway
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - gateway-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gateway -d gateway"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+    # Small on purpose: this PC's Docker has about 3.8 GB in all.
+    mem_limit: 256m
+
+volumes:
+  gateway-pgdata:

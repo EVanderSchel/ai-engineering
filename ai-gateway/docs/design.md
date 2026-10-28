@@ -1,6 +1,6 @@
 # Design: ai-gateway
 
-Step 1 (amended in step 2: decision 16; in step 3: timeouts per candidate). What the gateway does, what it deliberately doesn't, and how each step will be judged. Numbered decisions are referred to from code and later steps; when one changes, it's amended here with the reason, not silently rewritten.
+Step 1 (amended in step 2: decision 16; in step 3: timeouts per candidate; in step 4: the tables as built). What the gateway does, what it deliberately doesn't, and how each step will be judged. Numbered decisions are referred to from code and later steps; when one changes, it's amended here with the reason, not silently rewritten.
 
 ## 1. The problem
 
@@ -97,20 +97,26 @@ local:
 
 ## 5. Teams, keys, limits and budgets (PostgreSQL)
 
+As built in step 4 (migrations 001-003; the step 1 draft's separate `rate_limits` table became limit columns on `api_keys` plus a `rate_buckets` table, and guardrail policy moves to step 5):
+
 | Table | Holds |
 |---|---|
-| `teams` | name, monthly budget (USD), allowed routes, guardrail policy |
-| `api_keys` | team, SHA-256 hash of the key, a short visible prefix, created/revoked times (the key itself is shown once and never stored) |
-| `rate_limits` | per key: requests per minute and tokens per minute (token bucket state) |
+| `teams` | name, allowed routes, monthly budget (USD; null: no cap) |
+| `api_keys` | team, SHA-256 hash of the key, a short visible prefix, created/revoked times, requests and tokens per minute (the key itself is shown once and never stored) |
+| `rate_buckets` | per key: requests and tokens left, as of when they were last refilled |
 | `budgets` | per team and month: spent and reserved (USD) |
-| `prices` | per provider model: input, output, cache read/write per million tokens, with the date they took effect |
-| `usage` | one row per request: time, request id, team, key prefix, route, provider model that answered, attempts, tokens, cost, latency, outcome |
-| `audit_log` | key creation and revocation, budget changes, guardrail blocks |
+| `prices` | per provider and reported model id: input, output, cache read/write per million tokens, with the date they took effect |
+| `usage` | one row per admitted request: time, request id, team, key prefix, route, provider model that answered, attempts, tokens, held and charged cost, latency, outcome |
+| `audit_log` | team creation, key issue and revocation, budget changes (guardrail blocks from step 5) |
+| `schema_migrations` | which migration files have been applied, with their checksums |
 
-- **Budgets are reserved before a call and settled after it** (decision 12). Before calling a provider, the gateway reserves the most the request could cost (input tokens counted locally plus `max_tokens` of output, at the candidate's price) in one atomic statement that fails if spent + reserved + this reservation exceeds the budget. After the call, the reservation is replaced by the actual cost. Plain language: like a hotel holding an amount on your card at check-in and charging the real bill at check-out. Without the hold, fifty requests arriving at once could each see room in the budget and together overspend it.
-- **Rate limits are token buckets** updated in the same transaction style, so they hold across replicas.
-- **Costs use the prices table, not hard-coded numbers**, so a price change is a new row with a date and old ledger rows keep the price that applied. Self-hosted models get a cost too (their share of the node's hourly price at measured throughput, from step 6), so cheaper routing is visible in dollars.
-- **Measured in step 4**: a test fires concurrent requests at a team with a small budget and checks it is never exceeded by more than zero cents, and that the ledger adds up to the provider-reported usage.
+- **Budgets are reserved before a call and settled after it** (decision 12). Before calling a provider, the gateway reserves the most the request could cost (input tokens estimated generously plus `max_tokens` of output, at the dearest candidate's price) in one atomic statement that fails if spent + reserved + this reservation exceeds the budget. After the call, the reservation is replaced by the actual cost. Plain language: like a hotel holding an amount on your card at check-in and charging the real bill at check-out. Without the hold, fifty requests arriving at once could each see room in the budget and together overspend it.
+- **Rate limits are token buckets** per key (requests and tokens per minute), each checked and taken in one atomic statement, so they hold across replicas. Unused estimated tokens are given back when the request settles.
+- **Costs use the prices table, not hard-coded numbers**, so a price change is a new row with a date and old ledger rows keep the price that applied. Providers can report a different model id from the one a route names (the Claude API reports dated snapshots), so prices are keyed on the reported id, falling back to the configured one; the gateway refuses to start if a route's model has no price. Self-hosted models get a cost too (their share of the node's hourly price at measured throughput, from step 6), so cheaper routing is visible in dollars.
+- **What is charged** when usage is unknown: nothing if no candidate answered; the whole hold if a stream broke partway or the client left. Never under, sometimes over.
+- **The schema is checked at startup**: the gateway refuses to run against a database that isn't migrated to exactly its migrations, and `/readyz` reports the database unreachable (503) while `/healthz` stays up.
+- **Measured in step 4**: 50 concurrent requests against a $0.50 budget never overspent it; the ledger's sum equals the budget's spent column, and refused requests never reached a provider.
+- **Known gap**: a hold whose replica crashes mid-request stays in `reserved_usd` until cleared.
 
 ## 6. Guardrails
 

@@ -1,11 +1,19 @@
 """Shared test setup: an app wired to stub providers and one test key. Nothing here reaches a network."""
 
+import asyncio
+import os
+import sys
+import uuid
+
+import psycopg
 import pytest
 from fastapi.testclient import TestClient
+from psycopg import conninfo, sql
 
 import app as gateway
 import config
 import keys
+import migrate
 import router
 from stub_provider import StubProvider
 
@@ -36,7 +44,33 @@ def no_wait_policy() -> router.Policy:
 
 @pytest.fixture
 def anyio_backend():
+    # psycopg's async mode can't use Windows' default (Proactor) event loop: it hangs. Linux is unaffected.
+    if sys.platform == "win32":
+        return "asyncio", {"loop_factory": asyncio.SelectorEventLoop}
     return "asyncio"
+
+
+@pytest.fixture
+def database_url():
+    """A fresh, empty PostgreSQL database for one test, dropped afterwards.
+
+    Needs a server: DATABASE_URL (CI's service container) or the local one from docker-compose.yml via .env. Without
+    one, database tests are skipped rather than failed, so the rest of the suite still runs anywhere.
+    """
+    try:
+        admin_url = migrate.database_url()
+        admin = psycopg.connect(admin_url, autocommit=True, connect_timeout=3)
+    except (migrate.MigrationError, psycopg.OperationalError) as error:
+        if os.environ.get("REQUIRE_DATABASE"):  # set in CI: there, a missing database is a failure, not a skip
+            pytest.fail(f"REQUIRE_DATABASE is set but PostgreSQL isn't reachable: {error}")
+        pytest.skip(f"no PostgreSQL for database tests: {error}")
+    name = f"gateway_test_{uuid.uuid4().hex[:12]}"
+    with admin:
+        admin.execute(sql.SQL("create database {}").format(sql.Identifier(name)))
+        try:
+            yield conninfo.make_conninfo(admin_url, dbname=name)
+        finally:
+            admin.execute(sql.SQL("drop database {} with (force)").format(sql.Identifier(name)))
 
 
 @pytest.fixture

@@ -8,8 +8,11 @@ by later steps along this path.
 """
 
 import asyncio
+import contextlib
+import functools
 import json
 import logging
+import math
 import os
 import re
 import time
@@ -20,9 +23,11 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 
+import accounting
 import anthropic_provider
 import bedrock_provider
 import config
+import db
 import keys
 import openai_compatible_provider
 import router
@@ -75,11 +80,15 @@ def from_provider_error(error: ProviderError) -> GatewayError:
 def create_app(
     routes: dict[str, config.Route] | None = None,
     providers: dict[str, Provider] | None = None,
-    api_keys: dict[str, str] | None = None,
+    api_keys: dict[str, str] | keys.KeyStore | None = None,
     breakers: router.Breakers | None = None,
     policy: router.Policy | None = None,
 ) -> FastAPI:
-    """Everything the app depends on can be passed in, so tests run with the stub provider and test keys."""
+    """Everything the app depends on can be passed in, so tests run with the stub provider and test keys.
+
+    `api_keys`: a key store, or {hash: team} for an in-memory one. Left out, keys come from PostgreSQL when
+    DATABASE_URL is set (a connection pool opened when the app starts), else from GATEWAY_KEYS.
+    """
     routes = routes if routes is not None else config.load_routes()
     if providers is None:
         providers = {
@@ -89,15 +98,37 @@ def create_app(
             # llama-server (step 6). Nothing connects until a route uses it.
             "local": openai_compatible_provider.OpenAICompatibleProvider(openai_compatible_provider.make_client()),
         }
-    api_keys = api_keys if api_keys is not None else keys.parse_keys(os.environ.get("GATEWAY_KEYS", ""))
+    pool = None
+    if isinstance(api_keys, dict):
+        key_store: keys.KeyStore = keys.MemoryKeyStore(api_keys)
+    elif api_keys is not None:
+        key_store = api_keys
+    elif url := os.environ.get("DATABASE_URL"):
+        pool = db.make_pool(url)
+        key_store = keys.PostgresKeyStore(pool)
+    else:
+        key_store = keys.MemoryKeyStore(keys.parse_keys(os.environ.get("GATEWAY_KEYS", "")))
     for name, route in routes.items():
         for candidate in route.candidates:
             if candidate.provider not in providers:
                 raise ValueError(f"route {name!r} uses provider {candidate.provider!r}, which isn't configured")
     breakers = breakers or router.Breakers()
     policy = policy or router.Policy()
+    ledger = accounting.Accounting(pool) if pool is not None else accounting.NoAccounting()
 
-    app = FastAPI(title="ai-gateway", docs_url=None, redoc_url=None)
+    @contextlib.asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        if pool is not None:
+            await pool.open(wait=True, timeout=10)
+            await db.check_schema(pool)  # refuses to start against a database that isn't migrated to this code
+        await ledger.start(routes)  # loads prices; refuses to start if a route's model has none
+        try:
+            yield
+        finally:
+            if pool is not None:
+                await pool.close()
+
+    app = FastAPI(title="ai-gateway", docs_url=None, redoc_url=None, lifespan=lifespan)
 
     @app.middleware("http")
     async def request_id(request: Request, call_next):
@@ -120,10 +151,18 @@ def create_app(
         message = f"{field}: {reason}" if field else reason
         return GatewayError(400, message, "invalid_request_error", "invalid_request", param=field or None).response()
 
-    def authenticate(request: Request) -> str:
-        team = keys.team_for(request.headers.get("authorization"), api_keys)
+    async def authenticate(request: Request) -> keys.Team:
+        key = keys.bearer_key(request.headers.get("authorization"))
+        try:
+            team = await key_store.team_for(key) if key else None
+        except db.UNAVAILABLE:
+            log.exception("key check failed: database unavailable")
+            raise GatewayError(
+                503, "the gateway can't check API keys right now", "service_unavailable_error", "auth_unavailable",
+                headers={"retry-after": "5"},
+            ) from None  # fmt: skip
         if team is None:
-            raise GatewayError(401, "missing or invalid API key", "authentication_error", "invalid_api_key")
+            raise GatewayError(401, "missing, invalid or revoked API key", "authentication_error", "invalid_api_key")
         return team
 
     @app.get("/healthz")
@@ -132,24 +171,41 @@ def create_app(
 
     @app.get("/readyz")
     async def readyz():
-        return {"status": "ready"}  # step 4 adds the database check
+        """Ready for traffic: Kubernetes sends requests only to replicas that say yes (/healthz only says the process
+        is alive). Without a database there's nothing to check."""
+        if pool is None:
+            return {"status": "ready", "database": "not used"}
+        try:
+            await db.ping(pool)
+        except db.UNAVAILABLE:
+            return JSONResponse({"status": "not ready", "database": "unreachable"}, status_code=503)
+        return {"status": "ready", "database": "ok"}
 
     @app.get("/v1/models")
     async def list_models(request: Request):
-        authenticate(request)
+        team = await authenticate(request)
         return {
             "object": "list",
-            "data": [{"id": name, "object": "model", "created": 0, "owned_by": "ai-gateway"} for name in routes],
+            "data": [
+                {"id": name, "object": "model", "created": 0, "owned_by": "ai-gateway"}
+                for name in routes
+                if team.may_use(name)
+            ],
         }
 
     @app.post("/v1/chat/completions")
     async def chat_completions(body: schemas.ChatRequest, request: Request):
-        team = authenticate(request)
+        team = await authenticate(request)
         route = routes.get(body.model)
         if route is None:
             raise GatewayError(
                 404, f"unknown model {body.model!r}; GET /v1/models lists the routes", "invalid_request_error",
                 "model_not_found", param="model",
+            )  # fmt: skip
+        if not team.may_use(body.model):
+            raise GatewayError(
+                403, f"team {team.name!r} isn't allowed to use the {body.model!r} route", "permission_error",
+                "route_not_allowed", param="model",
             )  # fmt: skip
         limit = body.output_limit()
         if limit is None:
@@ -181,6 +237,20 @@ def create_app(
         except InvalidMessages as error:
             raise GatewayError(400, str(error), "invalid_request_error", "invalid_messages", "messages") from None
 
+        # Rate limits and the budget hold (accounting.py), before any provider is called.
+        try:
+            hold = await ledger.admit(team, body.model, route, body, request.state.request_id)
+        except accounting.Limited as limited:
+            headers = {"retry-after": str(max(1, math.ceil(limited.retry_after)))} if limited.retry_after else None
+            type_ = "rate_limit_error" if limited.status == 429 else "invalid_request_error"
+            raise GatewayError(limited.status, limited.message, type_, limited.code, headers=headers) from None
+        except db.UNAVAILABLE:
+            log.exception("admission failed: database unavailable")
+            raise GatewayError(
+                503, "the gateway can't check limits right now", "service_unavailable_error",
+                "accounting_unavailable", headers={"retry-after": "5"},
+            ) from None  # fmt: skip
+
         deadline = asyncio.get_running_loop().time() + route.timeout.total
         try:
             if body.stream:
@@ -190,10 +260,18 @@ def create_app(
             else:
                 completion, result = await router.complete(route, providers, breakers, build, deadline, policy)
         except router.AllFailed as failure:
-            log_attempts(request, team, body.model, failure.attempts, "failed")
+            log_attempts(request, team.name, body.model, failure.attempts, "failed")
+            await ledger.settle(hold, outcome="failed", attempts=len(failure.attempts))
             raise from_all_failed(failure) from None
+        except BaseException:  # cancelled (the client went away) or a bug: still release the hold
+            spawn(ledger.settle(hold, outcome="failed", attempts=0))
+            raise
 
-        log_attempts(request, team, body.model, result.attempts, "ok")
+        log_attempts(request, team.name, body.model, result.attempts, "ok")
+        settle = functools.partial(
+            ledger.settle, hold, attempts=len(result.attempts), provider=result.candidate.provider,
+            configured_model=result.candidate.model,
+        )  # fmt: skip
         headers = {
             "x-gateway-route": body.model,
             "x-gateway-provider": result.candidate.provider,
@@ -201,10 +279,11 @@ def create_app(
             "x-gateway-fallback": "true" if result.candidate != route.candidates[0] else "false",
         }
         if not body.stream:
+            await settle(outcome="ok", model=completion.model, usage=completion.usage)
             return JSONResponse(schemas.completion_body(schemas.completion_id(), completion), headers=headers)
         include_usage = bool(body.stream_options and body.stream_options.include_usage)
         return StreamingResponse(
-            sse(first, events, deadline, result.candidate.model, include_usage),
+            sse(first, events, deadline, result.candidate.model, include_usage, hold, settle),
             media_type="text/event-stream",
             headers={**headers, "cache-control": "no-cache"},
         )
@@ -240,22 +319,41 @@ def from_all_failed(failure: router.AllFailed) -> GatewayError:
     )  # fmt: skip
 
 
+_background: set[asyncio.Task] = set()
+
+
+def spawn(coroutine) -> None:
+    """Run a coroutine that must finish even if the request that started it is cancelled (keeping a reference so
+    the task isn't garbage-collected mid-way)."""
+    task = asyncio.get_running_loop().create_task(coroutine)
+    _background.add(task)
+    task.add_done_callback(_background.discard)
+
+
 async def sse(
-    first: StreamEvent, events: AsyncIterator[StreamEvent], deadline: float, model: str, include_usage: bool
+    first: StreamEvent,
+    events: AsyncIterator[StreamEvent],
+    deadline: float,
+    model: str,
+    include_usage: bool,
+    hold: accounting.Hold,
+    settle,
 ) -> AsyncIterator[str]:
-    """Server-sent events in OpenAI's chunk format, ending with `data: [DONE]`."""
+    """Server-sent events in OpenAI's chunk format, ending with `data: [DONE]`. Settles the request's hold when the
+    stream finishes, breaks, or the client goes away."""
     cid, created = schemas.completion_id(), int(time.time())
 
     def data(body: dict) -> str:
         return f"data: {json.dumps(body, separators=(',', ':'))}\n\n"
 
-    yield data(schemas.chunk_body(cid, created, model, {"role": "assistant", "content": ""}))
     event = first
     try:
+        yield data(schemas.chunk_body(cid, created, model, {"role": "assistant", "content": ""}))
         while True:
             if isinstance(event, TextDelta):
                 yield data(schemas.chunk_body(cid, created, model, {"content": event.text}))
             elif isinstance(event, Finish):
+                await settle(outcome="ok", model=event.model, usage=event.usage)
                 yield data(schemas.chunk_body(cid, created, event.model, {}, event.finish_reason))
                 if include_usage:
                     yield data(schemas.usage_chunk_body(cid, created, event.model, event.usage))
@@ -271,4 +369,6 @@ async def sse(
         error = from_provider_error(provider_error)
     finally:
         await events.aclose()
+        if not hold.settled:  # broke partway, or the client went away: usage unknown, so the hold is charged
+            spawn(settle(outcome="stream_error"))
     yield data(schemas.error_body(error.message, error.type, error.code))
