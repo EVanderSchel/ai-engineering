@@ -1,0 +1,372 @@
+{
+  "scenarios": {
+    "healthy": {
+      "description": "Both candidates healthy: the cost of the gateway's checks when nothing is wrong",
+      "gateway": {
+        "requests": 200,
+        "served": 200,
+        "served_pct": 100.0,
+        "by_backup": 0,
+        "p50_ms": 45.9,
+        "p95_ms": 61.1,
+        "max_ms": 189.8,
+        "over_deadline": 0,
+        "failures": {}
+      },
+      "one candidate": {
+        "requests": 200,
+        "served": 200,
+        "served_pct": 100.0,
+        "by_backup": 0,
+        "p50_ms": 45.9,
+        "p95_ms": 58.2,
+        "max_ms": 59.0,
+        "over_deadline": 0,
+        "failures": {}
+      },
+      "direct": {
+        "requests": 200,
+        "served": 200,
+        "served_pct": 100.0,
+        "by_backup": 0,
+        "p50_ms": 46.1,
+        "p95_ms": 60.2,
+        "max_ms": 61.6,
+        "over_deadline": 0,
+        "failures": {}
+      }
+    },
+    "primary down": {
+      "description": "The primary fails every request (a hard outage)",
+      "gateway": {
+        "requests": 200,
+        "served": 200,
+        "served_pct": 100.0,
+        "by_backup": 200,
+        "p50_ms": 47.1,
+        "p95_ms": 76.5,
+        "max_ms": 136.2,
+        "over_deadline": 0,
+        "failures": {}
+      },
+      "one candidate": {
+        "requests": 200,
+        "served": 0,
+        "served_pct": 0.0,
+        "by_backup": 0,
+        "p50_ms": null,
+        "p95_ms": null,
+        "max_ms": 96.9,
+        "over_deadline": 0,
+        "failures": {
+          "all_candidates_failed": 10,
+          "all_candidates_paused": 190
+        }
+      },
+      "direct": {
+        "requests": 200,
+        "served": 0,
+        "served_pct": 0.0,
+        "by_backup": 0,
+        "p50_ms": null,
+        "p95_ms": null,
+        "max_ms": 37.4,
+        "over_deadline": 0,
+        "failures": {
+          "all_candidates_failed": 200
+        }
+      }
+    },
+    "primary flaky": {
+      "description": "The primary fails 30% of requests at random",
+      "gateway": {
+        "requests": 200,
+        "served": 200,
+        "served_pct": 100.0,
+        "by_backup": 26,
+        "p50_ms": 46.9,
+        "p95_ms": 109.7,
+        "max_ms": 136.7,
+        "over_deadline": 0,
+        "failures": {}
+      },
+      "one candidate": {
+        "requests": 200,
+        "served": 156,
+        "served_pct": 78.0,
+        "by_backup": 0,
+        "p50_ms": 46.5,
+        "p95_ms": 92.6,
+        "max_ms": 106.7,
+        "over_deadline": 0,
+        "failures": {
+          "all_candidates_failed": 29,
+          "all_candidates_paused": 15
+        }
+      },
+      "direct": {
+        "requests": 200,
+        "served": 129,
+        "served_pct": 64.5,
+        "by_backup": 0,
+        "p50_ms": 46.1,
+        "p95_ms": 91.3,
+        "max_ms": 108.4,
+        "over_deadline": 0,
+        "failures": {
+          "all_candidates_failed": 71
+        }
+      }
+    },
+    "primary slow": {
+      "description": "The primary takes 2 s to start answering",
+      "gateway": {
+        "requests": 200,
+        "served": 200,
+        "served_pct": 100.0,
+        "by_backup": 200,
+        "p50_ms": 46.1,
+        "p95_ms": 62.3,
+        "max_ms": 463.4,
+        "over_deadline": 0,
+        "failures": {}
+      },
+      "one candidate": {
+        "requests": 200,
+        "served": 0,
+        "served_pct": 0.0,
+        "by_backup": 0,
+        "p50_ms": null,
+        "p95_ms": null,
+        "max_ms": 425.8,
+        "over_deadline": 0,
+        "failures": {
+          "timeout": 10,
+          "all_candidates_paused": 190
+        }
+      },
+      "direct": {
+        "requests": 200,
+        "served": 0,
+        "served_pct": 0.0,
+        "by_backup": 0,
+        "p50_ms": null,
+        "p95_ms": null,
+        "max_ms": 449.9,
+        "over_deadline": 0,
+        "failures": {
+          "timeout": 200
+        }
+      }
+    },
+    "both down": {
+      "description": "Both candidates fail every request",
+      "gateway": {
+        "requests": 200,
+        "served": 0,
+        "served_pct": 0.0,
+        "by_backup": 0,
+        "p50_ms": null,
+        "p95_ms": null,
+        "max_ms": 116.2,
+        "over_deadline": 0,
+        "failures": {
+          "all_candidates_failed": 10,
+          "all_candidates_paused": 190
+        }
+      },
+      "one candidate": {
+        "requests": 200,
+        "served": 0,
+        "served_pct": 0.0,
+        "by_backup": 0,
+        "p50_ms": null,
+        "p95_ms": null,
+        "max_ms": 84.7,
+        "over_deadline": 0,
+        "failures": {
+          "all_candidates_failed": 10,
+          "all_candidates_paused": 190
+        }
+      },
+      "direct": {
+        "requests": 200,
+        "served": 0,
+        "served_pct": 0.0,
+        "by_backup": 0,
+        "p50_ms": null,
+        "p95_ms": null,
+        "max_ms": 32.1,
+        "over_deadline": 0,
+        "failures": {
+          "all_candidates_failed": 200
+        }
+      }
+    },
+    "primary down, streamed": {
+      "description": "Hard outage of the primary, streamed requests",
+      "gateway": {
+        "requests": 200,
+        "served": 200,
+        "served_pct": 100.0,
+        "by_backup": 200,
+        "p50_ms": 120.5,
+        "p95_ms": 138.7,
+        "max_ms": 185.0,
+        "over_deadline": 0,
+        "failures": {}
+      },
+      "one candidate": {
+        "requests": 200,
+        "served": 0,
+        "served_pct": 0.0,
+        "by_backup": 0,
+        "p50_ms": null,
+        "p95_ms": null,
+        "max_ms": 79.5,
+        "over_deadline": 0,
+        "failures": {
+          "all_candidates_failed": 10,
+          "all_candidates_paused": 190
+        }
+      },
+      "direct": {
+        "requests": 200,
+        "served": 0,
+        "served_pct": 0.0,
+        "by_backup": 0,
+        "p50_ms": null,
+        "p95_ms": null,
+        "max_ms": 91.7,
+        "over_deadline": 0,
+        "failures": {
+          "all_candidates_failed": 200
+        }
+      }
+    },
+    "primary drops streams": {
+      "description": "The primary fails 30% of streams after 3 words: too late to switch (decision 10)",
+      "gateway": {
+        "requests": 200,
+        "served": 129,
+        "served_pct": 64.5,
+        "by_backup": 0,
+        "p50_ms": 86.0,
+        "p95_ms": 110.5,
+        "max_ms": 112.5,
+        "over_deadline": 0,
+        "failures": {
+          "error_mid_stream": 71
+        }
+      },
+      "one candidate": {
+        "requests": 200,
+        "served": 129,
+        "served_pct": 64.5,
+        "by_backup": 0,
+        "p50_ms": 83.2,
+        "p95_ms": 104.1,
+        "max_ms": 108.4,
+        "over_deadline": 0,
+        "failures": {
+          "error_mid_stream": 71
+        }
+      },
+      "direct": {
+        "requests": 200,
+        "served": 129,
+        "served_pct": 64.5,
+        "by_backup": 0,
+        "p50_ms": 85.7,
+        "p95_ms": 109.1,
+        "max_ms": 111.6,
+        "over_deadline": 0,
+        "failures": {
+          "error_mid_stream": 71
+        }
+      }
+    }
+  },
+  "timeline": [
+    {
+      "from_s": 0.0,
+      "until_s": 0.98,
+      "breaker": "closed",
+      "answered_by": "primary",
+      "attempts": 1,
+      "requests": 10,
+      "ok": 10,
+      "median_ms": 47.8
+    },
+    {
+      "from_s": 1.09,
+      "until_s": 1.28,
+      "breaker": "closed",
+      "answered_by": "backup",
+      "attempts": 3,
+      "requests": 2,
+      "ok": 2,
+      "median_ms": 134.1
+    },
+    {
+      "from_s": 1.48,
+      "until_s": 1.48,
+      "breaker": "closed",
+      "answered_by": "backup",
+      "attempts": 2,
+      "requests": 1,
+      "ok": 1,
+      "median_ms": 77.7
+    },
+    {
+      "from_s": 1.62,
+      "until_s": 2.5,
+      "breaker": "open",
+      "answered_by": "backup",
+      "attempts": 2,
+      "requests": 9,
+      "ok": 9,
+      "median_ms": 48.0
+    },
+    {
+      "from_s": 2.61,
+      "until_s": 2.61,
+      "breaker": "half_open",
+      "answered_by": "backup",
+      "attempts": 2,
+      "requests": 1,
+      "ok": 1,
+      "median_ms": 79.8
+    },
+    {
+      "from_s": 2.75,
+      "until_s": 3.62,
+      "breaker": "open",
+      "answered_by": "backup",
+      "attempts": 2,
+      "requests": 9,
+      "ok": 9,
+      "median_ms": 47.6
+    },
+    {
+      "from_s": 3.73,
+      "until_s": 3.73,
+      "breaker": "half_open",
+      "answered_by": "primary",
+      "attempts": 1,
+      "requests": 1,
+      "ok": 1,
+      "median_ms": 49.0
+    },
+    {
+      "from_s": 3.84,
+      "until_s": 4.92,
+      "breaker": "closed",
+      "answered_by": "primary",
+      "attempts": 1,
+      "requests": 11,
+      "ok": 11,
+      "median_ms": 47.9
+    }
+  ]
+}

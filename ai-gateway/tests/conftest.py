@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 import app as gateway
 import config
 import keys
+import router
 from stub_provider import StubProvider
 
 TEST_KEY = "gw_test-key-for-the-test-team-only"
@@ -15,7 +16,6 @@ AUTH = {"authorization": f"Bearer {TEST_KEY}"}
 class SamplinglessStub(StubProvider):
     """Stands in for a Claude provider: no temperature or top_p."""
 
-    name = "anthropic"
     supports_sampling = False
 
 
@@ -27,6 +27,11 @@ def routes() -> dict[str, config.Route]:
             max_tokens_ceiling=100,
         ),
     }
+
+
+def no_wait_policy() -> router.Policy:
+    """Retries without waiting, so tests of retry behaviour run instantly."""
+    return router.Policy(backoff=0.0, max_wait=0.0)
 
 
 @pytest.fixture
@@ -41,12 +46,14 @@ def stub():
 
 @pytest.fixture
 def claude_stub():
-    return SamplinglessStub()
+    return SamplinglessStub(name="anthropic")
 
 
 @pytest.fixture
 def app(stub, claude_stub):
-    return gateway.create_app(routes(), {"stub": stub, "anthropic": claude_stub}, {keys.key_hash(TEST_KEY): "test"})
+    return gateway.create_app(
+        routes(), {"stub": stub, "anthropic": claude_stub}, {keys.key_hash(TEST_KEY): "test"}, policy=no_wait_policy()
+    )
 
 
 @pytest.fixture
