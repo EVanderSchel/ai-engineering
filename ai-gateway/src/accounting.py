@@ -25,6 +25,8 @@ import math
 from dataclasses import dataclass, field
 from decimal import Decimal
 
+from psycopg.types.json import Jsonb
+
 import config
 import keys
 from providers import Usage
@@ -82,6 +84,7 @@ class Hold:
     estimated_tokens: int  # taken from the token bucket
     reserved_usd: Decimal
     month: dt.date | None
+    judge_reserved_usd: Decimal = Decimal(0)  # the part of the hold set aside for the injection judge
     started: float = field(default_factory=lambda: asyncio.get_running_loop().time())
     settled: bool = False
 
@@ -109,17 +112,24 @@ class Prices:
         return max(self.find(c.provider, c.model).most(input_tokens, output_tokens) for c in route.candidates)
 
 
+JUDGE = ("anthropic", "claude-haiku-5-5")  # the injection judge's price row (src/injection.py)
+JUDGE_SYSTEM_TOKENS = 700  # the judge's instructions, about 2,500 characters
+
+
 class NoAccounting:
-    """For running without a database (tests, stub-only setups): no limits, no budgets, no ledger."""
+    """For running without a database (tests, stub-only setups): no limits, no budgets, no ledger, no audit."""
 
     async def start(self, routes: dict[str, config.Route]) -> None:
         pass
 
-    async def admit(self, team, route_name, route, request, request_id) -> Hold:
+    async def admit(self, team, route_name, route, request, request_id, judged: bool = False) -> Hold:
         return Hold(team, route_name, request_id, request.stream, 0, Decimal(0), None)
 
     async def settle(self, hold: Hold, **_outcome) -> None:
         hold.settled = True
+
+    async def audit_guardrails(self, hold: Hold, findings) -> None:
+        pass
 
 
 class Accounting:
@@ -142,11 +152,27 @@ class Accounting:
                 )
             ).fetchall()
         self.prices = Prices({(p, m): Price(*amounts) for p, m, *amounts in rows})
-        if missing := self.prices.missing(routes):
+        missing = self.prices.missing(routes)
+        if self.prices.find(*JUDGE) is None:  # any team may switch the judge on, on any route
+            missing.append(f"injection judge: {JUDGE[0]}/{JUDGE[1]}")
+        if missing:
             raise RuntimeError(f"no price for these route candidates (add rows to the prices table): {missing}")
 
-    async def admit(self, team: keys.Team, route_name: str, route: config.Route, request: ChatRequest, request_id: str):
-        """Rate limits, then the budget hold. Raises Limited; returns the Hold to settle later."""
+    def judge_most(self, request: ChatRequest) -> Decimal:
+        """The most screening this request with the judge could cost (its answer is capped at 1,024 tokens)."""
+        return self.prices.find(*JUDGE).most(estimate_input_tokens(request) + JUDGE_SYSTEM_TOKENS, 1024)
+
+    async def admit(
+        self,
+        team: keys.Team,
+        route_name: str,
+        route: config.Route,
+        request: ChatRequest,
+        request_id: str,
+        judged: bool = False,
+    ):
+        """Rate limits, then the budget hold (including the judge's worst case, if the request will be judged).
+        Raises Limited; returns the Hold to settle later."""
         tokens = estimate_input_tokens(request) + request.output_limit()
         if team.tokens_per_minute is not None and tokens > team.tokens_per_minute:
             raise Limited(
@@ -157,14 +183,15 @@ class Accounting:
         async with self.pool.connection() as conn:
             if team.requests_per_minute is not None:
                 await self._take_from_buckets(conn, team, tokens)
-            reserved = self.prices.most(route, estimate_input_tokens(request), request.output_limit())
+            judge_part = self.judge_most(request) if judged else Decimal(0)
+            reserved = self.prices.most(route, estimate_input_tokens(request), request.output_limit()) + judge_part
             month = dt.datetime.now(dt.UTC).date().replace(day=1)
             try:
                 await self._reserve(conn, team, month, reserved)
             except Limited:
                 await self._refund_tokens(conn, team, tokens, requests=1)
                 raise
-        return Hold(team, route_name, request_id, request.stream, tokens, reserved, month)
+        return Hold(team, route_name, request_id, request.stream, tokens, reserved, month, judge_part)
 
     async def _take_from_buckets(self, conn, team: keys.Team, tokens: int) -> None:
         refill = """
@@ -255,23 +282,28 @@ class Accounting:
         configured_model: str | None = None,
         model: str | None = None,
         usage: Usage | None = None,
+        screen_usage: Usage | None = None,
+        guardrails: str = "",
     ) -> None:
-        """Charge the actual cost (or the whole hold if it can't be known), give back unused tokens, write the
-        usage row. Never raises: a failure here is logged, not shown to a caller whose answer already went out."""
+        """Charge the actual cost (or the whole hold if it can't be known) plus the judge's, give back unused
+        tokens, write the usage row. Never raises: a failure here is logged, not shown to a caller whose answer
+        already went out."""
         if hold.settled:
             return
         hold.settled = True
+        model_hold = hold.reserved_usd - hold.judge_reserved_usd
         if usage is not None:
             price = self.prices.find(provider, model, configured_model) if provider else None
             if price is None:
                 log.warning("no price for %s/%s: charging the hold", provider, model)
-                cost = hold.reserved_usd
+                cost = model_hold
             else:
                 cost = price.cost(usage)
-        elif outcome == "failed":
-            cost = Decimal(0)  # nothing answered: errors before any output aren't billed
+        elif outcome in ("failed", "blocked"):
+            cost = Decimal(0)  # nothing answered, or the guardrails stopped it: no model was billed
         else:
-            cost = hold.reserved_usd  # a stream that broke partway: its usage is unknown
+            cost = model_hold  # a stream that broke partway: its usage is unknown
+        screen_cost = self.prices.find(*JUDGE).cost(screen_usage) if screen_usage else Decimal(0)
         used_tokens = (
             usage.input_tokens + usage.output_tokens + usage.cache_read_tokens + usage.cache_write_tokens
             if usage
@@ -285,7 +317,7 @@ class Accounting:
                     update budgets set reserved_usd = greatest(reserved_usd - %s, 0), spent_usd = spent_usd + %s
                     where team_id = %s and month = %s
                     """,
-                    (hold.reserved_usd, cost, hold.team.id, hold.month),
+                    (hold.reserved_usd, cost + screen_cost, hold.team.id, hold.month),
                 )
                 await self._refund_tokens(conn, hold.team, max(hold.estimated_tokens - used_tokens, 0))
                 u = usage or Usage()
@@ -293,14 +325,32 @@ class Accounting:
                     """
                     insert into usage (request_id, team_id, key_prefix, route, provider, model, attempts, stream,
                         input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, reserved_usd, cost_usd,
-                        latency_ms, outcome)
-                    values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        latency_ms, outcome, guardrails, screen_cost_usd)
+                    values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         hold.request_id, hold.team.id, hold.team.key_prefix, hold.route, provider, model, attempts,
                         hold.stream, u.input_tokens, u.output_tokens, u.cache_read_tokens, u.cache_write_tokens,
-                        hold.reserved_usd, cost, latency_ms, outcome,
+                        hold.reserved_usd, cost, latency_ms, outcome, guardrails, screen_cost,
                     ),
                 )  # fmt: skip
         except Exception:
             log.exception("settling request %s failed", hold.request_id)
+
+    async def audit_guardrails(self, hold: Hold, findings) -> None:
+        """One audit row per guardrail finding: the check, what it did, the kinds or rules. Never text or values."""
+        if not findings:
+            return
+        try:
+            async with self.pool.connection() as conn, conn.transaction():
+                for f in findings:
+                    await conn.execute(
+                        "insert into audit_log (actor, action, team_id, detail) values ('gateway', %s, %s, %s)",
+                        (
+                            f"guardrail.{f.action}", hold.team.id,
+                            Jsonb({"check": f.check, "detail": list(f.detail), "route": hold.route,
+                                   "request_id": hold.request_id, "key_prefix": hold.team.key_prefix}),
+                        ),
+                    )  # fmt: skip
+        except Exception:
+            log.exception("auditing guardrails for request %s failed", hold.request_id)

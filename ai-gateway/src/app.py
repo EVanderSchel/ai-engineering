@@ -9,6 +9,7 @@ by later steps along this path.
 
 import asyncio
 import contextlib
+import dataclasses
 import functools
 import json
 import logging
@@ -28,6 +29,8 @@ import anthropic_provider
 import bedrock_provider
 import config
 import db
+import guardrails
+import injection
 import keys
 import openai_compatible_provider
 import router
@@ -83,17 +86,21 @@ def create_app(
     api_keys: dict[str, str] | keys.KeyStore | None = None,
     breakers: router.Breakers | None = None,
     policy: router.Policy | None = None,
+    judge: injection.Judge | None = None,
 ) -> FastAPI:
     """Everything the app depends on can be passed in, so tests run with the stub provider and test keys.
 
     `api_keys`: a key store, or {hash: team} for an in-memory one. Left out, keys come from PostgreSQL when
     DATABASE_URL is set (a connection pool opened when the app starts), else from GATEWAY_KEYS.
+    `judge`: the injection judge, for routes or teams that ask for it. Left out, one on the Claude API client.
     """
     routes = routes if routes is not None else config.load_routes()
+    judge = judge or injection.Judge()  # its Claude client is made on first use
     if providers is None:
+        claude = anthropic_provider.make_client()
         providers = {
             "stub": StubProvider(),
-            "anthropic": anthropic_provider.AnthropicProvider(anthropic_provider.make_client()),
+            "anthropic": anthropic_provider.AnthropicProvider(claude),
             "bedrock": bedrock_provider.BedrockProvider(bedrock_provider.make_client()),
             # llama-server (step 6). Nothing connects until a route uses it.
             "local": openai_compatible_provider.OpenAICompatibleProvider(openai_compatible_provider.make_client()),
@@ -227,19 +234,17 @@ def create_app(
                     "default sampling", "invalid_request_error", "unsupported_parameter", param=field,
                 )  # fmt: skip
 
-        def build(candidate: config.Candidate):
-            return to_provider_request(
-                body, candidate.model, limit, effort=candidate.effort, refusal_fallback=candidate.refusal_fallback
-            )
-
-        try:
-            build(route.candidates[0])  # the message checks don't depend on the candidate: fail before any call
+        try:  # the message checks don't depend on the candidate: fail before any call
+            to_provider_request(body, route.candidates[0].model, limit)
         except InvalidMessages as error:
             raise GatewayError(400, str(error), "invalid_request_error", "invalid_messages", "messages") from None
+        guard = effective_guardrails(route, team)
 
-        # Rate limits and the budget hold (accounting.py), before any provider is called.
+        # Rate limits and the budget hold (accounting.py), before any provider, or the injection judge, is called.
         try:
-            hold = await ledger.admit(team, body.model, route, body, request.state.request_id)
+            hold = await ledger.admit(
+                team, body.model, route, body, request.state.request_id, judged=guard.injection_judge
+            )
         except accounting.Limited as limited:
             headers = {"retry-after": str(max(1, math.ceil(limited.retry_after)))} if limited.retry_after else None
             type_ = "rate_limit_error" if limited.status == 429 else "invalid_request_error"
@@ -251,6 +256,31 @@ def create_app(
                 "accounting_unavailable", headers={"retry-after": "5"},
             ) from None  # fmt: skip
 
+        # Input guardrails (guardrails.py): personal data, then prompt injection. A blocked request is settled
+        # (charging only the judge, if it ran) and never reaches a provider.
+        try:
+            checked = await guardrails.check_input(body, guard, judge)
+        except guardrails.Blocked as blocked:
+            await ledger.settle(
+                hold, outcome="blocked", attempts=0, screen_usage=blocked.judge_usage,
+                guardrails=guardrails.header(blocked.findings),
+            )  # fmt: skip
+            await ledger.audit_guardrails(hold, blocked.findings)
+            type_ = "invalid_request_error" if blocked.status == 400 else "service_unavailable_error"
+            raise GatewayError(blocked.status, blocked.message, type_, blocked.code) from None
+        except BaseException:
+            spawn(ledger.settle(hold, outcome="failed", attempts=0))
+            raise
+        safe, findings = checked.request, list(checked.findings)
+
+        def build(candidate: config.Candidate):
+            return to_provider_request(
+                safe, candidate.model, limit, effort=candidate.effort, refusal_fallback=candidate.refusal_fallback
+            )
+
+        settle_failed = functools.partial(
+            ledger.settle, hold, screen_usage=checked.judge_usage, guardrails=guardrails.header(findings)
+        )
         deadline = asyncio.get_running_loop().time() + route.timeout.total
         try:
             if body.stream:
@@ -261,16 +291,18 @@ def create_app(
                 completion, result = await router.complete(route, providers, breakers, build, deadline, policy)
         except router.AllFailed as failure:
             log_attempts(request, team.name, body.model, failure.attempts, "failed")
-            await ledger.settle(hold, outcome="failed", attempts=len(failure.attempts))
+            await settle_failed(outcome="failed", attempts=len(failure.attempts))
+            await ledger.audit_guardrails(hold, findings)
             raise from_all_failed(failure) from None
         except BaseException:  # cancelled (the client went away) or a bug: still release the hold
-            spawn(ledger.settle(hold, outcome="failed", attempts=0))
+            spawn(settle_failed(outcome="failed", attempts=0))
             raise
 
         log_attempts(request, team.name, body.model, result.attempts, "ok")
         settle = functools.partial(
             ledger.settle, hold, attempts=len(result.attempts), provider=result.candidate.provider,
-            configured_model=result.candidate.model,
+            configured_model=result.candidate.model, screen_usage=checked.judge_usage,
+            guardrails=guardrails.header(findings),
         )  # fmt: skip
         headers = {
             "x-gateway-route": body.model,
@@ -278,12 +310,45 @@ def create_app(
             "x-gateway-attempts": str(len(result.attempts)),
             "x-gateway-fallback": "true" if result.candidate != route.candidates[0] else "false",
         }
+
         if not body.stream:
-            await settle(outcome="ok", model=completion.model, usage=completion.usage)
+            output = guardrails.check_output(completion.text, guard)
+            if output.findings:
+                findings += output.findings
+                finish = "content_filter" if output.withheld else completion.finish_reason
+                completion = dataclasses.replace(completion, text=output.text, finish_reason=finish)
+            await settle(outcome="ok", model=completion.model, usage=completion.usage,
+                         guardrails=guardrails.header(findings))  # fmt: skip
+            await ledger.audit_guardrails(hold, findings)
+            if findings:
+                headers["x-gateway-guardrails"] = guardrails.header(findings)
             return JSONResponse(schemas.completion_body(schemas.completion_id(), completion), headers=headers)
+
+        if guard.buffers_output:
+            # Decision 14: an answer that may be redacted or withheld is collected and checked before any of it is
+            # sent. The caller waits for the whole answer; nothing unchecked is shown.
+            try:
+                text, finish_event = await collect(first, events, deadline)
+            except (ProviderError, TimeoutError, StopAsyncIteration) as error:
+                await settle(outcome="stream_error")
+                await ledger.audit_guardrails(hold, findings)
+                raise stream_failure(error) from None
+            output = guardrails.check_output(text, guard)
+            findings += output.findings
+            finish = "content_filter" if output.withheld else finish_event.finish_reason
+            replay = [TextDelta(output.text)] if output.text else []
+            replay.append(Finish(finish, finish_event.model, finish_event.usage))
+            first, events = replay[0], aiter_of(replay[1:])
+            settle = functools.partial(settle, guardrails=guardrails.header(findings))
+            review = None
+        else:
+            review = functools.partial(review_streamed, guard=guard, findings=findings, ledger=ledger, hold=hold)
+        if findings:
+            headers["x-gateway-guardrails"] = guardrails.header(findings)
+            spawn(ledger.audit_guardrails(hold, list(findings)))
         include_usage = bool(body.stream_options and body.stream_options.include_usage)
         return StreamingResponse(
-            sse(first, events, deadline, result.candidate.model, include_usage, hold, settle),
+            sse(first, events, deadline, result.candidate.model, include_usage, hold, settle, review),
             media_type="text/event-stream",
             headers={**headers, "cache-control": "no-cache"},
         )
@@ -330,6 +395,52 @@ def spawn(coroutine) -> None:
     task.add_done_callback(_background.discard)
 
 
+def effective_guardrails(route: config.Route, team: keys.Team) -> config.Guardrails:
+    """The route's guardrails, tightened by the team's own settings where they're stricter."""
+    if not team.guardrails:
+        return route.guardrails
+    try:
+        return route.guardrails.strictest(config.Guardrails.model_validate(team.guardrails))
+    except ValueError:  # bad settings stored for the team: the route's floor still applies
+        log.error("team %s has invalid guardrail settings; using the route's", team.name)
+        return route.guardrails
+
+
+async def collect(first: StreamEvent, events: AsyncIterator[StreamEvent], deadline: float) -> tuple[str, Finish]:
+    """A whole stream, before any of it is sent: its text and its Finish event."""
+    parts, event = [], first
+    try:
+        while not isinstance(event, Finish):
+            parts.append(event.text)
+            async with asyncio.timeout_at(deadline):
+                event = await anext(events)
+    finally:
+        await events.aclose()
+    return "".join(parts), event
+
+
+async def aiter_of(items: list) -> AsyncIterator:
+    for item in items:
+        yield item
+
+
+def stream_failure(error: Exception) -> GatewayError:
+    if isinstance(error, ProviderError):
+        return from_provider_error(error)
+    if isinstance(error, TimeoutError):
+        return GatewayError(504, "the provider didn't finish in time", "timeout_error", "timeout")
+    return GatewayError(502, "the provider's stream ended without finishing", "api_error", "incomplete_stream")
+
+
+async def review_streamed(text: str, *, guard, findings, ledger, hold) -> str:
+    """For a stream sent as it came (output only flagged): check the finished answer, audit any new finding, and
+    return the guardrails summary for the usage row. The answer is already out; this records, it can't change it."""
+    output = guardrails.check_output(text, guard)
+    if output.findings:
+        await ledger.audit_guardrails(hold, output.findings)
+    return guardrails.header([*findings, *output.findings])
+
+
 async def sse(
     first: StreamEvent,
     events: AsyncIterator[StreamEvent],
@@ -338,22 +449,25 @@ async def sse(
     include_usage: bool,
     hold: accounting.Hold,
     settle,
+    review=None,
 ) -> AsyncIterator[str]:
     """Server-sent events in OpenAI's chunk format, ending with `data: [DONE]`. Settles the request's hold when the
-    stream finishes, breaks, or the client goes away."""
+    stream finishes, breaks, or the client goes away. `review`, if given, sees the whole text at the end."""
     cid, created = schemas.completion_id(), int(time.time())
 
     def data(body: dict) -> str:
         return f"data: {json.dumps(body, separators=(',', ':'))}\n\n"
 
-    event = first
+    event, sent = first, []
     try:
         yield data(schemas.chunk_body(cid, created, model, {"role": "assistant", "content": ""}))
         while True:
             if isinstance(event, TextDelta):
+                sent.append(event.text)
                 yield data(schemas.chunk_body(cid, created, model, {"content": event.text}))
             elif isinstance(event, Finish):
-                await settle(outcome="ok", model=event.model, usage=event.usage)
+                extra = {"guardrails": await review("".join(sent))} if review else {}
+                await settle(outcome="ok", model=event.model, usage=event.usage, **extra)
                 yield data(schemas.chunk_body(cid, created, event.model, {}, event.finish_reason))
                 if include_usage:
                     yield data(schemas.usage_chunk_body(cid, created, event.model, event.usage))
