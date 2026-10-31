@@ -16,7 +16,7 @@ Two places keys can live, behind one interface (a "key store"):
 import hashlib
 import secrets
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Protocol
 
@@ -55,6 +55,7 @@ class Team:
     requests_per_minute: int | None = None
     tokens_per_minute: int | None = None
     monthly_budget_usd: Decimal | None = None
+    guardrails: dict | None = field(default=None, hash=False, compare=False)  # the team's own settings (step 5)
 
     def may_use(self, route: str) -> bool:
         return self.allowed_routes is None or route in self.allowed_routes
@@ -100,7 +101,7 @@ class PostgresKeyStore:
                 await conn.execute(
                     """
                     select t.id, t.name, t.allowed_routes, k.id, k.prefix, k.requests_per_minute,
-                           k.tokens_per_minute, t.monthly_budget_usd
+                           k.tokens_per_minute, t.monthly_budget_usd, t.guardrails
                     from api_keys k join teams t on t.id = k.team_id
                     where k.key_hash = %s and k.revoked_at is null
                     """,
@@ -109,8 +110,9 @@ class PostgresKeyStore:
             ).fetchone()
         if row is None:
             return None
-        team_id, name, routes, key_id, prefix, rpm, tpm, budget = row
-        return Team(team_id, name, tuple(routes) if routes is not None else None, key_id, prefix, rpm, tpm, budget)
+        team_id, name, routes, key_id, prefix, rpm, tpm, budget, guardrails = row
+        routes = tuple(routes) if routes is not None else None
+        return Team(team_id, name, routes, key_id, prefix, rpm, tpm, budget, guardrails or None)
 
 
 if __name__ == "__main__":

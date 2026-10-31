@@ -5,6 +5,8 @@ audit log in the same transaction as the change itself.
     uv run python src/admin.py team list
     uv run python src/admin.py team budget research 25                  # USD a month; 'none' removes the cap
     uv run python src/admin.py team spend research                      # this month: spent, held, budget
+    uv run python src/admin.py team guardrails research injection=block injection_judge=true pii_input=redact
+    uv run python src/admin.py team guardrails research --clear         # back to the routes' own settings
     uv run python src/admin.py key issue research                      # prints the key once
     uv run python src/admin.py key list research
     uv run python src/admin.py key revoke gw_AbC1234                    # by the prefix `key list` shows
@@ -21,6 +23,7 @@ from decimal import Decimal, InvalidOperation
 import psycopg
 from psycopg.types.json import Jsonb
 
+import config
 import keys
 import migrate
 
@@ -59,6 +62,37 @@ def add_team(conn: psycopg.Connection, name: str, routes: list[str] | None = Non
             raise AdminError(f"{name!r}: team names are lowercase letters, digits and dashes") from None
         audit(conn, "team.created", new_id, {"name": name, "allowed_routes": routes})
     return new_id
+
+
+def parse_guardrails(pairs: list[str]) -> dict:
+    """`key=value` pairs into a team's guardrail settings, checked against config.Guardrails. Only the settings
+    given are stored, so the routes' values apply to the rest (each setting ends at the stricter of the two)."""
+    settings: dict = {}
+    for pair in pairs:
+        key, sep, value = pair.partition("=")
+        if not sep:
+            raise AdminError(f"{pair!r}: settings are key=value, e.g. injection=block")
+        if key == "pii_kinds":
+            settings[key] = [k.strip() for k in value.split(",") if k.strip()]
+        elif key == "injection_judge":
+            if value.lower() not in ("true", "false"):
+                raise AdminError("injection_judge is true or false")
+            settings[key] = value.lower() == "true"
+        else:
+            settings[key] = value
+    try:
+        config.Guardrails.model_validate(settings)
+    except ValueError as error:
+        raise AdminError(f"invalid guardrail settings: {error}") from None
+    return settings
+
+
+def set_guardrails(conn: psycopg.Connection, team: str, settings: dict) -> None:
+    with conn.transaction():
+        tid = team_id(conn, team)
+        (old,) = conn.execute("select guardrails from teams where id = %s", (tid,)).fetchone()
+        conn.execute("update teams set guardrails = %s where id = %s", (Jsonb(settings), tid))
+        audit(conn, "guardrails.changed", tid, {"from": old, "to": settings})
 
 
 def set_budget(conn: psycopg.Connection, team: str, usd: Decimal | None) -> None:
@@ -146,6 +180,10 @@ def main(argv: list[str] | None = None) -> None:
     budget.add_argument("name")
     budget.add_argument("usd")
     team.add_parser("spend").add_argument("name")
+    guard = team.add_parser("guardrails", help="tighten a team's guardrails: key=value ... (or --clear)")
+    guard.add_argument("name")
+    guard.add_argument("settings", nargs="*")
+    guard.add_argument("--clear", action="store_true")
     key = groups.add_parser("key").add_subparsers(dest="command", required=True)
     key.add_parser("issue").add_argument("team")
     key.add_parser("list").add_argument("team")
@@ -168,6 +206,12 @@ def main(argv: list[str] | None = None) -> None:
                     raise AdminError(f"{args.usd!r} isn't an amount (or 'none')") from None
                 set_budget(conn, args.name, usd)
                 print(f"team {args.name} budget: {'no cap' if usd is None else f'${usd} a month'}")
+            case ("team", "guardrails"):
+                if args.clear == bool(args.settings):
+                    raise AdminError("give key=value settings, or --clear (not both)")
+                settings = {} if args.clear else parse_guardrails(args.settings)
+                set_guardrails(conn, args.name, settings)
+                print(f"team {args.name} guardrails: {settings or "the routes' own settings"}")
             case ("team", "spend"):
                 if (row := spending(conn, args.name)) is None:
                     raise AdminError(f"no team named {args.name!r}")
