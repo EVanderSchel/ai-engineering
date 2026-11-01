@@ -3,6 +3,10 @@
 # Timeouts are seconds: `first_token` (a stream's first event) and `attempt` (a whole non-streamed answer) are per
 # candidate, so a slow one leaves time to fall back; `total` covers every attempt.
 #
+# Guardrails (step 5): each route's settings are a floor; a team's own settings can only tighten them. The Claude
+# routes flag personal data and likely injections (patterns only, free) without changing anything; teams that handle
+# untrusted documents switch on blocking or the model judge for themselves (`admin.py team guardrails`).
+#
 # Bedrock models are called through `us.` inference profiles (requests stay in US Regions). This AWS project has
 # Claude 4.x only on Bedrock, so a fallback there can be a different model; the response's `model` says which one.
 
@@ -13,6 +17,7 @@ smart:
     - {provider: bedrock, model: us.anthropic.claude-sonnet-4-6}
   max_tokens_ceiling: 8192
   timeout: {first_token: 20, attempt: 90, total: 120}
+  guardrails: {pii_input: flag, injection: flag}
 
 fast:
   candidates:
@@ -20,6 +25,7 @@ fast:
     - {provider: anthropic, model: claude-haiku-4-5}
   max_tokens_ceiling: 4096
   timeout: {first_token: 10, attempt: 30, total: 60}
+  guardrails: {pii_input: flag, injection: flag}
 
 # Offline and free: answers by echoing the last message. For local development and load tests.
 stub:

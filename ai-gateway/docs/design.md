@@ -1,6 +1,6 @@
 # Design: ai-gateway
 
-Step 1 (amended in step 2: decision 16; in step 3: timeouts per candidate; in step 4: the tables as built). What the gateway does, what it deliberately doesn't, and how each step will be judged. Numbered decisions are referred to from code and later steps; when one changes, it's amended here with the reason, not silently rewritten.
+Step 1 (amended in step 2: decision 16; in step 3: timeouts per candidate; in step 4: the tables as built; in step 5: decisions 17-18). What the gateway does, what it deliberately doesn't, and how each step will be judged. Numbered decisions are referred to from code and later steps; when one changes, it's amended here with the reason, not silently rewritten.
 
 ## 1. The problem
 
@@ -128,6 +128,8 @@ Policy per team and route: `off`, `flag` (allow, record in the audit log and met
 - **Prompts and answers aren't logged by default** (decision 15). Traces and the ledger hold sizes, tokens and outcomes, not content; a team can turn on content logging for debugging, and the audit log records who did.
 - Measured with labeled cases: detection rate on planted PII and injections, false alarms on clean text, added latency per check.
 
+As built in step 5: the actions are `off`, `flag`, `redact` (personal data) and `block`, set per route in `routes.yaml` and per team in `teams.guardrails` (decision 17); the injection screen is patterns plus an opt-in model judge (decision 18); a blocked request gets a 400 (or a 503 if the judge is down and the policy says so), a `blocked` ledger row and an audit row with the check, action and kinds or rules, never text. Not built: `json_schema` validation of answers and the per-team content-logging switch; both are left for a later step.
+
 ## 7. Self-hosted inference (step 6)
 
 Two models the project serves itself, chosen to fit this PC (no NVIDIA GPU, Docker limited to about 3.8 GB):
@@ -200,6 +202,8 @@ Decisions 1-15 were made in step 1; later ones say which step added them.
 | 14 | Output-blocking routes buffer before streaming | A shown answer can't be taken back |
 | 15 | No prompt or answer content in logs or traces by default | They may hold personal data |
 | 16 | `temperature` and `top_p` only on routes whose every candidate accepts them | The Claude API removed them in version 2026-10-21; dropping them silently would change the request (added in step 2) |
+| 17 | A team's guardrail settings can only tighten its routes' (each setting at the stricter of the two; only settings the team chose count) | The route is the platform's floor; a team handling untrusted text can raise it, no team can lower it (added in step 5) |
+| 18 | Guardrails run after admission, personal data before injection; with the judge on, the judge decides and patterns are the fallback | Admission first, so nobody can make the gateway pay for unlimited judge calls; redaction first, so the judge never sees what was redacted; the judge decides because on held-out cases it caught everything the patterns did plus the data-shaped attacks, and cleared the patterns' false alarm (added in step 5) |
 
 ## 14. Open questions
 
