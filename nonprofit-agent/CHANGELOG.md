@@ -8,6 +8,7 @@ Add entries here as you make notable changes. Move them under a new version head
 
 ### Changed
 
+- The Azure deployment is offline since 2026-11-01: the Azure free trial ended and the subscription is read-only. CI still builds and publishes the image; the deploy job runs only when the repository variable `AZURE_DEPLOY_ENABLED` is `true`.
 - `anthropic` 1.15 → 2.2 (requires `>=2.2.0`). The 2.x SDK sends API version `2026-10-21` and its Tool Runner keeps the conversation on the server (beta message threads) by default; the Tool Runner agent passes `thread=False` so it still resends the full history like the hand-built loop
 
 ## [1.0.0] - 2026-10-12

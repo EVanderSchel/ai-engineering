@@ -1,5 +1,7 @@
 # nonprofit-agent
 
+> **Status (2026-11-01):** the Azure deployment is offline. The project's Azure free trial ended, so the subscription is read-only and its Container Apps are stopped. The code, tests and published container image are unchanged, and the CI still builds and publishes the image; only the deploy step is switched off, by the repository variable `AZURE_DEPLOY_ENABLED`. Everything below describes the deployment as it ran.
+
 Project 3 of the AI Engineer roadmap: a **tool-using agent** that answers research questions about US charities, such as "How did the American Red Cross's revenue change over the last three years?" or "Which of Iowa's largest food banks depends most on donations?". It works from public data only.
 
 Plain language: a regular Claude call answers from memory. An agent is given **tools** (functions it can ask us to run, such as "look up this charity's filings") and works in a loop. It decides which tool to call, reads the result, decides what to do next, and stops when it can answer. It's like a research assistant with a phone and a calculator: it doesn't know the numbers, but it knows who to call and what to ask.

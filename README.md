@@ -13,6 +13,8 @@ Hands-on projects built while upskilling toward an AI Engineer role. Each folder
 | [ci-cd-workflow](ci-cd-workflow/) | A complete CI/CD pipeline built one stage at a time around a small FastAPI service: tests, lint gates, Docker, container registry, staged deployments with approval, and versioned releases | GitHub Actions, Docker, GHCR, Render, pytest, ruff |
 | [skills-training](skills-training/) | Guided notebooks learning deep-learning frameworks side by side, from tensors and autograd to an MNIST classifier | TensorFlow, Keras, PyTorch, Jupyter |
 
+**Hosting status (2026-11-01):** the three APIs that ran on Azure Container Apps (rag, irs-990-extraction, nonprofit-agent) are offline: the Azure free trial ended and the subscription is read-only. Their code, tests and container images are unchanged, and CI still publishes the images; deploys are switched off with the repository variable `AZURE_DEPLOY_ENABLED`. grant-review-workflow runs on AWS and is unaffected.
+
 ## Highlights from `rag`
 
 - **Quality is measured, not eyeballed.** Every pull request runs a retrieval eval (Hit@k, MRR) against a committed baseline and can't merge if a score drops. A separate LLM-as-judge eval, run weekly, scores faithfulness, relevance, citation rate, refusals on questions the documents can't answer, and "trap" questions whose context holds a misleading look-alike fact.

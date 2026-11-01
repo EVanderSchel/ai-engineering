@@ -233,7 +233,9 @@ jobs:
   deploy:
     name: nonprofit-agent-deploy
     needs: publish
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Azure is off while its subscription is disabled (the free trial ended, November 2026). The image is still
+    # published; set the repository variable AZURE_DEPLOY_ENABLED to 'true' to deploy again.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AZURE_DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     environment:
       name: nonprofit-agent-production

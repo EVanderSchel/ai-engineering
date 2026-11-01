@@ -1,5 +1,7 @@
 # RAG
 
+> **Status (2026-11-01):** the Azure deployment is offline. The project's Azure free trial ended, so the subscription is read-only and its Container Apps are stopped. The code, tests and published container image are unchanged, and the CI still builds and publishes the image; only the deploy step is switched off, by the repository variable `AZURE_DEPLOY_ENABLED`. Everything below describes the deployment as it ran.
+
 A minimal, from-scratch Retrieval-Augmented Generation pipeline for learning how RAG and vector databases work under the hood.
 
 ## Pipeline
