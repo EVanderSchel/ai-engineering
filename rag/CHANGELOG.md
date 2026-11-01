@@ -6,6 +6,10 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 Add entries here as you make notable changes. Move them under a new version heading when you cut a release.
 
+### Changed
+
+- The Azure deployment is offline since 2026-11-01: the Azure free trial ended and the subscription is read-only. CI still builds and publishes the image; the deploy job runs only when the repository variable `AZURE_DEPLOY_ENABLED` is `true`.
+
 ## [1.0.0] - 2026-10-01
 
 First release as a production service: the from-scratch RAG pipeline, served as an API on Azure with automated quality, security, and deployment checks.

@@ -6,6 +6,10 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 Add entries here as you make notable changes. Move them under a new version heading when you cut a release.
 
+### Changed
+
+- The Azure deployment is offline since 2026-11-01: the Azure free trial ended and the subscription is read-only. CI still builds and publishes the image; the deploy job runs only when the repository variable `AZURE_DEPLOY_ENABLED` is `true`.
+
 ## [1.0.0] - 2026-10-07
 
 First release: structured data from IRS Form 990 page images with Claude, scored against the IRS's e-file XML, with human-review support, batch and parallel processing, and a deployed API. On the 39 held-out test filings: Part I 99.2-99.3% of fields, Part VII 383 of 383 people found and 99.6% of their fields, 99.9% after review.

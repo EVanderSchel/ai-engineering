@@ -1,5 +1,7 @@
 # IRS Form 990 extraction
 
+> **Status (2026-11-01):** the Azure deployment is offline. The project's Azure free trial ended, so the subscription is read-only and its Container Apps are stopped. The code, tests and published container image are unchanged, and the CI still builds and publishes the image; only the deploy step is switched off, by the repository variable `AZURE_DEPLOY_ENABLED`. Everything below describes the deployment as it ran.
+
 Structured, validated data from charities' **IRS Form 990** filings, extracted with Claude from the IRS's page images and measured field by field against the IRS's own e-file data.
 
 **Why it matters:** the Form 990 is the public record of how a tax-exempt organization raises and spends money: revenue, expenses, program spending, executive pay. Donors, journalists, and watchdogs rely on it, but much of it is published only as page images. Turning those images into reliable, structured data is the problem this project works on.
@@ -345,7 +347,7 @@ docker run -p 8000:8000 -e ANTHROPIC_API_KEY -e IRS990_API_KEY=<a long random ke
 
 **Deployment** (`deploy/README.md`): Azure Container Apps, scaled to zero, with the same pipeline as the rag project: every merge to main builds the image, smoke-tests it, pushes it to GitHub Container Registry (`irs-990-extraction-publish`), and, once you approve it, deploys it and waits until `/health` reports the new commit (`irs-990-extraction-deploy`, signing in to Azure with OIDC, no stored password). Both keys live in Key Vault and reach the app as Key Vault references. Because every request spends Anthropic credits, the public API has four limits on cost: the caller key, 10 requests a minute, an Anthropic workspace spend limit, and an alert on more than 100 requests an hour. The subscription allows one Container Apps environment, so the app runs in the rag project's; a custom role lets this project's deploys run apps there without being able to change it.
 
-Live since 2026-10-07 at `https://ca-irs990-api.victoriousflower-462513b7.centralus.azurecontainerapps.io` (`/health` is open; `/extract` needs the key). Checked after the first deploy: `/health` reported the deployed commit, `/extract` without the key answered 401, and with it a real return came back in 10.8 s with all 42 fields matching the answer key, for $0.030. The approval-gated pipeline has since deployed a Dependabot update the same way. Tried locally on the image, plus one real extraction through the container: 42 of 42 fields right, 8 s, $0.023.
+Live from 2026-10-07 until 2026-11-01, when the Azure free trial ended, at `https://ca-irs990-api.victoriousflower-462513b7.centralus.azurecontainerapps.io` (`/health` is open; `/extract` needs the key). Checked after the first deploy: `/health` reported the deployed commit, `/extract` without the key answered 401, and with it a real return came back in 10.8 s with all 42 fields matching the answer key, for $0.030. The approval-gated pipeline has since deployed a Dependabot update the same way. Tried locally on the image, plus one real extraction through the container: 42 of 42 fields right, 8 s, $0.023.
 
 ## Final results: the held-out test split
 
