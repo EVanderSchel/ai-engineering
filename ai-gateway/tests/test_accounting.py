@@ -100,6 +100,17 @@ async def started(database_url):
     return pool, ledger
 
 
+@pytest.mark.anyio
+async def test_the_committed_migrations_price_every_committed_route(conn, database_url):
+    # Startup refuses a route it can't price, so a new route needs its price row in a migration.
+    pool = db.make_pool(database_url)
+    await pool.open(wait=True)
+    try:
+        await accounting.Accounting(pool).start(config.load_routes())
+    finally:
+        await pool.close()
+
+
 def month_row(conn, team="research"):
     return conn.execute(
         "select spent_usd, reserved_usd from budgets b join teams t on t.id = b.team_id where t.name = %s", (team,)

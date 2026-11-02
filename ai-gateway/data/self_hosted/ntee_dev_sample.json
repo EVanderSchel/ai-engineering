@@ -1,0 +1,2089 @@
+{
+ "about": "400 rows drawn with random.Random(2026) from the dev split of ntee-classification/data/dataset.csv (IRS Form 990/990-EZ mission statements and their NTEE major group). Dev only: that project's test split has been scored and isn't reused. The 9 broad categories (numbered here) and their groups are that project's (src/ntee.py), copied so this project stands alone.",
+ "groups": {
+  "A": "Arts, Culture and Humanities",
+  "B": "Education",
+  "C": "Environment",
+  "D": "Animal-Related",
+  "E": "Health Care",
+  "F": "Mental Health and Crisis Intervention",
+  "G": "Diseases, Disorders and Medical Disciplines",
+  "H": "Medical Research",
+  "I": "Crime and Legal-Related",
+  "J": "Employment",
+  "K": "Food, Agriculture and Nutrition",
+  "L": "Housing and Shelter",
+  "M": "Public Safety, Disaster Preparedness and Relief",
+  "N": "Recreation and Sports",
+  "O": "Youth Development",
+  "P": "Human Services",
+  "Q": "International, Foreign Affairs and National Security",
+  "R": "Civil Rights, Social Action and Advocacy",
+  "S": "Community Improvement and Capacity Building",
+  "T": "Philanthropy, Voluntarism and Grantmaking Foundations",
+  "U": "Science and Technology",
+  "V": "Social Science",
+  "W": "Public and Societal Benefit",
+  "X": "Religion-Related",
+  "Y": "Mutual and Membership Benefit"
+ },
+ "broad": {
+  "1": {
+   "name": "Arts, Culture and Humanities",
+   "groups": "A"
+  },
+  "2": {
+   "name": "Education",
+   "groups": "B"
+  },
+  "3": {
+   "name": "Environment and Animals",
+   "groups": "CD"
+  },
+  "4": {
+   "name": "Health",
+   "groups": "EFGH"
+  },
+  "5": {
+   "name": "Human Services",
+   "groups": "IJKLMNOP"
+  },
+  "6": {
+   "name": "International, Foreign Affairs",
+   "groups": "Q"
+  },
+  "7": {
+   "name": "Public, Societal Benefit",
+   "groups": "RSTUVW"
+  },
+  "8": {
+   "name": "Religion Related",
+   "groups": "X"
+  },
+  "9": {
+   "name": "Mutual/Membership Benefit",
+   "groups": "Y"
+  }
+ },
+ "reference_on_these_rows": {
+  "about": "accuracy of ntee-classification's own dev predictions (results/*_dev.json) on these 400 rows: the 25 groups, and the 9 broad categories their top group falls in",
+  "TF-IDF baseline": {
+   "groups": 0.5525,
+   "broad": 0.65
+  },
+  "LoRA Qwen2.5-0.5B (fine-tuned)": {
+   "groups": 0.585,
+   "broad": 0.68
+  },
+  "Claude Haiku 4.5 few-shot": {
+   "groups": 0.615,
+   "broad": 0.7225
+  },
+  "Claude Sonnet 5.5 guided": {
+   "groups": 0.635,
+   "broad": 0.7275
+  }
+ },
+ "rows": [
+  {
+   "ein": "223901156",
+   "mission": "PREACH THE GOSPEL OF SALVATION",
+   "group": "X"
+  },
+  {
+   "ein": "412011402",
+   "mission": "The Distribution of Religious Information Through Book Publishing Conferences and Educational Tours.",
+   "group": "X"
+  },
+  {
+   "ein": "591805535",
+   "mission": "TO DELIVER A WARM NUTRITOUS NOON TIME MEAL, DAILY EXCEPT FOR SUNDAY, TO ANY PERSON IN THE GREATER VENICE FLORIDA AREA UNABLE TO PREPARE A MEAL BECAUSE OF PHYSICAL OR MENTAL DISABILITY, REGARDLESS OF THEIR INCOME.",
+   "group": "K"
+  },
+  {
+   "ein": "593607032",
+   "mission": "ASSISTING PARENTS IN EDUCATING CHILDREN IN LANGUAGE ARTS, WRITING, LITERATURE, SPANISH, COOKING, READING THERAPY MATH THERAPY TUTORIAL PROGRAMS THROUGH ONE-ON-ONE TUTORING AND SMALL CLASSES ASSISTING STUDENTS IN ACHIEVING ACADEMIC SUCCESS",
+   "group": "B"
+  },
+  {
+   "ein": "823136572",
+   "mission": "Provide support to educational programs",
+   "group": "B"
+  },
+  {
+   "ein": "943263110",
+   "mission": "Forest Unlimited is a 501(c)(3) organization whose purpose is to protect, enhance, and restore the forests and watersheds of Sonoma County.",
+   "group": "C"
+  },
+  {
+   "ein": "208809060",
+   "mission": "TO ADVANCE POLICIES THAT REMOVE BARRIERS TO ECONOMIC GROWTH AND OPPORTUNITY IN NEBRASKA.",
+   "group": "V"
+  },
+  {
+   "ein": "300277253",
+   "mission": "THE CARE OF ORPHANS IN KENYA, AFRICA TO INCLUDE HOUSING, EDUCATIONAL, AND MEDICAL NEEDS.",
+   "group": "Q"
+  },
+  {
+   "ein": "810586795",
+   "mission": "OUTDOOR EDUCATIONAL OPPORTUNITIES, LEADERSHIP TRAINING AND SKILL DEVELOPMENT FOR YOUTH.",
+   "group": "B"
+  },
+  {
+   "ein": "814245018",
+   "mission": "THE ASSOCIATION IS ORGANIZED EXCLUSEVELY FOR FOSTERING AMATUER SPORTS COMPETITION UNDER SECTION 501(C)(3) OF THE INTERNAL REVENUE CODE OR CORRESPONDING SECTION OF ANY OTHER FUTURE FEDERAL TAX CODE.",
+   "group": "N"
+  },
+  {
+   "ein": "742429518",
+   "mission": "CBWF PROVIDES PRIMARY MEDICAL CARE, HIV SPECIALIZED SERVICES, HIV CASE MANAGEMENT, BEHAVIORAL HEALTH/SUBSTANCE ABUSE SERVICES TO COMMUNITY AS FEDERALLY QUALIFIED HEALTH CENTER. CBWF ALSO PROVIDES TESTING, PREVENTION, CASE MANAGEMENT AND INTERVENTION SERVICES TO TARGETED INDIVIDUALS.",
+   "group": "G"
+  },
+  {
+   "ein": "472719636",
+   "mission": "PRODUCE LIVE JAZZ PERFORMANCES FOR THE COUMMUNITY OF TAOS",
+   "group": "A"
+  },
+  {
+   "ein": "880687841",
+   "mission": "The Yampa River Botanic Park Society is the fundraising and advocacy partner of the Yampa River Botanic Park Association. The Society supports the Association's mission through fundraising, advocacy, promoting awareness, building and sustaining memberships and providing educational opportunities. The sole objective for raising funds is to provide financial support for the capital, programming and operating expenses that the Association incurs while fulfilling its purpose.",
+   "group": "C"
+  },
+  {
+   "ein": "751535746",
+   "mission": "THE CORPORATION PROVIDES WATER TO ITS MEMBERS/OWNER FOR FARM AND DOMESTIC USE IN RURAL FANNIN COUNTY, TX.",
+   "group": "W"
+  },
+  {
+   "ein": "710891704",
+   "mission": "REPRESENTATIVE PAYEE, CONSERVATORSHIP, AND GUARDIANSHIP FOR THOSE WHO ARE UNABLE TO INDEPENDENTLY MANAGE THEIR FINANCES.",
+   "group": "L"
+  },
+  {
+   "ein": "930478660",
+   "mission": "TO PROVIDE ACTIVE RESIDenTIAL LIVING AND QUALITY CONTINUING CARE TO SENIORS IN A CHRIST-CENTERED COMMUNITY.",
+   "group": "P"
+  },
+  {
+   "ein": "851598684",
+   "mission": "Helix Illinois NFP is organized and operated exclusively for charitable and educational purposes in accordance with ?501c3 of the Internal Revenue Code of 1986 or the corresponding provision of any future United State Internal Revenue law and referred to below as the ?Code?. Activities and programming furthering those purposes may include, but are not limited to, operating a experiential education labs that teach job skills to youth experiencing marginalization, providing entrepreneurial education to the public, and developing and distributing a social entrepreneurship curriculum. The Corporation will not operate a school or similar institution regulated by the Illinois State Board of Education.",
+   "group": "O"
+  },
+  {
+   "ein": "873397818",
+   "mission": "TO HOLD AND MANAGE PROPERTY AND FUND FOR CHARITABLE AND ELEEMOSYNARY PURPOSES INCLUDING THE ASSISTANCE AND SUPPORT OF CHARITABLE AND ELEEMOSYNARY INSTITUTIONS ASSOCIATIONS AND UNDERTAKINGS.",
+   "group": "X"
+  },
+  {
+   "ein": "872146640",
+   "mission": "TO PROVIDE FOR THE RESCUE, REHABILITATION, AND PLACEMENT OF CATS WHICH HAVE BEEN ABANDONED, MISTREATED, INJURED, OR ARE OTHERWISE IN NEED, AND TO PROMOTE ANIMAL WELFARE WITH A FOCUS ON ASSISTING WITH TRAP/NEUTER/RETURN AND COMMUNITY CAT PROGRAM EFFORTS, AND EDUCATING THE PUBLIC REGARDING THE IMPORTANCE OF SPAY/NEUTER AND TNR AND COMMUNITY CAT PROGRAMS.",
+   "group": "D"
+  },
+  {
+   "ein": "570314417",
+   "mission": "The YMCA strives to provide a program of placing Christian principles into practice through elements that build a healthy body, mind, and spirit for the entire population of Sumter County.",
+   "group": "P"
+  },
+  {
+   "ein": "862138211",
+   "mission": "CONSERVATION EFFORTS TO STUDY AND MAINTAIN BRIGHTS CREEK IN CANADENSIS, PA.",
+   "group": "C"
+  },
+  {
+   "ein": "872835686",
+   "mission": "Central Valley IAF is an organization of community-based institutions that work together to address the common good. CVIAF does this by identifying and training leaders in member institutions so that they are able to discern the needs affecting local families and work together with others to achieve systemic change",
+   "group": "P"
+  },
+  {
+   "ein": "770331230",
+   "mission": "The organization's mission is to provide quality educational programs and academic after-school tutoring for school-aged children.",
+   "group": "B"
+  },
+  {
+   "ein": "474978384",
+   "mission": "The nature, object and purposes of this corporation shall be to enhance and improve the overall psychological well-being of children and young adults in Loveland, Colorado, and surrounding areas, by striving to build confidence and self-esteem through creative outlets. With our anti-bullying assembly and on call therapist, we guide our students toward becoming well-rounded, self-confident members of our community. Something we strive to focus on is having a safe and creative environment for all of our students, which include group bonding activities, performances to showcase their personal growth, doing community events to encourage their self-confidence, check-in meetings where students can openly discuss their feelings and concerns, and workshops to help them develop in all areas of their lives.",
+   "group": "E"
+  },
+  {
+   "ein": "320138163",
+   "mission": "TO IDENTIFY AND DEVELOP YOUNG LEADERS WITHIN THE GWINNETT COMMUNITY WHO HAVE DEMONSTRATED LEADERSHIP SKILLS, AN EMERGING CIVIC SENSE AND A WILLINGNESS TO SERVE THEIR SCHOOLS AND COMMUNITY. TO PROVIDE STUDENTS AN OPPORTUNITY TO DEVELOP AND ENHANCE THEIR LEADERSHIP SKILLS AND TO ACQUAINT STUDENT LEADERS WITH IMPORTANT COMMUNITY ISSUES AND CHALLENGES AND TO PROVIDE OPPORTUNITIES FOR STUDENTS TO INTERACT WITH BUSINESS AND CIVIC LEADERS.",
+   "group": "O"
+  },
+  {
+   "ein": "010533179",
+   "mission": "TO OPERATE A 22 UNIT LOW INCOME HOUSING DEVELOPMENT IN ORONO, ME WHICH PROVIDES DECENT, SAFE AND SANITARY HOUSING TO THE ELDERLY AND/OR DISABLED. THE DEVELOPMENT IS SUBSIDIZED BY USDA RURAL DEVELOPMENT AS TO ITS MORTGAGE AND RENTAL INCOME.",
+   "group": "L"
+  },
+  {
+   "ein": "812706775",
+   "mission": "DRUID HILLS PRESCHOOL, INC. PROVIDES INDIVIDUALIZED EARLY CHILDHOOD EDUCATIONAL DAY-SCHOOL SERVICES, WITH AN EMPHASIS ON NATURE-BASED LEARNING, ENVIRONMENTAL STEWARDSHIP, AND LANGUAGE AND CULTURAL DIVERSITY FOR CHILDREN IN THE ATLANTA METROPOLITAN AREA.",
+   "group": "B"
+  },
+  {
+   "ein": "203222424",
+   "mission": "TO BE A TRUSTED PARTNER AND ADVOCATE FOR ALL IMMIGRANTS.",
+   "group": "R"
+  },
+  {
+   "ein": "222477781",
+   "mission": "Our mission is to play music for the entertainment of the people in attendance at the parades and concerts at which we perform. Our goal is to maintain the tradition of mummery, teach music and perform for free at charitable events promoting goodwill for the City of Philadelphia.",
+   "group": "A"
+  },
+  {
+   "ein": "371092066",
+   "mission": "The Community Home Environmental learning Project, Inc. provides services to enable seniors and disabled citizens of Macon Couty to remain in their homes as long as they are safely able to do so.",
+   "group": "P"
+  },
+  {
+   "ein": "912162264",
+   "mission": "USA FUNDRAISING FOR CHRIST'S HOSPITAL IN UK TO PROVIDE EDUCATIONAL FUNDING.",
+   "group": "T"
+  },
+  {
+   "ein": "205983258",
+   "mission": "PROMOTION OF SAUGERTIES BUSINESS & EVENTS",
+   "group": "S"
+  },
+  {
+   "ein": "481200834",
+   "mission": "TO PROVIDE EDUCATION OF YOUTH BY PROVIDING AND OPERATING YOUTH SPORTS PROGRAMS",
+   "group": "N"
+  },
+  {
+   "ein": "020634996",
+   "mission": "TO ESTABLISH BROTHERHOOD AND UNITY AMONG COLLEGE MEN BASED ON THE COMMON BOND OF JESUS CHRIST.",
+   "group": "N"
+  },
+  {
+   "ein": "911992410",
+   "mission": "THE MISSION OF THE MHBA IS TO PROMOTE THE MINIATURE HEREFORD BREED TO THE BENEFIT OF ITS MEMBERS.",
+   "group": "K"
+  },
+  {
+   "ein": "833289582",
+   "mission": "TO PROVIDE EDUCATION SCHOLARSHIPS FOR BROOKINGS SCHOOL DISTRICT STUDENTS.",
+   "group": "B"
+  },
+  {
+   "ein": "566067763",
+   "mission": "THE PURPOSE AND FUNCTION OF THE ORGANIZATION IS TO ADMINISTER PROGRAMS THAT PROVIDE SERVICES TO LOW INCOME FAMILIES, VETERANS AND MILITARY FAMILIES IN THE EASTERN NORTH CAROLINA AREA THAT SHALL ENHANCE THEIR ABILITY TO BECOME ECONOMICALLY AND SOCIALLY SELF-SUFFICIENT.",
+   "group": "P"
+  },
+  {
+   "ein": "832179227",
+   "mission": "PRIVATE SCHOOL FROM 5TH GRADE TO 12TH GRADE",
+   "group": "O"
+  },
+  {
+   "ein": "411523054",
+   "mission": "To equip professionals to heal physically and spiritually.",
+   "group": "X"
+  },
+  {
+   "ein": "273702294",
+   "mission": "To provide evidenced-based Equine Assisted Psychotherapy to any population that can benefit from our services, and, in so doing, effect change in the world at large by increasing the number of emotionally stable, solution-based thinkers who have resources to problem solve when possible and cope graciously when necessary.",
+   "group": "B"
+  },
+  {
+   "ein": "465278201",
+   "mission": "TO PROVIDE FINANCIAL AND EMOTIONAL ASSISTANCE TO LOCAL FAMILIES AFFECTED BY PEDIATRIC CANCER OR OTHER SERIOUS DEBILIATING ILLNESSES. TO PROVIDE A SUPPORTIVE AND FINANCIAL RELATIONSHIP WITH PEDIATRIC HOSPITALS IN WHICH WE WILL SUPPLY COMFORT ITEMS AND FINANCIAL SUPPORT TO PEDIATRIC PATIENTS.",
+   "group": "P"
+  },
+  {
+   "ein": "331164224",
+   "mission": "Tell stories of hope during persecution, poverty, or oppression through photography, videography, and writing. The stories /images are provided to non-profit organizations to educate and be a voice for the voiceless around the world.",
+   "group": "Q"
+  },
+  {
+   "ein": "453771750",
+   "mission": "TO PROTECT VIETNAMESE CHILDREN FROM EXPLOITATION AND TRAFFICKING. BLUE DRAGON USA IS A NON-PROFIT ORGANIZATION ON A MISSION TO END HUMAN TRAFFICKING. THROUGH THE DELIVERY OF DIRECT SERVICES IN VIETNAM WE PROTECT VULNERABLE PEOPLE AND CREATE LONG-TERM SYSTEMIC CHANGE.",
+   "group": "Q"
+  },
+  {
+   "ein": "454711737",
+   "mission": "TO GIVE BACK TO THE COMMUNITY ON A REGULAR BASIS THROUGH SCHOLARSHIPS FOR ASPIRING FUTURE PROFESSIONALS IN THE HOSPITALITY INDUSTRY.",
+   "group": "B"
+  },
+  {
+   "ein": "900627162",
+   "mission": "THE ORGANIZATION COMPRISED OF RAILROAD MAINTENACE PROFESSIONALS PROVIDES A FORUM FOR EDUCATION AND NETWORKING",
+   "group": "S"
+  },
+  {
+   "ein": "462464012",
+   "mission": "HELPING WOMEN BATTLING CANCER FEEL STRONG AND BEAUTIFUL.",
+   "group": "G"
+  },
+  {
+   "ein": "860981116",
+   "mission": "Our mission is to build community gardens where Tucsonans grow food, work and learn together, and nurture well-being in our communities.",
+   "group": "K"
+  },
+  {
+   "ein": "593685521",
+   "mission": "TO BE THE UNITED VOICE FOR EXCELLENCE IN PUBLIC EDUCATION IN FLORIDA. TO ADVOCATE THE RIGHT TO A FREE, QUALITY PUBLIC EDUCATION FOR ALL. TO EMPOWER AND SUPPORT LOCAL AFFILIATES. TO ADVANCE PROFESSIONAL GROWTH, PUBLIC SCHOOLS, COLLEGES AND UNIVERSITIES. TO ENGAGE OUR MEMBERS AND COMMUNITIES AND TO ENSURE THAT ALL STUDENTS LEARN AND SUCCEED IN A DIVERSE WORLD.",
+   "group": "J"
+  },
+  {
+   "ein": "821751840",
+   "mission": "World Apparel is a clothing brand with a conscience. They give back 100% of all proceeds from sales to worthy causes.",
+   "group": "P"
+  },
+  {
+   "ein": "202432696",
+   "mission": "PROVIDE SUPPORT AT AN EARLY CHILDHOOD EDUCATION CENTER",
+   "group": "B"
+  },
+  {
+   "ein": "845011967",
+   "mission": "Reduce or eliminate state income taxes",
+   "group": "R"
+  },
+  {
+   "ein": "452756854",
+   "mission": "Youth Education and Leadership Skills",
+   "group": "O"
+  },
+  {
+   "ein": "204510475",
+   "mission": "THE MISSION OF THE TRUST IS TO PRIORITIZE AND ADDRESS THE HEALTH AND WELLNESS NEEDS OF THE RESIDENTS AND COMMUNITY OF TWIN FALLS COUNTY, IDAHO.",
+   "group": "E"
+  },
+  {
+   "ein": "742466095",
+   "mission": "THE MISSION OF THE TEXAS CHAPTER OF THE NATIONAL ASSOCIATION OF HOUSING AND REDEVELOPMENT OFFICIALS IS TO PROVIDE AFFORDABLE HOUSING AND SUSTAINABLE COMMUNITIES IN TEXAS THROUGH ADVOCACY, EDUCATION AND EMPOWERMENT.",
+   "group": "L"
+  },
+  {
+   "ein": "650888015",
+   "mission": "BROWARD DAYS, INC. IS A BROAD-BASED, NON-PARTISAN CIVIC ORGANIZATION ESTABLISHED TO HELP IDENTIFY AND RAISE AWARENESS OF ISSUES IN BROWARD COUNTY, FLORIDA, ISSUE AND NEEDS WHICH CAN BE ADDRESSED THROUGH STATE LEGISLATION AND STATE POLICIES. A NON-PARTISAN STEERING COMMITTEE COMPOSED OF PARTICIPANTS FROM THE BUSINESS COMMUNITY, ELECTED LOCAL OFFICIALS, STAFF & DEVELOPMENT HEADS FROM MUNICIPALITIES, CHAMBER MEMBERS AND CIVIC AND COMMUNITY ACTIVISTS, GATHER INFORMATION ON ISSUES OF CONCERN IN THE COUNTY. BROWARD DAYS PROVIDES AN EARNEST EFFORT TO DEVELOP A COHESIVE MESSAGE REPRESENTATIVE OF ALL THE PEOPLE OF BROWARD COUNTY AND COMMUNICATE IT TO THE LEGISLATORS.",
+   "group": "S"
+  },
+  {
+   "ein": "371830636",
+   "mission": "PUBLIC DAY CARE FACILITY",
+   "group": "P"
+  },
+  {
+   "ein": "371128706",
+   "mission": "THE PURPOSE OF BLESSING CORPORATE SERVICES, INC. IS TO DEVELOP EXPANDED HEALTH CARE SERVICES TO ITS REGIONAL MARKETPLACE. BLESSING CORPORATE SERVICES, INC. IS THE PARENT COMPANY TO ALL ORGANIZATIONS WITHIN THE BLESSING HEALTH SYSTEM.",
+   "group": "E"
+  },
+  {
+   "ein": "510661383",
+   "mission": "To feed and help clothe children in Africa",
+   "group": "T"
+  },
+  {
+   "ein": "251331716",
+   "mission": "Library services, tutoring, and educational programs",
+   "group": "A"
+  },
+  {
+   "ein": "822947687",
+   "mission": "TO REDUCE WAYS IN WHICH THE CAPE & ISLANDS REGION CONTRIBUTES TO CLIMATE CHANGE AND TO PROTECT OUR REGION FROM ITS POTENTIALLY DEVASTATING IMPACTS.",
+   "group": "C"
+  },
+  {
+   "ein": "842224617",
+   "mission": "TO HOLD, MAINTAIN, AND PRESERVE THE REAL ESTATE USED IN CONNECTION WITH THE MILLINOCKET MEMORIAL LIBRARY.",
+   "group": "B"
+  },
+  {
+   "ein": "843785530",
+   "mission": "H4A CREATES A CLEANER, HEALTHIER, SAFER & KINDER PORTLAND FOR ALL.",
+   "group": "P"
+  },
+  {
+   "ein": "752555253",
+   "mission": "The purpose of the Friends & Foundation of the Arlington Public Library is to bring together and maintain an organization of persons interested in books and libraries, to promote public awareness and community support for the Arlington Public Library System and its educational activities, and to engage in fund raising activities on behalf of the Arlington Public Library System.",
+   "group": "B"
+  },
+  {
+   "ein": "391769465",
+   "mission": "PROVIDE FOR THE OPERATION AND MAINTENANCE OF THE ICE ARENA/CIVIC CENTER. ALSO TO COORDINATE THE YOUTH HOCKEY AND FIGURE SKATING ACTIVITIES.",
+   "group": "N"
+  },
+  {
+   "ein": "050458723",
+   "mission": "RI CHIEFS OF POLICE GATHER TO SHARE INFORMATION ON NEW OR PROPOSED STATE LAWS AND MAINTAINING BEST METHODS FOR STATE'S CITIZENS' PROTECTION",
+   "group": "S"
+  },
+  {
+   "ein": "932702275",
+   "mission": "OUR MISSION IS TO DISRUPT THE PRESCHOOL TO PRISON PIPELINE BY FORWARDING THE DEVELOPMENT OF SCIENCE, TECHNOLOGY, ENGINEERING, ARTS, AND MATH (S. T. E. A. M.) SCHOLARSHIP IN THE AFRICAN AMERICAN POPULACE AND PROVIDING SOLUTIONS TO CONTEMPORARY GLOBAL PROBLEMS IMPACTING THE AFRICAN DIASPORA.",
+   "group": "P"
+  },
+  {
+   "ein": "843234575",
+   "mission": "IT IS THE MISSION OF THE ORGANIZATION TO ESTABLISH A CHARITABLE MINISTRY FOUNDED ON EXCELLENCE, COMPASSION AND BIBLICAL AUTHENTICITY TO ASSIST THOSE FACING UNPLANNED PREGNANCY RELATED ISSUES.",
+   "group": "X"
+  },
+  {
+   "ein": "461006450",
+   "mission": "A VOLUNTEER FIRE DEPARTMENT ACTIVELY ENGAGED IN FIRE FIGHTING AND SIMILAR DISASTER ASSISTANCE, AS WELL AS FIRE PREVENTION.",
+   "group": "M"
+  },
+  {
+   "ein": "455529038",
+   "mission": "TO HELP SUPPORT AND PROMOTE THE LITTLE ROCK AFB AND COMMUNITY RELATIONSHIP",
+   "group": "T"
+  },
+  {
+   "ein": "521699853",
+   "mission": "Improving the quality of life of those individuals that served in the armed forces during the Vietnam War. Educating the American Public about the sacrifices made by those Veterans and the ongoing problems confronting them and promoting and supporting Veterans Issues",
+   "group": "W"
+  },
+  {
+   "ein": "472886226",
+   "mission": "Thank You First Responder is a grassroots effort and 501(c)(3) non-profit organization whose purpose is to raise awareness, support, celebrate, honor and most importantly say Thank You to our Nations First Responders for the difficult job they do every day by putting their lives on the line to protect and enhance our country and way of life.",
+   "group": "R"
+  },
+  {
+   "ein": "204691689",
+   "mission": "Fittness and self confidence in youth..amateur sports team",
+   "group": "B"
+  },
+  {
+   "ein": "465400495",
+   "mission": "ADVOCATE, LOBBY AND PROMOTE BETTER RELATIONSHIPS BETWEEN MEMBERS AND FEDERAL, STATE AND LOCAL GOVERNMENT, AGENCIES AND AUTHORITIES, HAVING JURISDICTION OVER ACCREDITED AIRPORTS.",
+   "group": "S"
+  },
+  {
+   "ein": "760785022",
+   "mission": "Our mission is to restore families and communities through trauma-informed care. Our holistic approach encompasses mindfulness, personal accountability, imaginative play, and life-skills development.",
+   "group": "X"
+  },
+  {
+   "ein": "741109737",
+   "mission": "The Young Men's Christian Association of the Greater Houston Area is a Christian fellowship dedicated to improving the quality of life through programs and services which promote healthy living, youth development and social responsibility throughout the community.",
+   "group": "P"
+  },
+  {
+   "ein": "582360360",
+   "mission": "SHELTERING, PROVIDING CARE FOR AND FINDING PERMANENT PLACEMENT FOR ANIMALS IN NEED.",
+   "group": "D"
+  },
+  {
+   "ein": "223620443",
+   "mission": "TO REPRESENT LOCAL PRIVATE SECTOR EMPLOYERS FOR THE PURPOSE OF PROMOTING AND SUPPORTING THE COMMUNITY THROUGH EDUCATION, SCHOLARSHIPS AND CONTRIBUTIONS.",
+   "group": "P"
+  },
+  {
+   "ein": "473166454",
+   "mission": "THE MIRACLE LEAGUE OF VOLUSIA COUNTY PROVIDES OPPORTUNITIES FOR CHILDREN AND YOUNG ADULTS WITH PHYSICAL AND MEDICAL CHALLENGES TO PLAY BASEBALL REGARDLESS OF THEIR ABILITIES",
+   "group": "N"
+  },
+  {
+   "ein": "593087085",
+   "mission": "THE MISSION OF ABILITY HOUSING IS TO BUILD FLOURISHING COMMUNITIES WHERE EVERYONE HAS A HOME. ITS VISION IS A SOCIETY WHERE HOUSING IS A RIGHT, NOT A PRIVILEGE; AND ALL INDIVIDUALS HAVE SAFE, AFFORDABLE HOUSING IN VIBRANT COMMUNITIES. IT WORKS TO ACHIEVE THIS VISION BY DEVELOPING AND OPERATING QUALITY AFFORDABLE RENTAL AND SUPPORTIVE HOUSING AND OFFERING INDIVIDUALIZED SUPPORT SERVICES TO ALL RESIDENTS.",
+   "group": "E"
+  },
+  {
+   "ein": "884362708",
+   "mission": "PROMOT SPORTSMANSHIP PHYSICAL AND MENTAL HEALTH ENGAG",
+   "group": "N"
+  },
+  {
+   "ein": "861887959",
+   "mission": "Sell products to help serve the community",
+   "group": "P"
+  },
+  {
+   "ein": "810547522",
+   "mission": "CRISIS RESPONSE MINISTRY",
+   "group": "X"
+  },
+  {
+   "ein": "991552297",
+   "mission": "TO PROVIDE EDUCATIONAL SUPPORT TO FULL OR PART-TIME EMPLOYEES, CERTAIN FAMILY MEMBERS OF EMPLOYEES AND CADDIES OF BEDFORD GOLF & TENNIS CLUB WHO ARE/WILL BE ENROLLED AT QUALIFIED INSTITUTIONS.",
+   "group": "T"
+  },
+  {
+   "ein": "465362632",
+   "mission": "RECREATIONAL SOCCER PROGRAM",
+   "group": "O"
+  },
+  {
+   "ein": "621833034",
+   "mission": "TO ASSIST THE PEOPLE LIVING WITH DISABILITIES, THEIR PARENTS AND CAREGIVERS, AND THE PROFESSIONALS WHO SERVE AND GUIDE THEM",
+   "group": "P"
+  },
+  {
+   "ein": "341752091",
+   "mission": "TO CONDUCT CHARITABLE, EDUCATIONAL AND SCIENTIFIC ACTIVITIES RELATED TO THE EDUCATION OF APPRENTICES AND JOURNEYMEN WITHIN SURROUNDING COMMUNITIES.",
+   "group": "S"
+  },
+  {
+   "ein": "472638928",
+   "mission": "SUNRISE WORKSHOP, INC PROVIDES SUPPORT FOR THE PHYSICALLY DISABLED, THOSE WITH SPECIAL NEEDS, AND BY AND FOR THE AMISH COMMUNITY BY PROVIDING A SHELTERED WORKSHOP FOR AMISH YOUTH AFTER THEY HAVE COMPLETED THEIR SCHOLASTIC CAPABILITIES IN THE AMISH PAROCHIAL SCHOOL SYSTEM.",
+   "group": "E"
+  },
+  {
+   "ein": "742971562",
+   "mission": "WE STRIVE TO OFFER MORE THAN JUST OPPORTUNITIES, BUT ALSO ALTERNATIVES NOT READILY AVAILABLE IN OTHER SCHOOLS. MANY OF OUR FINE ARTS COURSES ARE UNIQUE TO THE ELEMENTARY AND JUNIOR HIGH EXPERIENCE.",
+   "group": "B"
+  },
+  {
+   "ein": "560863474",
+   "mission": "EMPOWERING AND INSPIRING YOUNG CHILDREN AND FAMILIES TO BUILD SKILLS, RESILIENCE AND CONFIDENCE TO FUFILL THEIR VISION OF SUCCESS.",
+   "group": "P"
+  },
+  {
+   "ein": "593638168",
+   "mission": "TO ORGANIZE MEMBERS AND CONDUCT MEETINGS TO PROMOTE BUSINESS STANDARDS AND ETHICS FOR FLORIDA BUSINESS BROKERS",
+   "group": "S"
+  },
+  {
+   "ein": "611591692",
+   "mission": "AGAPE: LOVE FROM ABOVE TO OUR COMMUNITY IS A NON-PROFIT, FAITH BASED NON-DENOMINATIONAL MINISTRY THAT SERVES THE LOCAL COMMUNITITIES THROUGH COLUMBIA AND MOUNTOUR (PENNSYLVANIA) COUNTIES. AGAPE PROVIDES A CENTRAL LOCATION FOR OUR COMMUNITY AND RESIDENTS IN NEED. WE SERVE IN THE NAME OF JESUS CHRIST; RESPOND, AS CALLED, TO OUR COMMUNITY'S NEEDS THROUGH EDUCATION, MATERIAL AND FINANCIAL AASSISTANCE, NETWORKING, REFERRALS, COORDINATION, DISASTER/EMERGENCY RELIEF, AND SERVICE; SHARE GOD'S WORD WITH PRACTICALITY; FELLOWSHIP THROUGH SUPPORTIVE CHRISTIAN RELATIONSHIPS; MAINTAIN CONFIDENTIALITY OF THOSE WE SERVE, AND, AS APPROPRIATE, SHARE THE GOSPEL, THROUGH OUR WORDS AND CONDUCT, WITH AL WHO ENTER OUR DOORS.",
+   "group": "P"
+  },
+  {
+   "ein": "952023244",
+   "mission": "NEARLY 15,000 OC GIRL SCOUTS GAINED LEADERSHIP SKILLS & VALUES NECESSARY FOR SUCCESS IN THE 21ST CENTURY.",
+   "group": "O"
+  },
+  {
+   "ein": "050491886",
+   "mission": "TO PROMOTE AND ADVANCE THE GAME OF SOCCER FOR CHILDREN UNDER AGE 18.",
+   "group": "N"
+  },
+  {
+   "ein": "752275610",
+   "mission": "PROVIDE HIGH SCHOOL BOYS AND GIRLS BASKETBALL TOURNAMENTS BETWEEN CHRISTMAS AND NEW YEAR'S DAY TO GET TEAMS TOGETHER AND PROVIDE WARM UP GAMES PRIOR TO DISTRICT PLAY.",
+   "group": "N"
+  },
+  {
+   "ein": "300288956",
+   "mission": "PROVIDE TRANSPORTATION TO ZION CHRISTIAN SCHOOL STUDENTS",
+   "group": "B"
+  },
+  {
+   "ein": "871937918",
+   "mission": "ON THE AVENUE FOUNDATION OF TENNESSEE IS DEDICATED TO CREATING A WORLD WHERE NEURODIVERSE ADULTS AND THEIR FAMILIES ARE SEEN, HEARD, AND RESPECTED BY BUILDING AND MAINTAINING SUPPORTIVE RELATIONSHIPS WITH ORGANIZATIONS THAT PROVIDE COMMUNITY, TRAINING, EDUCATION AND TREATMENT OPTIONS. WE ARE COMMITTED TO CREATING AN INCLUSIVE AND SUPPORTIVE ENVIRONMENT FOR NEURODIVERSE ADULTS AND THEIR FAMILIES.",
+   "group": "B"
+  },
+  {
+   "ein": "237089612",
+   "mission": "PROVIDE LOW INCOME HOUSING FOR ELDERLY/DISABLED PEOPLE.",
+   "group": "L"
+  },
+  {
+   "ein": "920073210",
+   "mission": "To administer public services and to promote the common welfare of the people of Takotna, Alaska.",
+   "group": "S"
+  },
+  {
+   "ein": "141660137",
+   "mission": "TO PROVIDE PATIENT CENTERED CARE DRIVEN BY QUALITY, COMPLIANCE, AND AFFORDABILITY TO INDIVIDUALS, FAMILIES, INSURANCE COMPANY AND GOVERNMENT FUNDED PROGRAMS, TO EACH OF THE COMMUNITIES IT SERVES. COMMUNITY HEALTH CENTER (\"CHC\") IS COMMITTED TO THE DEVELOPMENT OF PARTNERSHIPS TO HELP TRANSFORM THE DELIVERY OF CARE TO ACHIEVE POSITIVE OUTCOMES FOR PATIENTS. TO ACHIEVE THE MISSION CHC IS COMMITTED TO ADVANCEMENT IN TECHNOLOGY, VALUE-BASED CARE, COMMUNICATIONS BETWEEN PROVIDERS, AND ENGAGED EMPLOYEES AND THE MOST IMPORTANT GOAL IS NEVER LOSE SIGHT OF THE PATIENTS AND FAMILIES SERVED.",
+   "group": "E"
+  },
+  {
+   "ein": "842396177",
+   "mission": "the mission is to provide art to adulits with disabilites",
+   "group": "A"
+  },
+  {
+   "ein": "621799718",
+   "mission": "THE MISSION OF POWERHOUSE MINISTRIES IS TO TEACH THE GOSPEL THROUGH SPEAKING ENGAGEMENTS AND WORSHIP, PERSONAL MINISTRY AND HELP TO THE POOR AND NEEDY.",
+   "group": "X"
+  },
+  {
+   "ein": "831244041",
+   "mission": "Clearing the Path for Black College Students",
+   "group": "B"
+  },
+  {
+   "ein": "993710075",
+   "mission": "Providing resources & support to families w/ stillbirth",
+   "group": "F"
+  },
+  {
+   "ein": "843823114",
+   "mission": "Develops and delivers health education",
+   "group": "B"
+  },
+  {
+   "ein": "814533424",
+   "mission": "The Corporation is organized exclusively for charitable and educational purposes, within the meaning of Section 501(c)(3) of the Internal Revenue Code of 1986, as amended (the Code), or the corresponding provisions of any subsequent federal tax law; provided, however, that none of the Corporations rights and powers shall include the right and power to carry on a business for profit. The specific purposes of the Corporation include, but are not limited to:1. Stimulating interest in aviation by providing an educational opportunity for Nate Abel Flying Club members, to develop their flying abilities;2. Disseminating flying information to the community;3. Bringing together those individuals who have a common interest in flying; and4. Promoting the welfare of Nathan Abel Flying Club in its educational purposes within the meaning of section 501(c)(3) of the Code, or the corresponding provisions of any subsequent tax law.",
+   "group": "B"
+  },
+  {
+   "ein": "473646697",
+   "mission": "We believe... Marys House is a Catholic based home for pregnant women eighteen & over, of all faiths whose desire is to save the children.",
+   "group": "P"
+  },
+  {
+   "ein": "541076172",
+   "mission": "Loudoun Youth Soccer Association's mission is to create soccer players, coaches and teams of strong character, committed to achievement on the field and in our community",
+   "group": "N"
+  },
+  {
+   "ein": "251557193",
+   "mission": "THE ORGANIZATION WAS ESTABLISHED TO RAISE FUNDS TO CONTINUALLY UPDATE THE SCIENCE AND PRACTICE OF MEDICINE, SURGERY, AND REHABILITATION AS IT RELATES TO DISORDERS OF THE EAR, NOSE, & THROAT IN INFANTS AND CHILDREN.",
+   "group": "H"
+  },
+  {
+   "ein": "561672028",
+   "mission": "PROVIDING A FULL-TIME CHAPLAIN FOR THE PRISON AND TO ASSIST ALL INMATES AT WILKES CORRECTIONAL CENTER WITH THEIR SPIRITUAL WELL BEING, ALSO OVERSEES THE LIFE REENTRY PROGRAM WHICH HELPS INMATES WHO ARE WITHIN A YEAR OF BEING RELEASED.",
+   "group": "X"
+  },
+  {
+   "ein": "300594051",
+   "mission": "RE:SOURCE CLEVELAND EMPOWERS INTERNATIONAL NEWCOMER FAMILIES TO GROW ROOTS, SUPPORTING THEM IN BECOMING ENGAGED, SELF-SUFFICIENT AND CONTRIBUTING MEMBERS OF THEIR NEW COMMUNITIES.",
+   "group": "P"
+  },
+  {
+   "ein": "231971982",
+   "mission": "BALLET / DANCE EDUCATION",
+   "group": "A"
+  },
+  {
+   "ein": "814967039",
+   "mission": "PANHANDLE ORPHAN CARE NETWORK EXISTS TO WALK WITH FAMILIES, WORK ALONGSIDE CHURCHES, AND WAKE UP THE COMMUNITY TO BETTER CARRY OUT THE BIBLICAL MANDATE OF CARING FOR ORPHANS.",
+   "group": "P"
+  },
+  {
+   "ein": "841706077",
+   "mission": "TILMW Inc. utilizes its collective resources to promote empowerment through philanthropy and humanitarian work including service and volunteerism as well as educational research and development enabling individuals and families alike to see opportunities instead of obstacles in enriching their world.",
+   "group": "P"
+  },
+  {
+   "ein": "510572717",
+   "mission": "Youth and Recreation Activities",
+   "group": "O"
+  },
+  {
+   "ein": "831739782",
+   "mission": "FOOD4HOPE OF NEBRASKA, INC MISSION IS TO PROVIDE FRESH PRODUCE TO LOCAL FOOD PANTRIES, SHELTERS AND INDIVIDUALS, TO TEACH PEOPLE TO FARM, TO EDUCATE INDIVIDUALS ON HOW TO GROW, COOK PRESEVE AND ENJOY THE HARVEST, TO TEACH YOUNG CHILDREN THE BENEFITS OF EATING HEALTY AND THAT HEALTHY FOOD IS DELICIOUS AND FUN.",
+   "group": "K"
+  },
+  {
+   "ein": "541047151",
+   "mission": "Extinguishing fires, protection of life and property",
+   "group": "M"
+  },
+  {
+   "ein": "843716381",
+   "mission": "MOTHERLY LOVE AIMS TO BRING THE CARE AND WELL-BEING OF MOTHERS BACK TO THE FOREFRONT TO PROMOTE WELLNESS OF THE BODY MIND AND SPIRIT AS WELL AS PROVIDE RESOURCES TO SUPPORT AND EDUCATE MOTHERS ON THEIR JOURNEY OF MOTHERHOOD",
+   "group": "P"
+  },
+  {
+   "ein": "680530921",
+   "mission": "TO PROVIDE SUPPORT TO THE POLICE OFFICER OF NEW ORLEANS DISTRICT 8",
+   "group": "M"
+  },
+  {
+   "ein": "331149412",
+   "mission": "BUDDHIST TEMPLE - CARRIES OUT ITS MISSION OF EDUCATING BUDDHIST PRINCIPLES AND PRACTICES NOT ONLY TO ITS MEMBERS BUT ALSO TO PUBLIC AT LARGE IN LOUISVILLE, KY AREA.",
+   "group": "X"
+  },
+  {
+   "ein": "742707895",
+   "mission": "MAGIK THEATRE CREATES THEATRICAL EXPERIENCES THAT IGNITE IMAGINATION, SPARK CURIOSITY, INSPIRE EMPATHY, AND FOSTER A LIFETIME LOVE OF LEARNING IN YOUNG PEOPLE.",
+   "group": "A"
+  },
+  {
+   "ein": "465547770",
+   "mission": "TO HONOR THOSE WHO HAVE SERVED US.",
+   "group": "S"
+  },
+  {
+   "ein": "831208258",
+   "mission": "The mission of ELSO Incorporated is to catalyze learning and expand access to positive career outcomes for a more just future for all.",
+   "group": "O"
+  },
+  {
+   "ein": "391560745",
+   "mission": "PRESERVATION OF HISTORIC STRUCTURES",
+   "group": "A"
+  },
+  {
+   "ein": "710912585",
+   "mission": "To gather, present, and preserve the history and culture of the families and individual men and women in Idaho's sheep industry and honor their contributions to the development of Idaho and the West.",
+   "group": "A"
+  },
+  {
+   "ein": "883537484",
+   "mission": "TO RESTORE HISTORIC BUILDINGS FOR COMMUNITY BENEFIT.",
+   "group": "A"
+  },
+  {
+   "ein": "823096216",
+   "mission": "ESTABLISHED TO IMPROVE THE EDUCATIONAL, NUTRITIONAL AND BUSINESS OPPORTUNITIES IN THE GAUTEMALAN COMMUNITIES.",
+   "group": "X"
+  },
+  {
+   "ein": "591747169",
+   "mission": "IMPROVING THE LIVES OF ADULTS, YOUTH AND FAMILIES BY ENHANCING LITERACY AND LIFE SKILLS",
+   "group": "B"
+  },
+  {
+   "ein": "841536192",
+   "mission": "TO RAISE MONEY FOR THE COTTON CREEK ELEMENTARY SCHOOL IN WESTMINSTER COLORADO",
+   "group": "B"
+  },
+  {
+   "ein": "560844407",
+   "mission": "SIVB FOSTERS THE SCIENTIFIC AND TECHNICAL GROWTH OF ITS MEMBERS, CONDUCTS BIOTECHNOLOGY RESEARCH TO UNDERSTAND BIOLOGY AT THE CELLULAR AND DEVELOPMENTAL LEVEL, AND PROMOTES EXPANDS, AND SUPPORTS THE SCIENTIFIC KNOWLEDGE BASE FOR THE BENEFIT OF SOCIETY.",
+   "group": "V"
+  },
+  {
+   "ein": "923784756",
+   "mission": "The corporation is organized for the purpose of actively assisting and supporting the facult, students, and families of the Pensacol High School International Baccalaureate (IB) program. Ib Boosters will focus on providing essential financial support, communication and volunteer resources to strengthen the Pensacola High School IB program. The organization will create an inclusive, participatory, and welcoming environment to all Pensacola High School IB Parents, students and their families and will foster relationships between the Program and the community at large.",
+   "group": "B"
+  },
+  {
+   "ein": "920969239",
+   "mission": "Non-Profit Animal Rescue Organization",
+   "group": "D"
+  },
+  {
+   "ein": "474050554",
+   "mission": "TO PROVIDE A SAFE, SOBER, AND STRUCTURED ENVIRONMENT FOR WOMEN IN RECOVERY. THE GOAL IS TO PROMOTE ACADEMIC, OCCUPATIONAL, EMOTIONAL AND SPIRITUAL COMPETENCE RESULTING IN MEASURABLE PROGRESS TOWARD PERSONAL FULFILLMENT AND POSITIVE CONTRIBUTION TO THE COMMUNITY.",
+   "group": "P"
+  },
+  {
+   "ein": "271956615",
+   "mission": "Influencing positive change in access through awareness and proactive adaptation of the built environment. Acting voice of access professionals as well as a resource for both its members and the public.",
+   "group": "S"
+  },
+  {
+   "ein": "376039602",
+   "mission": "PROVIDE SERVICES TO VETERANS",
+   "group": "W"
+  },
+  {
+   "ein": "352268086",
+   "mission": "NCES PARTNERS WITH CHRISTIAN FAMILIES AND CHURCHES TO PROVIDE A GOD-CENTERED, DISCIPLESHIP-BASED SCHOOL WITH ACADEMIC EXCELLENCE AND A BIBLICAL WORLDVIEW, EQUIPPING STUDENTS TO SERVE AND INFLUENCE THE WORLD FOR CHRIST.",
+   "group": "B"
+  },
+  {
+   "ein": "020479353",
+   "mission": "PROVIDES FREE PUBLIC BANDSTAND CONCERTS DURING SUMMER MONTHS",
+   "group": "B"
+  },
+  {
+   "ein": "113234874",
+   "mission": "The pursuit of beneficial, cultural, and philanthropic endeavors and in particular the general effort for closer communication and cooperation of all Dafnonians at large. The coordination of fundraising events, or projects that will enhance social and cultural life. The support of any initiative by the local Authorities of Dafnonas for beneficial projects. The creation and cultivation of a spirit of genuine love for our place of origin, the support of projects enhancing the lives of its people and the development of an absolute trust and confidence toward our Association and its mission. The cultivation and reinforcement of the gratitude and recognition of the benevolent actions of our Association. The instilling of love and respect toward the laws of the United States of America, as well as toward our place of origin, Dafnonas, the cultivation of the Greek language and the Christian Orthodox faith and finally the spreading of our Hellenic Christian Heritage to future generations.",
+   "group": "T"
+  },
+  {
+   "ein": "260141940",
+   "mission": "THE MISSION OF THE ORGANIZATION IS TO CREATE RESOURCES THAT INSTILL AND NURTURE HOPE IN CHILDREN AND FAMILIES IN NEED BY ADDRESSING THE EMOTIONAL DEMANDS THEY",
+   "group": "F"
+  },
+  {
+   "ein": "823864265",
+   "mission": "Our mission is to spread the word of god and provide a safe place of worship to the catholic community of the Inland Empire of Southern California",
+   "group": "X"
+  },
+  {
+   "ein": "810412530",
+   "mission": "WILDLIFE AND NATURAL ECOSYSTEMS TO SAFEGUARD BIOLOGICAL DIVERSITY FOR CURRENT AND FUTURE GENERATIONS.",
+   "group": "C"
+  },
+  {
+   "ein": "520965477",
+   "mission": "BARBARA CHAMBERS IS A DAY-CARE / PRESCHOOL SERVICING CHILDREN FROM RACIALLY, CULTURALLY, AND ECONOMICALLY DIVERSE BACKGROUNDS. IT SERVICES APPROXIMATELY 170 CHILDREN AGES 6 MONTHS TO 5 YEARS OLD.",
+   "group": "P"
+  },
+  {
+   "ein": "886184969",
+   "mission": "PURPOSE IS TO PROVIDE GRANTS FOR PROVISION OF MEDICAL SUPPLIES AND PROSTHETIC DEVICES TO INDIVIDUALS AND TO FUND RESEARCH AND DEVELOPMENT OF PROSTHETIC DEVICES.",
+   "group": "E"
+  },
+  {
+   "ein": "621781939",
+   "mission": "TO PROVIDE THE UNDERPRIVILEGED INHABITANTS OF ALTON PARK/PINEY WOODS AREA WITH EFFECTIVE SCHOLASTIC TUTORING, EXPOSURE TO NEW AND WORTHWHILE EXPERIENCES IN THE CITY OF CHATTANOOGA AND THE METRPPOLITAN AREA AND TO SET CONDITIONS FAVORABLE FOR ITS ADULT INHABITANTS TO OWN AND EFFECTIVELY OPERATE BUSINESSES OR OBTAIN SKILLFUL EMPLOYMENT REGARDLESS OF THEIR RACE,SKIN TONE, RELIGION, CULTURE, ETHNICITY OR GENDER IDENTITY.",
+   "group": "S"
+  },
+  {
+   "ein": "562585201",
+   "mission": "FORM 990-EZ PART III, PRIMARY EXEMPT PURPOSE-TO SUPPORT, BENEFIT AND CARRY OUT THE PURPOSE OF THE ASSOCIATION CRISTINA VOZ CLAMA A NONPROFIT CORP. FORMED IN 09/28/04 UNDER THE LAWS OF THE REPUBLIC OF COSTA RICA, WHICH OPERATES A CHARITABLE MISSION, INCLUDING RESIDENCE FOR THE HANDICAP, A LITERACY PROGRAM AND INDEGENIOUS WORK PROGRAMS TO RAISE FUNDS TO CARRY ON THE CHARITABLE EDUCATIONAL ACTIVITIES ASSOCIATED WITH THIS GOAL AS ALLOWED BY LAW IN COSTA RICA AND OTHER THIRD WORLD COUNTRIES (KENYA)",
+   "group": "X"
+  },
+  {
+   "ein": "455231071",
+   "mission": "Educating students.",
+   "group": "P"
+  },
+  {
+   "ein": "271505747",
+   "mission": "To build community capacity to sustain, support and improve Christ centered compassionate health services, by supporting the operation of 27 hospitals and in helping to train and provide health professionals who provide access to emergency services, pediatric, maternal and surgical care in developing countries and to train local healthcare professionals. CHSC staff often help in established training programs to raise up the next generation of health professionals, or train national staff in less formal environments, as well as provide clinical training, family physicians, surgeons, nurses physical therapists, OB/GYN, midwifery, dentistry, nursing, community health and more.",
+   "group": "Q"
+  },
+  {
+   "ein": "341899005",
+   "mission": "CONFERENCES, BOOK SALES, PRINT SALES & TAPE SALES TO PROMOTE AND SPREAD THE MISSION OF HOLY LOVE MINISTRIES. TO HELP THE POOR & TO CONTRIBUTE TO OTHER QUALIFIED 501(C)(3)ORGANIZATIONS.",
+   "group": "X"
+  },
+  {
+   "ein": "834683296",
+   "mission": "IN 2024, WE WERE ABLE TO DONATE TO VARIOUS INDIVIDUALS AND ORGANZATIONS THROUGHOUT OUR COMMUNITY. WE WERE ABLE TO PROVIDE 20 SCHOLARSHIOPS TO CADETS THAT GRADUATED FROM THE SHASTA COLLEGE FIRE ACADEMY AND SISKIYOU FIRE ACADEMY. WE CONTINUE TO SUPPORT OUR COMMUNITY THROUGHOUT THE YEAR.",
+   "group": "M"
+  },
+  {
+   "ein": "562051877",
+   "mission": "FINANCIAL SUPPORT FOR BAND PROGRAMS",
+   "group": "B"
+  },
+  {
+   "ein": "522328209",
+   "mission": "NATIONAL STRIPPER WELL ASSOCIATION STRIVES TO PROMOTE THE GENERAL ADVANCEMENT OF THE STRIPPER WELL INDUSTRY. NATIONAL STRIPPER WELL ASSOCIATION ALSO PERIODICALLY PREPARES A NEWSLETTER FOR ITS MEMBERS UPDATING THEM ON ISSUES AFFECTING THE STRIPPER WELL INDUSTRY.",
+   "group": "S"
+  },
+  {
+   "ein": "593600656",
+   "mission": "OFFICIATING SOCCER MATCHES",
+   "group": "N"
+  },
+  {
+   "ein": "872041719",
+   "mission": "Provide services to homeless, veterans",
+   "group": "W"
+  },
+  {
+   "ein": "582304053",
+   "mission": "SC AG-IN-THE-CLASSROOM FUND BRINGS AGRICULTURE TO CLASSROOMS AROUND THE STATE.",
+   "group": "B"
+  },
+  {
+   "ein": "910565022",
+   "mission": "A NON-PROFIT CHARITABLE ORGANIZATION, THE SKAGIT VALLEY FAMILY YMCA CREATES POSITIVE COMMUNITY CHANGE THROUGH RELATIONSHIPS BY EMPOWERING THE MIND, BODY, AND SPIRIT OF ALL.",
+   "group": "P"
+  },
+  {
+   "ein": "474095779",
+   "mission": "RAISE FUNDS FOR RESEARCH TO CURE CYSTIC FIBROSIS",
+   "group": "G"
+  },
+  {
+   "ein": "742528815",
+   "mission": "PARKER SENIOR CENTER ENRICHES THE LIVES OF OLDER ADULTS 50 BY PROVIDING ENGAGING ACTIVITIES, SHARED MEALS, GROUP OUTINGS AND LIFELONG LEARNING IN A SAFE , VIBRANT, AND WELCOMING ENVIRONMENT.",
+   "group": "P"
+  },
+  {
+   "ein": "830458666",
+   "mission": "IN 2024, SHEF SIGNIFICANTLY EXPANDED ITS SCHOLARSHIP PROGRAM, AWARDING 24 SCHOLARSHIPS, COMPARED TO 2 AWARDS IN 2023. SHEF ALSO RECOMMENCED THE EXPLORERS PROGRAM.",
+   "group": "B"
+  },
+  {
+   "ein": "113244060",
+   "mission": "TO AWARD GRANTS TO INSTITUTIONS OF HIGHER LEARNING TO PROMOTE RELIGIOUS EDUCATION",
+   "group": "X"
+  },
+  {
+   "ein": "371404021",
+   "mission": "Our mission is to be the leading North American organization for the enhancement of quality utility arboriculture and right-of-way vegetation management.",
+   "group": "C"
+  },
+  {
+   "ein": "411797876",
+   "mission": "THE MISSION OF ART BUDDIES IS TO BRING THE POWER OF ONE-TO-ONE CREATIVE MENTORING TO TWIN CITIES CHILDREN FROM HIGH NEED SCHOOLS AND COMMUNITIES. ART BUDDIES HELPS CHILDREN CONNECT THE CHILD WITH THEIR SELF AND THEIR COMMUNITY, TO GIVE THEM AGENCY OVER THEIR ARTISTRY AND IDEAS, TO INSPIRE CREATIVE EXPRESSION AND SENSE OF PERSONAL AGENCY, AND TO HELP THE CHILD BUILD A STRONG SENSE OF CREATIVE CONFIDENCE. ART BUDDIES ANNUALLY PAIRS 200 CREATIVE MENTORS, ONE-TO-ONE WITH 200 TWIN CITIES PUBLIC SCHOOL KIDS (AGES 8-11). EACH PROGRAM FEATURES 8-10 WEEKLY WORKSHOPS. MENTORS ALSO HELP THE KIDS DEVELOP WRITING, PROJECT PLANNING AND STORYTELLING SKILLS BY CREATING A SPECIAL JOURNAL OF THEIR ART BUDDIES EXPERIENCE CALLED A BUDDY BOOK. AT THE END OF EACH PROGRAM, THE KIDS BECOME \"STARS\" POSING WITH THEIR CREATIONS AND MENTORS FOR PORTRAITS BY PROFESSIONAL PHOTOGRAPHERS. THE CHILDREN CELEBRATE THEIR ACCOMPLISHMENTS WITH A PARADE AND PRESENTATION FOR SCHOOLMATES, TEACHERS, FAMILY AND FRIENDS. THE ART",
+   "group": "O"
+  },
+  {
+   "ein": "510675398",
+   "mission": "SOCCER SPORTING OPPORTUNITY TO COMMUNITY YOUTH",
+   "group": "N"
+  },
+  {
+   "ein": "205997734",
+   "mission": "To provide spiritual help to the needy.",
+   "group": "Q"
+  },
+  {
+   "ein": "474596214",
+   "mission": "INDIVIDUAL MENTAL HEALTH ASSISTANCE",
+   "group": "E"
+  },
+  {
+   "ein": "833603397",
+   "mission": "ENGAGE YOUTH OF HAWAII IN WATERSPORT ACTIVITIES TO FOSTER A LIFELONG CONNECTION WITH THE OCEAN BY NURTURING A COMPETITIVE ATHLETIC SPIRIT.",
+   "group": "N"
+  },
+  {
+   "ein": "934965544",
+   "mission": "CDFI FRIENDLY EVANSVILLE REGION'S MISSION IS TO CONNECT BUSINESSES, HOUSING DEVELOPERS, COMMUNITY ORGANIZATIONS, AND OTHERS IN THE REGION WITH ACCESS TO FINANCING.",
+   "group": "S"
+  },
+  {
+   "ein": "880904747",
+   "mission": "MISSION ACADEMIC ENRICHMENT - HOME SCHOOL AND CENTER BASED EDUCATION FOR ELEMENTARY STUDENTS K-12",
+   "group": "X"
+  },
+  {
+   "ein": "610524092",
+   "mission": "PCWA provides a sanctuary for health, healing and hope for at-risk children youth and families.",
+   "group": "P"
+  },
+  {
+   "ein": "341772429",
+   "mission": "PARTNERS IN EDUCATION'S MISSION IS TO PROMOTE STUDENT SCUCCESS THROUGH COMMUNITY INVOLVEMENT WITH SCHOOLS BY SEEKING RESOURCES, SUCH AS VOLUNTEER TIME, EXPERTISE OR FINANCIAL SUPPORT, AND BUILDING SCHOOL-COMMUNITY PARTNERSHIPS.",
+   "group": "B"
+  },
+  {
+   "ein": "510151491",
+   "mission": "Providing programs and support services to senior citizens in nutrition, senior outreach, information referral and health awareness.",
+   "group": "P"
+  },
+  {
+   "ein": "264130155",
+   "mission": "MENTOR AT RISK YOUTH",
+   "group": "O"
+  },
+  {
+   "ein": "932337864",
+   "mission": "WINGZ OF HOPE IS DESIGNED TO HOUSE YOUNG WOMEN AGE 18-24 WHO HAVE AGED OUT OF FOSTER AND OR ARE HOMELESS. WE AIM TO PROVIDE THEM NOT ONLY HOUSING BUT ALSO ACCESS TO OTHER RESOURECES TO EDUCATION, WORK AND JOB TRAINING, MEDICAL AND MENTAL HEALTH CARE, FINANCIAL LITERACY AND LIFE SKILLS TRAINING, AS WELL AS COMMUNITY INTERGRATION. SINCE ITS INCORPORATION THE ORGANZATION HAS PARTICIPATED IN TWO BACK TO SCHOOL EVENTS, RESOURCE AND POP UPS EVENTS IN THE COMMUNITY, HOSTED A SOFT OPENING EVENT, A FUNDRAISER DINNER, AND ACQUIRED ITS FIRST HOME IN NOVEMBER. WE ARE ALSO PARTNERED WITH THE TURNING POINT, AS WELL AS OTHER ORGANIZATIONS AND AGENCIES IN OUR COMMUNITY AND STATE TO HELP THOSE WHO ENTER OUR PROGRAM. WINGZ ALSO HOSTED ITS GRAND OPENING EVENT IN FEBRUARY 2025 AND WE ARE CURRENTLY IN THE PROCESS OF BECOMING PARTNERS WITH THE ARKANSAS FOOD BANK. WE HAVE NOT HAD ANY ENROLLED INTO THE PROGRAM ALTHOUGH WE HAVE HAD 6 WOMEN REQUEST APPLICATIONS FROM REFERRALS.",
+   "group": "L"
+  },
+  {
+   "ein": "850759383",
+   "mission": "THE ORGANIZATION WAS CREATED TO FINANCIALLY SUPPORT FAMILIES IN NEED.",
+   "group": "P"
+  },
+  {
+   "ein": "926261203",
+   "mission": "TO SUPPORT 501C3 ORGANIZATIONS THAT1 PROVIDE HELP TO THE UNDERPRIVILEGED",
+   "group": "S"
+  },
+  {
+   "ein": "200628638",
+   "mission": "NORTH ANDOVER COMMUNITY ACCESS AND MEDIA'S MISSION IS THREE-FOLD; ENABLE THE COMMUNITY TO EXPRESS ITSELF FREELY; EDUCATE THE COMMUNITY THROUGH THE HONEST DEPICTION OF THE ACCOMPLISHMENTS OF NORTH ANDOVER'S STUDENTS; AND ACCURATELY CONVEY TO THE COMMUNITY INFORMATION AND PUBLIC PROCEEDNGS WITH THE LOCAL GOVERNMENT. NORTH ANDOVER CAM SUPPORTS THESE ENDEAVORS THROUGH EDUCATION AND TRAINING, FACILITIES AND EQUIPMENT, AND PRODUCTION ASSISTANCE AND GUIDANCE.",
+   "group": "A"
+  },
+  {
+   "ein": "823264981",
+   "mission": "PROMOTING AND FUNDING NON-GOVERNMENTAL PROGRAMS TO CARE FOR IMPOVERISHED AND AT-RISK CHILDREN IN HOLISTIC WAYS - SHELTER, CLEAN WATER, FOOD, CLOTHING, MEDICAL CARE, EDUCATION, SPIRITUAL INSTRUCTION, MENTAL AND EMOTIONAL HEALTH, ETC.",
+   "group": "P"
+  },
+  {
+   "ein": "352019312",
+   "mission": "THE MISSION OF THE YMCA IS TO PUT CHRISTIAN PRINCIPLES INTO PRACTICE THROUGH PROGRAMS THAT BUILD A HEALTHY SPIRIT, MIND AND BODY FOR ALL",
+   "group": "P"
+  },
+  {
+   "ein": "933006616",
+   "mission": "Human and Social Services for American Indians",
+   "group": "E"
+  },
+  {
+   "ein": "461200713",
+   "mission": "FARMSHARE AUSTIN'S MISSION IS TO GROW A HEALTHY, JUST, AND EQUITABLE LOCAL FOOD SYSTEM BY INCREASING COMMUNITY FOOD ACCESS AND CULTIVATING NEW FARMERS.",
+   "group": "K"
+  },
+  {
+   "ein": "205935041",
+   "mission": "APPRENTICESHIP TRAINING PROGRAMS",
+   "group": "B"
+  },
+  {
+   "ein": "270919952",
+   "mission": "PROMOTE MGMT. OF GREEN-SPACE/ PUBLIC PARK FOR COMMUNITY, CIVIC, & PUBLIC USE IN SOUTHEAST DC.",
+   "group": "N"
+  },
+  {
+   "ein": "861232246",
+   "mission": "IE 501(C)(3) IS A CLIMATE JUSTICE COLLECTIVE RADICALLY IMAGINING A MORE EQUITABLE + DIVERSE FUTURE OF ENVIRONMENTALISM. WE SEEK TO BRIDGE THE UNDERSTANDING GAP AND PROVIDE ACCESSIBLE EDUCATIONAL RESOURCES FOR THOSE WHO WANT TO LEARN AND GUIDANCE AND DIRECTION FOR ORGANIZATIONS LOOKING TO SHIFT THEIR NARRATIVE. WE ARE ALSO MOVEMENT CONNECTORS, LEADING PEOPLE TO INITIATIVES AND ORGANIZATIONS THEY CAN SUPPORT IN THEIR LOCAL COMMUNITY. INTERSECTIONAL ENVIRONMENTALIST (IE) EVOLVED TO DEEPEN SERVICE OF COMMUNITY THROUGH A NEW DIGITAL DATABASE TOOL & MEDIA CAPACITY BUILDING PROGRAM DESIGNED TO CONNECT THOUSANDS OF PEOPLE TO ORGANIZATIONS NEAR THEM AND STRENTHEN COMMUNICATIONS AND CAMPAIGN EFFORTS OF GRASSROOTS MOVEMENTS. THESE PROGRAMS SUPPORT OUR MISSION TO INCREASE ACCESS TO EDUCATIONAL RESOURCES & AWARENESS ABOUT INTERSECTIONAL ENVIRONMENTALISM AND DRIVE SUPPORT TOWARDS COMMUNITY-DRIVEN EFFORTS. IN THE FIRST YEAR OF THESE NEW CRITICAL PROGRAMS, WE LAUNCHED A DATABASE THAT INCLUDED 500+ ORG",
+   "group": "C"
+  },
+  {
+   "ein": "471842281",
+   "mission": "To celebrate Herrontown Woods as a preserve where people of all ages enjoy, explore and learn from nature, inspiring them to become its stewards.",
+   "group": "C"
+  },
+  {
+   "ein": "251811386",
+   "mission": "Provide College Scholarships",
+   "group": "B"
+  },
+  {
+   "ein": "954507327",
+   "mission": "Mission organization that sends and supports missionaries primarily in Chile, Colombia, and Peru.",
+   "group": "X"
+  },
+  {
+   "ein": "030355124",
+   "mission": "PROVIDE HEALTH, SANITATION AND EDUCATION TRAINING FOR INDIGENOUS IN GUATAMALA",
+   "group": "K"
+  },
+  {
+   "ein": "205092412",
+   "mission": "Guardian Scholars: The Guardian Scholars program serves current and former foster youth in Colorado providing financial support, 1:1 mentoring, and navigation and wrap around supports as scholars enroll, pursue, and complete their postsecondary educations, and enter the workforce earning a sustainable wage. Realizing Aptitudes: provides customized career and postsecondary readiness coaching to youth and young adults facing adversity, emphasizing a multiple pathway model and 1:1 approach to meet each youth where they?re at and help them build a vision of what?s possible for their futures.",
+   "group": "P"
+  },
+  {
+   "ein": "010220430",
+   "mission": "The Lincoln Home provides senior living options for elderly residents in an environment fostering dignity, safety, comfort, and the enjoyment of meaningful lives.",
+   "group": "P"
+  },
+  {
+   "ein": "510138247",
+   "mission": "MAINTAIN & PROMOTE THE HISTORICAL LANDMARKS IN ROSELAND, NJ.",
+   "group": "A"
+  },
+  {
+   "ein": "753117320",
+   "mission": "THE MISSION OF THE FOUNDATION IS TO IMPROVE THE COMMUNITY THROUGH RESTORATION,RENOVATION AND DEVELOPMENT OF REAL PROPERTY.",
+   "group": "X"
+  },
+  {
+   "ein": "710545722",
+   "mission": "TO PROVIDE HOME HEALTH CARE SERVICES TO THE RESIDENTS OF FULTON AND SHARP COUNTY OF ARKANSAS",
+   "group": "E"
+  },
+  {
+   "ein": "203552903",
+   "mission": "EDUCATION AND SUPPORT FOR RECOVERING ALCHOLOICS.",
+   "group": "F"
+  },
+  {
+   "ein": "811815580",
+   "mission": "BIG WATER CREATIVE ARTS, INC. (BWCA OR BIG WATER) SHARES THE JOY OF MUSIC THROUGH EDUCATION, INSTRUCTION, AND PERFORMANCES THAT BUILD COMMUNITY AND IMPROVE THE QUALITY OF LIFE FOR YOUTH, STUDENTS WITH COGNITIVE IMPAIRMENTS, AND LIFELONG LEARNERS ACROSS NORTHERN MICHIGAN.BWCA ACHIEVES ITS MISSION BY PROVIDING FREE, ACCESSIBLE MUSIC EDUCATION PROGRAMS THROUGHOUT EMMET AND NEIGHBORING COUNTIES, ENSURING THAT ALL STUDENTS, INCLUDING GIRLS AND WOMEN, HAVE OPPORTUNITIES FOR CREATIVE EXPRESSION, SKILL-BUILDING, AND PERSONAL GROWTH. THESE PROGRAMS FOSTER CONFIDENCE, COLLABORATION, AND A SENSE OF ACCOMPLISHMENT THAT SUPPORTS OVERALL WELL-BEING.",
+   "group": "A"
+  },
+  {
+   "ein": "271382754",
+   "mission": "PROVIDE MUSIC TUTORING INSTRUCTIONS",
+   "group": "A"
+  },
+  {
+   "ein": "330659245",
+   "mission": "TO SUPPORT THE ELSINORE HIGH SCHOOL FOOTBALL PROGRAM THROUGH APPROPRIATE ACTIVITIES AS PERMITTED BY THE LAWS OF THE CITY OF LAKE ELSINORE AND THE RULES AND REGULATIONS OF LEUSD AND THE EDUCATION CODE OF THE STATE OF CALIFORNIA. TO PROVIDE SUPPLEMENTAL FUNDING TO THE FOOTBALL PROGRAM AND ALL THOSE WHO BENEFIT FROM PARTICIPATION ON THE HOME TEAM. TO HELP WHEN NEEDED OR ASKED WITH THE THINGS THAT MAKE THE FOOTBALL EXPERIENCE SPECIAL FOR ALL THOSE WHO PARTICIPATE. WE HAVE OVER 40 REGULAR VOLUNTEERS.",
+   "group": "N"
+  },
+  {
+   "ein": "231513012",
+   "mission": "TO DISCOVER, DEVELOP, AND DELIVER OPPORTUNITIES TO CHILDREN WITH UNIQUE CHALLENGES AND ABILITIES TO ACHIEVE THEIR FULL POTENTIAL.",
+   "group": "B"
+  },
+  {
+   "ein": "814151236",
+   "mission": "PROVIDE PAYEE SERVICES TO INDIVIDUALS AT RISK OF HOMELESSNESS/EXPLOITATION. OUR PROGRAM GOALS ARE TO PREVENT HOMELESSNESS/EVICTION, KEEP ALL CLIENTS FINANCIALLY STABLE AND OUT OF DEBT, AND TO CONNECT THOSE WE SERVE WITH NEEDED SOCIAL SERVICES, MEDICAL SERVICE, AND MENTAL HEALTH SERVICE.",
+   "group": "P"
+  },
+  {
+   "ein": "134207776",
+   "mission": "TO SERVE THE NATIONS OF HAITI AND THE DOMINICAN REPUBLIC AND SEE LIVES CHANGED BY OUR FIVE CORE RESOLUTIONS.",
+   "group": "X"
+  },
+  {
+   "ein": "862149671",
+   "mission": "TO USE THE FORUM OF BIKE RACING TO TEACH VALUABLE LIFE-SKILLS AND CULTIVATE A SPIRIT OF GIVING BACK THAT STUDENT-ATHLETES CAN THEN APPLY TO THEIR PROFESSIONAL AND COMMUNITY LIVES.",
+   "group": "N"
+  },
+  {
+   "ein": "882373261",
+   "mission": "DELIVER SUPPORT AROUND PUBLIC SAFETY FOR THE HEALTH AND WELLBEING OF THOSE STRUGGLING WITH SUBSTANCE USE AND MENTAL HEALTH DISORDER(S).",
+   "group": "W"
+  },
+  {
+   "ein": "352248363",
+   "mission": "MAINTAIN ATV TRAILS AND EDUCATING YOUTH",
+   "group": "N"
+  },
+  {
+   "ein": "831093073",
+   "mission": "BUILD A HOME, INC. IS A REGISTERED 501 C3 NON-PROFIT ORGANIZATION FOR THE BENEFIT OF SINGLE PARENT FAMILIES IN TRANSITION OR HOMELESSNESS IN ROSS COUNTY OHIO.",
+   "group": "L"
+  },
+  {
+   "ein": "863416186",
+   "mission": "To helpunderserved communities in Southern California by providing access to programs organizations reources and events",
+   "group": "P"
+  },
+  {
+   "ein": "821352754",
+   "mission": "TRAIN AND PREPARE YOUTH FOR CAREER IN AVIATION",
+   "group": "O"
+  },
+  {
+   "ein": "454759230",
+   "mission": "OPERATE AND MAINTAIN A CEMETERY",
+   "group": "Y"
+  },
+  {
+   "ein": "260731299",
+   "mission": "TO REWARD MECKLENBURG COUNTY STUDENT ATHLETES FOR SCHOLASTIC ACHIEVEMENT AND TO HELP IN THE PURSUIT OF THEIR UNDERGRADUATE STUDIES.",
+   "group": "B"
+  },
+  {
+   "ein": "010728746",
+   "mission": "TO PRODUCE ART AND PUBLISH BOOKS OF EMERGING, INTERNATIONAL AND FORGOTTEN ARTIST AND WRITERS.",
+   "group": "A"
+  },
+  {
+   "ein": "411330568",
+   "mission": "ASSIST CHURCHES AND RESIDENTS OF HAITI",
+   "group": "Q"
+  },
+  {
+   "ein": "830570807",
+   "mission": "FEED THE HOMELESS",
+   "group": "P"
+  },
+  {
+   "ein": "760574211",
+   "mission": "BRING THE WORD OF GOD TO UNCHURCHED PERSONS IN MEXICO, AND PROVIDE INSTRUCTION IN THE CHRISTIAN FAITH. BUILD CHURCHES, AND PROVIDE CHARITY AND ALMS, MEDICAL SERVICES, EDUCATION AND SUPPORT NATIVE CHRISTIAN WORKERS IN MEXICO.",
+   "group": "X"
+  },
+  {
+   "ein": "751966987",
+   "mission": "TO ELEVATE, EDUCATE, AND EQUIP THE HUMAN RESOURCES PROFESSION IN WEST TEXAS.",
+   "group": "A"
+  },
+  {
+   "ein": "872273824",
+   "mission": "Chabad Antigua Guatemala provides a center where Jewish residents and travelers can gather for Jewish studies, kosher food and religious prayer.",
+   "group": "Q"
+  },
+  {
+   "ein": "570314465",
+   "mission": "TO PUT CHRISTIAN PRINCIPLES INTO PRACTICE THROUGH PROGRAMS THAT BUILD HEALTHY MIND, SPIRIT AND BODY FOR ALL.",
+   "group": "P"
+  },
+  {
+   "ein": "833699888",
+   "mission": "TO PROMOTE & ACTIVELY PARTICIPATE IN TNR (TRAP, NEUTER, RETURN) IN ORDER TO PROVIDE TO PROVIDE A BETTER LIFE FOR ABUSED, ABANDONED, STRAY & INJURED COMMUNITY CATS AS AN EFFECTIVE MEANS OF POPULATION CONTROL. TO INCREASE COMMUNITY SUPPORT & EDUCATION OF TNR, EFFECIVE COLONY MANAGEMENT & PREVENTION OF ANIMAL CRUELTY. TO BE ADVOCATES OF ANIMAL WELFARE IN THE COMMUNITY.",
+   "group": "D"
+  },
+  {
+   "ein": "844321038",
+   "mission": "Mosaic Changemakers is a social impact organization with a single aim: to weave a better South by uplifting, growing and connecting leaders of color.",
+   "group": "R"
+  },
+  {
+   "ein": "237258669",
+   "mission": "To develop, improve and beautify the Village of Watch Hill, to secure public health and cultivate public spirit as well as to quicken the social and intellectual life of the people. To lessen the burden of government in preserving Watch Hill history, as well as to better the general condition and appearance of the Village, along with maintaining the Library in the Memorial Building.",
+   "group": "A"
+  },
+  {
+   "ein": "921206594",
+   "mission": "Host charity events (golf tournaments, sporting clay shoots, etc.) to raise funds for established charities whose missions are to serve children, families, and service members throughout the USA. Providing corporations who share a common passion for philanthropic outreach in their community a platform to do so.",
+   "group": "O"
+  },
+  {
+   "ein": "300176646",
+   "mission": "TO CONSTRUCT, OWN AND OPERATE STUDENT HOUSING FACILITIES ON THE CAMPUS OF ONONDAGA COMMUNITY COLLEGE INCLUDING ALL NECESSARY OR APPROPRIATE RELATED ACTIVITIES.",
+   "group": "B"
+  },
+  {
+   "ein": "541864103",
+   "mission": "Appomattox Youth Sports Inc provides sporting opportunities for youth in county with coaches and equipment for basketball, baseball, softball, wrestling, cheerleading, for boys and girls regardless of race, religion, color, or creed.",
+   "group": "N"
+  },
+  {
+   "ein": "770453437",
+   "mission": "TO PROVIDE A SHELTER IN A NATURAL LIKE SETTING FOR LARGE WILD FELINE CATS, AND TO PROVIDE EDUCATIONAL SERVICES TO ELEMENTARY SCHOOLS PERTAINING TO THE LIVES OF LARGE WILD CATS.",
+   "group": "U"
+  },
+  {
+   "ein": "237120682",
+   "mission": "SCIENTIFIC TESTING AND EDUCATION TO PRESERVE AND RESTORE THE HIGH WATER QUALITY AND THE TRADITIONAL CHARACTER OF MAINES LAKES, WATERSHEDS AND RELATED NATURAL RESOURCES.",
+   "group": "C"
+  },
+  {
+   "ein": "810450234",
+   "mission": "CREATING NEW AND EDUCATED SUPPORTERS AND PARTICIPANTS IN THE SPORT OF RODEO AND ITS RELATED EVENTS BY PROVIDING A SAFE ENVIRONMENT FOR CONTESTANTS AND LIVESTOCK TO COMPETE AND DISPLAY THEIR SKILL AND ATHLETICISM. ENHANCING AND ENRICHING THE LIVES OF THE EAST HELENA COMMUNITY FAMILIES BY AWARDING SCHOLARSHIPS TO QUALIFIED STUDENTS. ANY PROFITS ARE USED FOR THE UPKEEP OF THE BUILDING, ARENA, AND THE ENTIRE RODEO FACILITY LOCATED IN EAST HELENA, MONTANA. WE ALSO BUILD COMMUNITY PARTNERSHIPS BY CONTRIBUTING TO OTHER COMMUNITY CHARITIES.",
+   "group": "N"
+  },
+  {
+   "ein": "911924571",
+   "mission": "THE PURPOSE OF MCSWAIN PARENTS CLUB IS TO PROVIDE SAFE, FAMILY-FRIENDLY ACTIVITIESFOR STUDENTS, AND TO SUPPORT ACADEMIC ACHIEVEMENT OF MCSWAIN STUDENTS.",
+   "group": "B"
+  },
+  {
+   "ein": "592749572",
+   "mission": "PROVIDE CONGREGATE LIVING FACILITY",
+   "group": "P"
+  },
+  {
+   "ein": "371458785",
+   "mission": "TRANSPORTATION OF PASSENGERS, MAIL AND FREIGHT TO SUPPORT A VIABLE YEAR-ROUND POPULATION ON ISLE AU HAUT MAINE AND TO SUPPORT THE NATIONAL PARK SERVICE ACADIA NATIONAL PARK ON THE ISLAND.",
+   "group": "W"
+  },
+  {
+   "ein": "203733638",
+   "mission": "RAISE MONEY FOR THE PRESERVATION OF LAND",
+   "group": "C"
+  },
+  {
+   "ein": "472415235",
+   "mission": "THE TRUST WOULD BE ENGAGED IN SOCIAL CAUSES SUCH AS HOSPITALS, SCHOOLS AND RELIEF CARE FOR THE UNDERPRIVILEGED ACROSS THE WORLD. ORGANIZED EXCLUSIVELY FOR CHARITABLE, RELIGIOUS, EDUCATIONAL AND SCIENTIFIC PURPOSES.",
+   "group": "E"
+  },
+  {
+   "ein": "881319013",
+   "mission": "AT XTRAGROW FOUNDATION, INC., OUR MISSION IS TO EDUCATE CHILDREN FROM FOURTH GRADE THROUGH COLLEGE ABOUT THE EXCEPTIONAL BENEFITS OF PREMIUM ORGANIC AGRICULTURE PRACTICES. WE ARE COMMITTED TO DEVELOPING, CERTIFYING, AND SUPPORTING YOUNG INDIVIDUALS IN ESTABLISHING LOCAL PREMIUM ORGANIC FARMS IN BOTH RURAL AND URBAN SETTINGS. BY DOING SO, WE AIM TO ENHANCE THE HEALTH, NUTRITION, AND WELL-BEING OF OUR COMMUNITIES.",
+   "group": "O"
+  },
+  {
+   "ein": "261420853",
+   "mission": "TO IMPROVE THE PHYSICAL ENVIRONMENT VIA THE DIRECT RESTORATION OF THE NATIVE HABITAT.",
+   "group": "C"
+  },
+  {
+   "ein": "237288089",
+   "mission": "PROVIDE ADULT GUIDANCE TO SINGLE PARENT CHILDREN.",
+   "group": "P"
+  },
+  {
+   "ein": "770261828",
+   "mission": "Church Assistance Ministry helps churches in the USA and around the world to multiply their impact by providing leadership development assistance for church leaders and denominations, and church focused missions.",
+   "group": "X"
+  },
+  {
+   "ein": "386142941",
+   "mission": "The mission of the Opera Grand Rapids is to produce professional opera of the highest possible quality and to effectively share the art with a broad and diverse audience.",
+   "group": "A"
+  },
+  {
+   "ein": "593225222",
+   "mission": "Missionary Evangelist",
+   "group": "X"
+  },
+  {
+   "ein": "471884563",
+   "mission": "HARMONY MENTAL HEALTH, INC. IS A TRAUMA-INFORMED MENTAL HEALTH AND SOCIAL SERVICES AGENCY PROVIDING DIRECT SERVICES TO WV CHILDREN AND FAMILIES.",
+   "group": "F"
+  },
+  {
+   "ein": "464298530",
+   "mission": "Service organization for veterans groups in Blount County.",
+   "group": "W"
+  },
+  {
+   "ein": "256090007",
+   "mission": "Veterans Organization to provide support and services to local veterans",
+   "group": "W"
+  },
+  {
+   "ein": "611806775",
+   "mission": "Hope for Life serves impoverished youth through holistic care, providing stability in their lives and empowering them with resources and education needed to obtain a flourishing future for themselves and their community.",
+   "group": "P"
+  },
+  {
+   "ein": "271162601",
+   "mission": "PROVIDING FINANCIAL ASSISTANCE FOR VARIOUS NEEDS SUCH AS TRANSPORTATION COSTS, NUTRITION SUPPLEMENTS, AND OTHER CANCER-RELATED NEEDS AS APPROVED BY THE BOARD.",
+   "group": "T"
+  },
+  {
+   "ein": "951756426",
+   "mission": "PRIMARY AND SECONDARY EDUCATIONAL SERVICES FROM A CHRISTIAN PERSPECTIVE.",
+   "group": "B"
+  },
+  {
+   "ein": "882654677",
+   "mission": "We are a non-profit that works with communities in Malawi and Mozambique Africa by providing meals, education, and healthcare to impoverished communities. We are fully sponsored by donors monies.",
+   "group": "Q"
+  },
+  {
+   "ein": "221574481",
+   "mission": "SOCIAL AND RECREATION ACTIVITIES",
+   "group": "N"
+  },
+  {
+   "ein": "464210178",
+   "mission": "Atlas Scholars prepares high-potential students from underserved communities for success in college and competitive careers through a rigorous, multi-year professional development program. The organization delivers mentorship, career exposure, leadership training, and academic support within an intership-like structure that builds soft skills, workplace readiness, and long-term career preparation.",
+   "group": "J"
+  },
+  {
+   "ein": "201656291",
+   "mission": "PROMOTE, TEACH AND GOVERN THE GAME OF SOCCER ON AN ORGANIZED BASIS FOR MEMBER BOYS AND GIRLS.",
+   "group": "N"
+  },
+  {
+   "ein": "150543658",
+   "mission": "CAZENOVIA COLLEGE CULTIVATES STUDENT GROWTH AND CREATIVITY THROUGH ENGAGEMENT WITH AN INVOLVED FACULTY AND STAFF WHO PROVIDE A SUPPORTIVE, PERSONALIZED LEARNING ENVIRONMENT. CAZENOVIA'S DISTINCT BLEND OF LIBERAL ARTS AND PROFESSIONAL STUDIES ENCOURAGES INDIVIDUALIZED ACADEMIC PROGRAMS ENHANCED BY INTERNSHIPS AND APPLIED LEARNING ACTIVITIES, CREATING THE ENVIRONMENT FOR BOTH TRADITIONAL AND ADULT LEARNERS TO ACHIEVE THEIR UNIQUE EDUCATIONAL AND CAREER GOALS.",
+   "group": "B"
+  },
+  {
+   "ein": "453735906",
+   "mission": "Charitable, Educational, Historic and Eleemosynary purposes",
+   "group": "B"
+  },
+  {
+   "ein": "823073678",
+   "mission": "Breaking inter generational cycle of poverty.",
+   "group": "Q"
+  },
+  {
+   "ein": "454292280",
+   "mission": "THE ORGANIZATION OPERATES TO PROMOTE THE GAME OF BASKETBALL FOR YOUTH OF THE COMMUNITY THROUGH A REGINAL BASKETBALL LEAGUE ENGAGING 200+ YOUTH BETWEEN THE AGES OF 9-16 YEARS OLD",
+   "group": "N"
+  },
+  {
+   "ein": "060646976",
+   "mission": "THE YMCA OF GREENWICH ENRICHES THE COMMUNITY BY DEVELOPING AND NURTURING YOUTH, PROMOTING HEALTHY LIVING FOR ALL AND FOSTERING SOCIAL RESPONSIBILITY.",
+   "group": "P"
+  },
+  {
+   "ein": "871731676",
+   "mission": "TO FURTHER PUBLIC UNDERSTANDING AND EDUCATION ABOUT THE DIGITAL AND VIRTUAL ARTS SUBCULTURE, INCLUDING TECHNOLOGY, HISTORY, VISUAL AND VIRTUAL PERFORMANCE ART. FOR TEH EDUCATION OF THE DIGITAL AND VIRTUAL ARTS THROUGH CONFERENCES, WORKSHOPS, AND COLLAGORATIVE SPACES THAT INFORM AND EDUCATE ON TOOLS, TECHNIQUES, AND SKILLS RELATED TO THE CREATION OF VIRTUAL ARTS AND ENTERTAINMENT.",
+   "group": "A"
+  },
+  {
+   "ein": "593546523",
+   "mission": "Protect, Preserve, Promote, and Interpret Parks for Public",
+   "group": "C"
+  },
+  {
+   "ein": "546076255",
+   "mission": "-SPONSOR TRAINING COURSES, WORKSHOPS AND SEMINARS-PROMOTE EXCHANGE OF INFORMATION BETWEEN PERSONS WORKING IN THE FIELD OF LABORATORY ANIMALS-PROMOTE IMPROVEMENTS IN THE HUMANE CARE AND USE OF LABORATORY ANIMALS-RECOGNIZE OUTSTANDING PERSONS IN THE FIELD OF LABORATORY ANIMALS-PROVIDE CURRENT INFORMATION ON LABORATORY ANIMAL SCIENCE TO INTERESTED MEMBERS OF THE GENERAL PUBLIC, NEWS MEDIA, OR GOVERNMENTAL ORGANIZATIONS-SUPPORT OTHER NONPROFIT ORGANIZATINS WITH SIMILAR GOALS",
+   "group": "D"
+  },
+  {
+   "ein": "421737854",
+   "mission": "HARNESS HEALING POWER OF THE ELEMENTS WITH THE DETERMINATION OF THE HUMAN SPIRIT TO BENEFIT LIVES AFFECTED BY CANCER.RENEWING,REBUILDING,AND RESTARTING LIVES AFTER CANCER THROUGH OUTDOOR ADVENTURE.",
+   "group": "G"
+  },
+  {
+   "ein": "832874493",
+   "mission": "Our mission is to provide financial assistance to Georgia residents who cannot afford veterinary care for their beloved furry family members.",
+   "group": "D"
+  },
+  {
+   "ein": "383822008",
+   "mission": "IMMIGRANT OUTREACH",
+   "group": "P"
+  },
+  {
+   "ein": "481248592",
+   "mission": "TO HELP WOMEN BECOME SUCCESSFUL IN LIFE AND REACH THEIR FULL POTENTIAL",
+   "group": "J"
+  },
+  {
+   "ein": "421579061",
+   "mission": "A YEAR-ROUND PROGRAM FOR CHILDREN WHOSE PARENTS ARE INCARCERATED.",
+   "group": "N"
+  },
+  {
+   "ein": "231672348",
+   "mission": "TO CHAMPION UNITED WAY AS A LEADER AND PARTNER IN BUILDING MORE FINANCIALLY RESILIENT FAMILIES AND THRIVING COMMUNITIES THROUGHOUT PENNSYLVANIA",
+   "group": "T"
+  },
+  {
+   "ein": "582345821",
+   "mission": "TO RECOVER, RESTORE AND SUPPORT THE PRESERVATION AND EDUCATION FOR THE CONFEDERATE SUBMARINE THE H.L.HUNLEY",
+   "group": "A"
+  },
+  {
+   "ein": "911852718",
+   "mission": "TENNIS RECREATION AND SOCIAL EVENTS MAINTAINED DURING THE SEASON FOR THE CLUB'S MEMBERS AND GUESTS.",
+   "group": "N"
+  },
+  {
+   "ein": "751375930",
+   "mission": "TO PROVIDE MAINTENANCE OF ROADS, COMMON AREAS AND VARIOUS FACILITIES AND TRASH COLLECTION FOR NOCONA HILLS RESIDENTS.",
+   "group": "L"
+  },
+  {
+   "ein": "813934741",
+   "mission": "PROVIDED ASSISTANCE TO COMMUNITY MEMBERS",
+   "group": "P"
+  },
+  {
+   "ein": "262884965",
+   "mission": "THE ORGANIZATION'S MISSION IS TO SAVE AND STRENGTHEN MARRIAGES BY TRAINING AND EQUIPPING MENTORS.",
+   "group": "P"
+  },
+  {
+   "ein": "260624806",
+   "mission": "TO PROVIDE NON-DENOMINATIONAL CHRISTIAN EDUCATION OPPORTUNITIES IN FORT COLLINS AND THE NORTHERN COLORADO REGION.",
+   "group": "B"
+  },
+  {
+   "ein": "800200534",
+   "mission": "ILM ACADEMYS MISSION IS TO PROVIDE RELIGIOUS BASED EDUCATIONAL SERVICES TO CHILDREN IN THE METROPOLITAN ATANTA GEORGIA AREA. ILM PROVIDES SERVICES FOR CHILDREN PRE-KINDERGARTEN THROUGH EIGHTH GRADE.",
+   "group": "B"
+  },
+  {
+   "ein": "611795683",
+   "mission": "Community building using performing arts",
+   "group": "A"
+  },
+  {
+   "ein": "272662317",
+   "mission": "To promote and foster education and training related to environmental preservation, community journalism, media and the visual and creative arts, and to solicit funds and equipment to support the programs and activities of the Kiowa County Media Center.",
+   "group": "A"
+  },
+  {
+   "ein": "474088844",
+   "mission": "TO ENHANCE NEBRASKA'S RESPONSE TO CHILD ABUSE.",
+   "group": "I"
+  },
+  {
+   "ein": "814673333",
+   "mission": "TO PROTECT LIFE AND PROPERTY IN CUMMINGS TOWNSHIP AND SURROUNDING MUNICIPALITIES THROUGH OFFERING RELATED PREVENTION INFORMATION AND ACTIVITIES AND BY PROVIDING FIRE, RESCUE AND EMERGENCY MEDICAL SERVICES.",
+   "group": "M"
+  },
+  {
+   "ein": "451256761",
+   "mission": "Our mission to empower children to thrive socially, emotionally, and academically through the mentorship and mindsets of world-class athletes. Classroom Champions envisions a community that brings together children and the world's best to learn the skills they need to succeed in and out of the classroom. We believe every child has the right to learn the process of excellence, yet many students in under-served communities face significant barriers to gaining these critical skills. Therefore we work hard to partner with teachers to instill qualities of excellence in students that will last the rest of their lives. We measure for improvements in key areas for students' future success including goal setting ability and perseverance, school engagement, digital literacy, and interpersonal skills; areas that lead to increased academic performance.",
+   "group": "B"
+  },
+  {
+   "ein": "521192229",
+   "mission": "THE SCHOOL'S STAFF IS COMMITTED TO GUIDING CHILDREN IN THEIR LEARNING WHILE ALSO FACILITATING COMMUNITY-BUILDING AND CREATING AN ENGAGING, EMPOWERING, AND PRODUCTIVE LEARNING ENVIRONMENT.",
+   "group": "B"
+  },
+  {
+   "ein": "810466780",
+   "mission": "Support group to organize special activities at Bannack State Park.",
+   "group": "X"
+  },
+  {
+   "ein": "311222476",
+   "mission": "THE MISSION OF THE REGIONAL CHAMBER OF NE INDIANA, INC. IS TO PROMOTE AN ENVIRONMENT IN NE INDIANA IN WHICH INDIVIDUALS, BUSINESSES, AND COMMUNITIES THRIVE IN A GLOBAL ECONOMY.",
+   "group": "S"
+  },
+  {
+   "ein": "832118678",
+   "mission": "TO PROMOTE WELLBEING THROUGH COMMUNITY-WIDE SUPPORT OF HEALTHY, ACTIVE LIVES. WE ENVISION A YEAR-ROUND SERIES OF FITNESS EXPERIENCES: ACTIVE PEOPLE ENJOYING MINNESOTA'S GREAT OUTDOORS, LEADING HEALTHY LIVES, AND CONTRIBUTING TO A VIBRANT COMMUNITY.",
+   "group": "N"
+  },
+  {
+   "ein": "934307578",
+   "mission": "TO GIVE SCHOLARSHIPS FOR COLLEGE, SPORTS CAMPS, MEDICAL BENEFITS, MEDICAL TRAVEL EXPENSES, MEMORIAL EVENTS, AND OTHER PEOPLE AND FAMILIES' NEEDS IN COY'S MEMORY.",
+   "group": "B"
+  },
+  {
+   "ein": "201297616",
+   "mission": "We seek to provide the local and global community with orthopedic care and medical education.",
+   "group": "E"
+  },
+  {
+   "ein": "710795921",
+   "mission": "TO BENEFIT THE PUBLIC THROUGH THE FINANCIAL SUPPORT OF THE CROSSETT HEALTH FOUNDATION AND ANY OTHER AFFILIATE THEREOF QUALIFYING AS A 501 (C) (3) OR 509 (A) ORGANIZATION.",
+   "group": "T"
+  },
+  {
+   "ein": "465412595",
+   "mission": "THE ROARING FORK MOUNTAIN BIKE ASSOCIATION IS DEDICATED TO CREATING AND SUSTAINING THE BEST POSSIBLE MOUNTAIN BIKE TRAIL SYSTEM AND EXPERIENCE IN THE ROARING FORK VALLEY.",
+   "group": "N"
+  },
+  {
+   "ein": "113261800",
+   "mission": "addresses the needs of the Haitian-Ameri",
+   "group": "P"
+  },
+  {
+   "ein": "271008537",
+   "mission": "Personalized Support and Guidance to Help Youth Succeed",
+   "group": "N"
+  },
+  {
+   "ein": "994116321",
+   "mission": "THE ORGANIZATION'S GOAL IS TO DEVELOP AFFORDABLE PET INSURANCE PLANS, PARTNERSHIPS FOR PREVENTIVE CARE, AND NEW WAYS TO REDUCE THE COST OF PET HEALTHCARE AND WELLNESS SERVICES.",
+   "group": "D"
+  },
+  {
+   "ein": "263186806",
+   "mission": "POETRY AND SONG",
+   "group": "A"
+  },
+  {
+   "ein": "134242476",
+   "mission": "GUARDIAN ANGEL CENTER IS ORGANIZED TO PROVIDE ASSISTANCE TO INDIGENT INDIVIDUALS AND SINGLE PARENTS.",
+   "group": "P"
+  },
+  {
+   "ein": "823197744",
+   "mission": "TO PROMOTE SOCIAL FORMATION THROUGH SPIRITUAL, INTELLECTUAL, AND PHYSICAL DEVELOPMENT AND TO IMPROVE THE QUALITY OF THE LIVES OF CHILDREN, ADOLESCENTS, AND TEENAGERS IN IMPOVERISHED COUNTRIES AROUND THE WORLD.",
+   "group": "X"
+  },
+  {
+   "ein": "680450910",
+   "mission": "TO SUPPORT CHORAL MUSIC STUDENTS AT NORTHGATE HIGH SCHOOL AND TO CARRY ON OTHER CHARITABLE AND EDUCATIONAL ACTIVITIES ASSOCIATED WITH THIS GOAL SUCH AS PROVIDING STUDENTS AND TEACHERS IN THE NORTHGATE HIGH SCHOOL MUSIC PROGRAMS FUNDING FOR MUSICAL PROGRAMS AND EDUCATION.",
+   "group": "B"
+  },
+  {
+   "ein": "136218203",
+   "mission": "SCOTTISH HERITAGE USA WAS FOUNDED IN 1965 BY WARD MELVILLE \"TO RECOGNIZE AND ENHANCE THE ORIGINAL BONDS OF ANCESTRAL AND NATIONAL CHARACTER AMONG THE PEOPLE OF BETWEEN SCOTLAND AND THE PEOPLES OF THE UNITED STATES.\" WE INVITE ALL PEOPLE OF SCOTTISH DESCENT OR WHO ARE INTERESTED IN SCOTLAND TO JOIN US IN FURTHERING THE EXCHANGE OF IDEAS AND PEOPLE BETWEEN OUR TWO COUNTRIES.",
+   "group": "A"
+  },
+  {
+   "ein": "510138414",
+   "mission": "Performed at the University of Minnesota Chruches within the state of Minnesota and at concert auditoriums during 2024",
+   "group": "A"
+  },
+  {
+   "ein": "822350489",
+   "mission": "We are committed to unlocking the potential of twice exceptional and special needs students by offering a compassionate, clinically integrated education that nurtures resilience, confidence, and achievement, and to sharing this life-changing model beyond Long Island, so more children and families can find hope and possiblity where they once felt left behind.",
+   "group": "B"
+  },
+  {
+   "ein": "270062812",
+   "mission": "The mission of Words Beats and Life is to transform individual lives and communities through Hip-Hop culture in all its forms: emceeing, deejaying, graffiti, street art, spoken word poetry, dance, beat production, and knowledge of self.",
+   "group": "A"
+  },
+  {
+   "ein": "561817816",
+   "mission": "ELIMINATING CHILD ABUSE",
+   "group": "I"
+  },
+  {
+   "ein": "843259140",
+   "mission": "HUED SONGS PRODUCES EXPERIENCES THAT AMPLIFY BLACK JOY, BLACK CREATIVITY, AND BLACK BELONGING. THROUGH SONG, SPOKEN WORD, DANCE, AND HEART, OUR WORK IS ROOTED ACROSS THREE CORE PRINCIPLES: TO PROVIDE A PLATFORM ON WHICH BLACK AND BROWN ARTISTS CAN BE SEEN, HEARD, & PAID. THE ARTS ARE A RIGHT AND NOT A PRIVILEGE, THUS WE WORK TO REMOVE COST, GEOGRAPHY, AND PERCEPTION BARRIERS TO EVERY PERFORMANCE EVERY PERFORMANCE IS AN OPPORTUNITY TO BUILD BELONGING, EMPATHY, AND COMMUNITY FOR ALL.",
+   "group": "A"
+  },
+  {
+   "ein": "862306556",
+   "mission": "Dog rescue, adoption, rehoming and community support.",
+   "group": "D"
+  },
+  {
+   "ein": "043100105",
+   "mission": "OPERATION OF LOW INCOME HOUSING FOR THE ELDERLY AND HANDICAPPED, REGULATED AND ASSISTED BY THE DEPARTMENT OF HOUSING AND URBAN DEVELOPMENT (HUD).",
+   "group": "L"
+  },
+  {
+   "ein": "923110717",
+   "mission": "The organization's primary exempt purpose is to promote religious education, faith-based outreach, and community support.",
+   "group": "X"
+  },
+  {
+   "ein": "822961856",
+   "mission": "To provide individuals in need with coverage of everyday living expenses, medical expenses, family travel expenses in the event of an illness, and funeral expenses, In addition, the Foundation will provide educational scholarships to members of DEAFNA and certified DEA Task Force officer.",
+   "group": "Y"
+  },
+  {
+   "ein": "640519212",
+   "mission": "HOME FOR ORPHANED AND ABUSED CHILDREN.",
+   "group": "L"
+  },
+  {
+   "ein": "275413279",
+   "mission": "THRIFT SHOP THAT RECEIVES DONATED HOUSEHOLD ITEMS. THE ORGANIZATION WAS FORMED TO FINANCIALLY ASSIST THE BOYS & GIRLS CLUB OF PERHAM.",
+   "group": "P"
+  },
+  {
+   "ein": "611435438",
+   "mission": "IMPROVE QUALITY OF LIFE FOR RESIDENTS OF THE SLATE BELT AREA BY ADDRESSING LOCAL GOVERNMENT CONCERNS, PROGRAMS AND SERVICES ON A REGIONAL BASIS",
+   "group": "P"
+  },
+  {
+   "ein": "237394399",
+   "mission": "TO PROVIDE A PLACE FOR CHRISTIANS TO MEET FOR THE PURPOSE OF INCREASING THEIR KNOWLEDGE, AND BUILDING ON THEIR FAITH.",
+   "group": "N"
+  },
+  {
+   "ein": "261515468",
+   "mission": "THE ORGANIZATION IS COMMITTED TO PROCLAIMING THE GOOD NEWS OF THE GOSPEL THROUGH TV MINISTRY, SPEAKING ENGAGEMENTS IN VARIOUS CHURCHES, AND IN VARIOUS VENUES. THE ORGANIZATION IS AN INTERNATIONAL MINISTRY AND WELCOMES SUPPORT AND LIKE-MINDED INVOLVEMENT IN ALL ASPECTS OF ITS MINISTRY.",
+   "group": "X"
+  },
+  {
+   "ein": "825437028",
+   "mission": "TO PROMOTE TOURISM IN TOWNS COUNTY, GA.",
+   "group": "S"
+  },
+  {
+   "ein": "264591162",
+   "mission": "To provide safe, affordable housing for low income and elderly thru the use of HUDs Section 202 Program.",
+   "group": "L"
+  },
+  {
+   "ein": "464294818",
+   "mission": "TO CREATE A SOCIAL CLUB THAT WILL PROVIDE EDUCATION AND A NEXUS FOR ARTISTIC, SENSUAL AND SOCIAL EVOLUTION BY OFFERING CULTURAL EVENTS AND OTHER RESOURCES TO INDIVIDUALS AND COMMUNITIES WHO IDENTIFY AS HAVING AN ALTERNATIVE SEXUALITY.",
+   "group": "N"
+  },
+  {
+   "ein": "362167087",
+   "mission": "TO PROVIDE A HIGH QUALITY EDUCATION AND RESIDENTIAL PROGRAM FOR STUDENTS FROM LOWER INCOME AND SINGLE-PARENT FAMILIES.",
+   "group": "B"
+  },
+  {
+   "ein": "884242133",
+   "mission": "Improving lives by empowering communities to eliminate disparities of health, environmental quality, and opportunities",
+   "group": "P"
+  },
+  {
+   "ein": "650379532",
+   "mission": "DEDICATED TO EMPOWERING PERSONS WITH DISABILITIES OF ALL AGES TO REACH THEIR HIGHEST LEVEL OF ACHIEVEMENT AND TO ADVOCATE FOR SYSTEMS CHANGE THAT RESULTS IN ACCESS, CHOICE, EQUALITY, INCLUSION, AND INDEPENDENCE FOR ALL PEOPLE WITH DISABILITIES.",
+   "group": "P"
+  },
+  {
+   "ein": "472207010",
+   "mission": "Canopy Life International's (the Organization\") purpose is to open schools abroad with a particular focus on innovation and leadership. The mission is to adopt a curriculum that focuses on building a country's next generation of leaders. We do this through quality education, intentional relationships and environments that spark the imagination. Specifically, we are integrating design thinking into the national Kenyan curriculum, adjusting the teaching model to promote critical thinking amongst the students, and exposing them to the arts and other worldview experiences otherwise unreachable to students of their economic position. The Organization is also a Christian organization, standing firmly on the values of faith, family and Jesus Christ to guide students into strong character and purpose.",
+   "group": "B"
+  },
+  {
+   "ein": "202707577",
+   "mission": "Arborbrook Christian Academy partners with parents to equip, empower, and encourage students to cultivate godly character, pursue life-long learning, and love the Lord Jesus Christ.",
+   "group": "B"
+  },
+  {
+   "ein": "463360461",
+   "mission": "To encourage civil engagement and education as it relates to African Americans through theater and other forms of performing arts.",
+   "group": "A"
+  },
+  {
+   "ein": "384008955",
+   "mission": "THE CHURCH PROVIDES WEEKLY PRAYER MEETINGS, FASTING SERVICES, AND SUNDAY SERVICES IN THE MORNING AND AT NIGHT. AND WE ALSO PROVIDE A SAFE PLACE FOR WOMEN TO ORGANIZE AND PRAY. THE CHURCH ALSO PROVIDES SERVICES SUCH AS BAPTISM, CHILD DEDICATION, MARRIAGE CEREMONY, AND FUNERAL CEREMONY.",
+   "group": "X"
+  },
+  {
+   "ein": "264797659",
+   "mission": "TO PROVIDE AND ADMINISTER A VOLUNTEER RUN YOUTH FOOTBALL AND COMPETITIVE CHEERLEADING PROGRAM IN MANHEIM TOWNSHIP, LACNASTER COUNTY, PA.",
+   "group": "N"
+  },
+  {
+   "ein": "453087394",
+   "mission": "THE MISSION IS TO PROVIDE HOPE AND ASSISTANCE TO PEOPLE IN CRISIS WITHIN THE COMMUNITY OF GASTON COUNTY BY LEADING A COOPERATIVE EFFORT OF CHURCHES GOVERNMENT AND BUSINESSES TO CREATE A COMMUNINITY THAT LOVES YOUR NEIGHBOR AS YOURSELF.",
+   "group": "P"
+  },
+  {
+   "ein": "263308140",
+   "mission": "Religious/Educational Outreach to Women",
+   "group": "P"
+  },
+  {
+   "ein": "351772193",
+   "mission": "CARE AND SHELTER OF HOMELESS ANIMALS",
+   "group": "D"
+  },
+  {
+   "ein": "522100673",
+   "mission": "THE UNITED STATES-JAPAN BRIDGING FOUNDATION PROVIDES U.S. UNDERGRADUATES WHO DEMONSTRATE FINANCIAL NEED AND ACADEMIC MERIT WITH SCHOLARSHIPS TO STUDY ABROAD IN JAPAN, ALONG WITH MENTORSHIP AND NETWORKING OPPORTUNITIES.",
+   "group": "Q"
+  },
+  {
+   "ein": "870212472",
+   "mission": "WE PROVIDE OUR COMMUNITIES WITH EXPERIENCES THAT BUILD STRONG KIDS, STRONG FAMILIES, AND STRONG COMMUNITIES. WE STRIVE TO BE THE LEADER IN UNDERSTANDING AND MEETING OUR COMMUNITIES' NEEDS BY DEVELOPING AND ADAPTING HIGH QUALITY PROGRAMS AND EXPERIENCES THAT PROVIDE VALUE TO CHILDREN, ADULTS, AND FAMILIES.",
+   "group": "P"
+  },
+  {
+   "ein": "472241488",
+   "mission": "WEST VIRGINIA NONPROFIT HORSE RESCUE DEDICATED TO MAKING A DIFFERENCE FOR HORSES IN THE MOUNTAIN STATE",
+   "group": "D"
+  },
+  {
+   "ein": "942552919",
+   "mission": "Sutter Area Little League's mission is to promote, develop, and voluntarily support all individuals who participate in Little League Baseball. Through proper guidance and exemplary leadership, Sutter Area Little League helps youth develop qualities of citizenship, discipline, teamwork, and physical well-being. By promoting the values of character, courage, and loyalty, the Sutter Area Little League Baseball program is designed to develop responsible and well-rounded citizensnot just athletes. Boys and girls ages 414 from the community are encouraged to participate in the baseball and softball programs. No child who wishes to participate in Sutter Area Little League is denied the opportunity, regardless of skill or ability.",
+   "group": "N"
+  },
+  {
+   "ein": "526054320",
+   "mission": "VOLUNTEER FIRE COMPANY. WE SERVE TO PROTECT LIFE AND PROPERTY.",
+   "group": "M"
+  },
+  {
+   "ein": "263602833",
+   "mission": "THE MISSION OF THE KIRSTEN HAGLUND FOUNDATION FOR EATING DISORDERS IS TO PROVIDE HOPE, NETWORKING AND FINANCIAL AID TO THOSE SEEKING TREATMENT AND FREEDOM FROM EATING DISORDERS. THE FOUNDATION ALSO PROVIDES A VIRTUAL TRANSITIONAL LIVING PROGRAM.",
+   "group": "T"
+  },
+  {
+   "ein": "870787636",
+   "mission": "The organization's purpose is to assist land owners in conducting prescribed burns as a land management tool.",
+   "group": "C"
+  },
+  {
+   "ein": "611755464",
+   "mission": "Twin Cities Music Community Trust shall primarily provide opportunities for citizens of the state of Minnesota to participate in the creation, performance, or appreciation of the arts; and secondarily, provide assistance and educational opportunities to people in the music community.",
+   "group": "P"
+  },
+  {
+   "ein": "922021926",
+   "mission": "SUPPORT PEDIATRIC LEUKEMIA RESEARCH.",
+   "group": "G"
+  },
+  {
+   "ein": "475551630",
+   "mission": "THE PURPOSE OF THIS NON-PROFIT IS TO SUPPORT AND AUGMENT THE CURRENT AND FUTURE ACADEMIC SUCCESS AND ENDEAVORS OF THE STUDENTS OF WOODROW WILSON HIGH SCHOOL.",
+   "group": "B"
+  },
+  {
+   "ein": "226065423",
+   "mission": "TO PROVIDE AMBULANCE SERVICE TO THE RESIDENTS OF THE BOROUGH OF EMERSON",
+   "group": "E"
+  },
+  {
+   "ein": "630060895",
+   "mission": "GOLF, TENNIS, SWIMMING, FITNESS, SOCIAL EVENTS AND DINING EXCLUSIVELY FOR ITS MEMBERS, MEMBERS' FAMILIES AND THEIR GUESTS.",
+   "group": "N"
+  },
+  {
+   "ein": "931190084",
+   "mission": "TO PROMOTE AND HELP MAINTAIN HEALTHY, SOBER AND PRODUCTIVE LIFESTYLES BY SUPPORTING EFFORTS TO OBTAIN HOUSING, EMPLOYMENT AND PERSONAL RELATIONSHIPS FOR INDIVIDUALS STRUGGLING WITH ADDICTIONS.",
+   "group": "F"
+  },
+  {
+   "ein": "362942015",
+   "mission": "TO PROVIDE FOR THE SUPPORT, MAINTENANCE AND ADMINISTRATION OF THE PROGRAM FOR THE TRAINING OF APPRENTICES AND JOURNEYMEN WITHIN THE SHEET METAL INDUSTRY.",
+   "group": "J"
+  },
+  {
+   "ein": "205879944",
+   "mission": "HOMEOWNERS ASSOCIATION",
+   "group": "L"
+  },
+  {
+   "ein": "274399969",
+   "mission": "SUPPORT THE WOUNDED SOLDIERS OF THE 82D",
+   "group": "P"
+  },
+  {
+   "ein": "301290878",
+   "mission": "To receive and disburse charitable contributions for ministry services and the furtherance of the Apostolic Faith.",
+   "group": "X"
+  },
+  {
+   "ein": "900218218",
+   "mission": "PROVIDE HEALTH CARE BENEFITS FOR EMPLOYEES",
+   "group": "Y"
+  },
+  {
+   "ein": "205321961",
+   "mission": "FOUNDATION'S MISSION IS TO OPERATE FOR THE BENEFIT AND SUPPORT OF HUMANITARIAN OBJECTIVES OF GRAND PRIORY OF THE UNITED STATES OF AMERICA OF THE SOVEREIGN MILITARY ORDER OF THE TEMPLE OF JERUSALEM. TO WIT, TO HELP CHRISTIANS AT RISK IN AND AROUND THE HOLY LAND AND TO KEEP THE PILGRIM ROADS TO THE HOLY LAND OPEN FOR ALL PEOPLE OF FAITH. THIS IS DONE BY PROMOTING THE ENHANCEMENT OF CIVIL SOCIETY AND ADVOCACY OF RELIGIOUS TOLERANCE THROUGH EDUCATION, PROMOTING THE ADVANCEMENT OF NON-SECTARIAN, NON-ETHNIC, AND NON-PARTISAN PROGRAMS FOR THE SUPPORT OF CHRISTIANS AT RISK IN AND AROUND THE HOLY LAND. IT ALSO SEEKS TO PERPETUATE AND ENCOURGE THE STABILIZATION OF CHRISTIAN POPULATIONS IN AND AROUND THE HOLY LAND.",
+   "group": "W"
+  },
+  {
+   "ein": "510188740",
+   "mission": "Senior Citizen Services",
+   "group": "P"
+  },
+  {
+   "ein": "854259226",
+   "mission": "EQUITY KIDS ENVISIONS A WORLD WHERE PEOPLE ARE EMPOWERED TO BUILD A NEW, DIVERSE SOCIETY BASED ON TRUE EQUALITY AND EQUITY FOR ALL PEOPLE. EQUITY KIDS SUPPORTS THE DEVELOPMENT OF A BELOVED COMMUNITY, A TERM FOSTERED BY DR. MARTIN LUTHER KING JR. AND JOHN LEWIS THAT CAPTURED THE IMAGINATION OF PEOPLE OF GOODWILL ALL OVER THE WORLD. IN A BELOVED COMMUNITY, RACISM AND ALL FORMS OF DISCRIMINATION, BIGOTRY, AND PREJUDICE ARE REPLACED BY AN ALL-INCLUSIVE SPIRIT OF SISTERHOOD AND BROTHERHOOD.",
+   "group": "R"
+  },
+  {
+   "ein": "431684770",
+   "mission": "COMMUNITY SENIOR CENTERPROVIDE MEALS TO SENIOR CITIZENS & HOMEBOUND CITIZENS",
+   "group": "P"
+  },
+  {
+   "ein": "471683576",
+   "mission": "MENTORING ORGANIZATION DEDICATED TO SERVICNT YOUR AGES 8-18 IN THE GREATER CINCINNATI AREA BY PROVIDING POSITIVE ROEL MODELS, TEACHING RELATIONSHIP SKILLS, AND DEVELOPING",
+   "group": "O"
+  },
+  {
+   "ein": "680455765",
+   "mission": "TO PROVIDE EDUCATIONAL SCHOLARSHIPS AND CURRICULUM GRANTS.",
+   "group": "B"
+  },
+  {
+   "ein": "831222799",
+   "mission": "TO PROVIDE SCHOLARSHIPS FOR MERCED HIGH AG STUDENTS",
+   "group": "B"
+  },
+  {
+   "ein": "264128928",
+   "mission": "East Chambers Youth Baseball Assocation promotes physical, mental, and emotional development of the youth in the community through participation in organized baseball activities. The organization provides a safe, structured, and positive environment for boys and girls to learn the funamentals of baseball, teamwork, sportsmanships, and leadership. The association fosters character development and encourages healthy lifestyles among participants.",
+   "group": "N"
+  },
+  {
+   "ein": "061289212",
+   "mission": "French School for adults",
+   "group": "P"
+  },
+  {
+   "ein": "454171417",
+   "mission": "TO SUPPORT THE STUDENTS AND TEACHERS OF OLD POST ROAD SCHOOL IN WALPOLE MA",
+   "group": "B"
+  },
+  {
+   "ein": "261247521",
+   "mission": "Enable older adults to thrive as they age in our community",
+   "group": "P"
+  },
+  {
+   "ein": "844138334",
+   "mission": "ACTS OF POINTE COUPEE IS A BRANCH OF A WIDER ORGANIZATION THAT ORGANIZES ACTS RETREATS TO PROVIDE COMMUNAL RETREAT EXPERIENCES FOR MEMBERS OF THE CATHOLIC CHURCH.",
+   "group": "X"
+  },
+  {
+   "ein": "742855426",
+   "mission": "TO PROVIDE EMERGENCY MEDICAL SERVICE & TRANSPORTATION IN EVENT OF MEDICAL EMERGENCIES.",
+   "group": "E"
+  },
+  {
+   "ein": "833477623",
+   "mission": "Our Purpose. We help economically disadvantaged children learn. Mission. We collaborate with public elementary school teachers to provide services and products to get all students caught up to grade level. In the effort to close the economic inequality gap, we have to bring these young children further along - or these little ones will be left behind at the beginning of their education.",
+   "group": "B"
+  },
+  {
+   "ein": "992795965",
+   "mission": "TO BUILD A NATIONAL SUPPORT NETWORK TO ALLEVIATE THE NUTRITIONAL AND VETERINARIAN EXPENSES ASSOCIATED WITH CARING FOR THE DOGS AND HORSES USED BY NONPROFIT ORGANIZATIONS SPECIALIZING IN VETERAN THERAPEUTIC TREATMENT.",
+   "group": "W"
+  },
+  {
+   "ein": "650945355",
+   "mission": "TO ACQUIRE FUNDS AND OTHER ASSETS BY GIFT, DONATION, OR OTHERWISE TO PROVIDE FUNDS TO PROMOTE BREAST HEALTH AWARENESS THROUGH EDUCATION AND CARE.",
+   "group": "E"
+  },
+  {
+   "ein": "275078437",
+   "mission": "APPLY THE ALL HAZARDS, ONE HEALTH, ONE NATURE APPROACH TO HEALTH EQUITY, ENVIRONMENTAL JUSTICE, NATIONAL RESILIENCE, AND DISASTER READINESS WHILE PROVIDING ECONOMICAL SOLUTIONS FOR TRAINING IN PHYSICAL AND BEHAVIORAL HEALTHCARE, DISASTER PLANNING AND RESPONSE, PROMOTE RESILIENCE, AND TECHNICAL SKILLS NECESSARY FOR UNSERVED AND UNDER-SERVED COMMUNITIES IMPACTED BY EMERGENCY AND DISASTER EVENTS.",
+   "group": "M"
+  },
+  {
+   "ein": "222362452",
+   "mission": "to help our members by providing opportunities for resource exchange, professional development and interdisciplinary collaboration through networking events, educational programs, strategic partnerships and promoting public awareness of the organization and its mission.",
+   "group": "P"
+  },
+  {
+   "ein": "881659904",
+   "mission": "To provide free and subsidized bus transportation to pilgrims visitng the holy site of the Lubavitcher Rebbe's Ohel.",
+   "group": "X"
+  },
+  {
+   "ein": "364046332",
+   "mission": "ALPHA KAPPA ALPHA HOUSING FOUNDATION IS ORGANIZED FOR NON-PROFIT PURPOSES WHICH INCLUDE RELIGIOUS, CHARITABLE, SCIENTIFIC, LITERARY AND EDUCATIONAL SUPPORT: 1. To assist college and professional students, former students, and graduates in the acquisition and ownership of housing accommodations and aid them in the advancement of their education, research, civic, cultural, and socioeconomic and leadership development.2. To provide housing for low and moderate income families, families displaced from urban renewal areas as a result of government action, handicapped or disabled individuals in need of appropriate housing, and those individuals and families displaced as a result of a natural disaster.3. To train youth and community development volunteers engaged in a wide variety of community outreach projects to handle varying issues relating to youth and families stabilization including, but not limited to home acquisition and maintenance, home ownership matters, budget/financial managemen",
+   "group": "L"
+  },
+  {
+   "ein": "741992779",
+   "mission": "TO PROVIDE EDUCATIONAL SERVICES AND TRAINING TO THE ORGANIZATIONS MEMBERS.",
+   "group": "G"
+  },
+  {
+   "ein": "746095662",
+   "mission": "Yearly Arabian Horse Show, increase awareness to the community regarding Arabiab horses. Also includes the Egyptian line of Arabian horses at the 2024 horse show.",
+   "group": "N"
+  },
+  {
+   "ein": "274485942",
+   "mission": "The mission of the BLF is to be a source of private funding to enable the Bernardsville Public Library to continue to operate at a level of excellence without regard to variations in public funding.",
+   "group": "T"
+  },
+  {
+   "ein": "750957328",
+   "mission": "BUILD CARING, CONFIDENT YOUTH AND FUTURE LEADERS",
+   "group": "O"
+  },
+  {
+   "ein": "380763640",
+   "mission": "Solicit, receive, and administer funds exclusively for pleasure, recreation, and other non-profit purposes as permitted for organizations defined in IRC Section 501(c)7.",
+   "group": "N"
+  },
+  {
+   "ein": "742891327",
+   "mission": "TENNESSEE HOUSING DEVELOPMENT CORPORATION SEEKS RESOURCES TO CONTINUE TO DEVELOP AFFORDABLE HOUSING FOR LOW-INCOME CITIZENS.",
+   "group": "L"
+  },
+  {
+   "ein": "881319833",
+   "mission": "PLEASE SEE SCHEDULE O FOR PRIMARY EXEMPT PURPOSE.",
+   "group": "P"
+  },
+  {
+   "ein": "844356467",
+   "mission": "LATINA-LED SOCIAL JUSTICE ORGANIZATION FOCUSED ON ADVOCACY AND LEADERSHIP DEVELOPMENT TO INCREASE LATINA REPRESENTATION AS DECISION-MAKERS ACROSS ALL SECTORS OF COMMUNITY. WORKING TOWARDS ECONOMIC, EDUCATIONAL, POLITICAL, AND SOCIAL EQUITY.",
+   "group": "B"
+  },
+  {
+   "ein": "843703949",
+   "mission": "PUBLIC ASSISTANCE",
+   "group": "O"
+  },
+  {
+   "ein": "237181682",
+   "mission": "TO PROMOTE YOUTH ATHLETIC ACTIVITIES",
+   "group": "N"
+  },
+  {
+   "ein": "208410999",
+   "mission": "930 FRIENDS WAS INCORPORATED IN 2007 TO DEVELOP AND MANAGE COLLABORATIONS BETWEEN CHURCH HEALTH CENTER'S EYE CARE CLINIC AND OTHER TAX-EXEMPT ORGANIZATIONS. THESE COLLABORATIONS INCREASE BENEFICIAL CAPACITY TO TREAT EYE DISEASE AND TO FOSTER RESEARCH FOR THE PREVENTION OF BLINDNESS.",
+   "group": "H"
+  },
+  {
+   "ein": "351772608",
+   "mission": "COMMUNITY ANIMAL SUPPORT IN PUTNAM COUNTY, INDIANA.",
+   "group": "D"
+  },
+  {
+   "ein": "883152995",
+   "mission": "The organization exists to provide palliative care for chronically sick individuals in the community it serves. The organization's palliative careactivities will be predominantly in-home or home setting support as defined by the Center to Advance Palliative Care and the National Hospiceand Palliative Care Organization. Palliative care will be 100 percent of the organization's activities, and these activities will be conducted by itsservice providers and/or volunteers. The organization's activities will be funded through donations from donors primarily focused on charitableactivities in healthcare. Palliative care furthers the organization's exempt purposes of providing relief for chronically sick individuals fromsymptoms and the stress of serious illness, improving the quality of life for these individuals, and facilitating potentially significant savings onhealthcare expenses in the community. As a nonprofit, nonhospital, the organization will be able to provide necessary treatment to",
+   "group": "E"
+  },
+  {
+   "ein": "474358683",
+   "mission": "THE FOLLOWING ARE THE PURPOSES FOR WHICH THIS ORGANIZATION HAS BEEN ORGANIZED: THE PURPOSE OF THE ORGANIZATION IS TO PROTECT LIFE AND PROPERTY IN EVERY CAPACITY OF THE DEPARTMENTS TRAINING AND ABILITIES; AND THE SUPPRESSION OF ALL FORMS OF FIRE THAT MAY OCCUR IN THE AREA BOUNDED AS FOLLOWS; BEGINNING AT THE INTERSECTION OF INTERSTATE 10 AND THE WESTERN BOUNDARY OF JACKSON COUNTY AND FOLLOWING THE WESTERN BOUNDARY OF JACKSON COUNTY IN A NORTHERLY DIRECTION TO THE NORTHWEST CORNER OF SECTION 3, TOWNSHIP 7 SOUTH, AND RANGE 9 WEST, THENCE EASTERLY ALONG THE NORTHERN BOUNDARY OF SECTIONS 3, 2 AND 1 OF TOWNSHIP 7 SOUTH, AND RANGE 9 WEST, AND SECTION 1 AND 6 OF TOWNSHIP 7 SOUTH, AND RANGE 8 WEST TO THE NORTHEAST CORNER OF SECTION 6, TOWNSHIP 7 SOUTH, AND RANGE 8 WEST; THENCE IN A SOUTHERLY DIRECTION ALONG THE EASTERN BOUNDARY OF SECTION 6 AND 7, TOWNSHIP 7 SOUTH, AND RANGE 8 WEST TO THE NORTHERN RIGHT-OF-WAY OF INTERSTATE 10; THENCE IN AN EASTERLY DIRECTION ALONG THE NORTHERN RIGHT-OF-WAY OF",
+   "group": "M"
+  },
+  {
+   "ein": "262906249",
+   "mission": "OUR MISSION IS TO PROVIDE FOR FAMILIES IN OUR COMMUNITY RESOURCE REFERRAL AND INFORMATION SERVICES THAT WILL ENHANCE EDUCATIONAL VALUES IN THE LIVES OF THEIR CHILDREN WHILE ENCOURAGING CHILDREN TO BECOME PRODUCTIVE INDIVIDUALS IN OUR FUTURE. CRIB LINE SERVICES IS A SPONSOR OF THE CACF.",
+   "group": "O"
+  },
+  {
+   "ein": "991735506",
+   "mission": "To build the capacity of rural communities to support poeples healing from generational trauma to achieve health, safety, connection, and self-determination.",
+   "group": "S"
+  },
+  {
+   "ein": "833004554",
+   "mission": "PROVIDE CHRISTIAN MINISTRY TO YOUTH ATHLETES AND COACHES.",
+   "group": "O"
+  },
+  {
+   "ein": "166095039",
+   "mission": "HELPING PEOPLE IN THE COMMUNITY REALIZE THEIR POTENTIAL FOR BECOMING SELF-SUFFICIENT",
+   "group": "P"
+  },
+  {
+   "ein": "454672905",
+   "mission": "TO ENABLE GENEROUS INDIVIDUALS, FAMILIES, AND LOCAL BUSINESSES TO MAXIMIZE THEIR CHARITABLE SUPPORT THROUGH ORGANIZED, TARGETED COMMUNITY PHILANTHROPY.",
+   "group": "T"
+  },
+  {
+   "ein": "264582699",
+   "mission": "TO FOCUS ON YOUTH SUBSTANCE ABUSE PREVENTION THROUGH COMMUNITY MOBILIZATION",
+   "group": "F"
+  },
+  {
+   "ein": "943296652",
+   "mission": "SUPPORTING ART, EDUCATION AND THE ENVIRONMENT. THIS CORPORATION IS A NONPROFIT PUBLIC BENEFIT CORPORATION AND IS NOT ORGNAIZED FOR THE PRIVATE GAIN OF ANY PERSON. IT IS ORGANIZED UNDER THE NONPROFIT BENEFIT CORPORATION LAW FOR CHARITABLE PURPOSES. THE SPECIFIC PURPOSES FOR WHICH THIS CORPORATION IS FORMED ARE EXCLUSIVELY CHARITABLE WITHIN THE MEANING OF SECTION 501(C)(3) OF THE INTERNAL REVNEUE CODE OF 1986.",
+   "group": "A"
+  },
+  {
+   "ein": "815186152",
+   "mission": "GERIATRIC RESOURCE CASE MANAGEMENT AGENCY AIMS TO SUPPORT SENIORS IN LEAST RESTRICTIVE LEVEL OF CARE SUPPORTING THEIR HIGHEST LEVEL OF INDEPENDENCE.",
+   "group": "P"
+  },
+  {
+   "ein": "842625009",
+   "mission": "To be one more reason for families to say Yes to the fatherless through foster care and adoption.",
+   "group": "P"
+  },
+  {
+   "ein": "932230281",
+   "mission": "Fire Protection Volunteer",
+   "group": "M"
+  },
+  {
+   "ein": "411475752",
+   "mission": "BUILDS, GROOMS, AND MAINTAINS SNOWMOBILE TRAILS IN SCOTT COUNTY, MINNESOTA FOR BENEFIT OF ALL SNOWMOBILERS. THE ORGANIZATION IS STRICTLY MADE UP OF ALL VOLUNTEER SUPPORT. APPROX 23 MEMBERS DEVOTE OVER 2000 HOURS ANNUALLY TOWARDS ITS PROGRAMS.",
+   "group": "M"
+  },
+  {
+   "ein": "363416198",
+   "mission": "TO PROVIDE ACCESS TO EMPOWERING OUTDOOR RECREATION OPPORTUNITIES FOR INDIVIDUALS WITH DISABILITIES.",
+   "group": "N"
+  },
+  {
+   "ein": "873941290",
+   "mission": "RAISE FUNDS TO BUILD PARKS, WALKING TRAILS, ATHLETIC FIELDS, MAKING FACILITIES HANDICAP ACCESSIBLE, AND IMPROVEMENTS TO EXISTING FACILITIES IN OUR COMMUNITY.",
+   "group": "N"
+  },
+  {
+   "ein": "200562087",
+   "mission": "To offer a high quality program which encourages and facilitates all participants to realize opportunities for athletic participation, mental acuity and character development",
+   "group": "N"
+  },
+  {
+   "ein": "371554432",
+   "mission": "TO ADDRESS WITH CARE AND COMPASSION THE NEEDS OF THE PEOPLE OF LUMPKIN COUNTY GEORGIA BY OFFERING CHARITABLE HUMANITARIAN SERVICES.",
+   "group": "P"
+  },
+  {
+   "ein": "411696546",
+   "mission": "Support Blooming Prairie schools athletic activities.",
+   "group": "N"
+  },
+  {
+   "ein": "261761652",
+   "mission": "PROVIDE SPIRITUAL, EMOTIONAL, AND PHYSICAL ASSISTANCE TO SENIOR CITIZENS, ELIGIBLE PERSONS WITH DISABILITIES, AND THEIR CAREGIVERS.",
+   "group": "P"
+  },
+  {
+   "ein": "341979385",
+   "mission": "The purpose of the Friends of the Bellaire Library is to actively support and encourage the continuous improvements and enhancement of the Bellaire City Library.",
+   "group": "B"
+  },
+  {
+   "ein": "340969422",
+   "mission": "To develop the whole person - spirit, mind and body - through character development programs that reinforce Christian principles and that build strong kids, strong families and strong communities.",
+   "group": "P"
+  },
+  {
+   "ein": "200507940",
+   "mission": "Our motto is \"breaking the cycle of poverty through education\" - i.e. providing opportunities for children and young adults around the world in education + health and sustainable economic development",
+   "group": "T"
+  },
+  {
+   "ein": "872264313",
+   "mission": "Enhance the healthy lifestyles of Commun",
+   "group": "T"
+  },
+  {
+   "ein": "872676743",
+   "mission": "SOUTHERN CAPITAL PROJECT'S MISSION IS TO ENSURE WOMEN IN THE SOUTH HAVE EQUITABLE OPPORTUNITIES TO BUILD WEALTH.",
+   "group": "S"
+  },
+  {
+   "ein": "341157465",
+   "mission": "APPRENTICESHIP TRAINING: TO PROVIDE AN EDUCATED WELL-TRAINED WORKFORCE THROUGH A COOPERATIVE LABOR-MANAGEMENT EDUCATION PROGRAM.",
+   "group": "J"
+  },
+  {
+   "ein": "853352073",
+   "mission": "SUPPORT SOUTH ASIAN (DESI) FAMILIES AND FRIENDS OF LESBIAN, GAY, BISEXUAL, TRANSGENDER, QUEER AND QUESTIONING INDIVIDUALS TO LEARN ABOUT LGBTQ+ ISSUES, FIND COMMUNITY AND LEARN HOW TO BETTER SUPPORT LOVED ONES. OUR MISSION IS TO FOSTER UNDERSTANDING AND ACCEPTANCE AMONG FAMILIES.",
+   "group": "P"
+  },
+  {
+   "ein": "030417697",
+   "mission": "PROMOTE COMPANION ANIMAL WELFARE BY PROVIDING CHARITABLE AND EDUCATIONAL SERVICES AS WELL AS AFFORDABLE SPAY/NEUTER SERVICES",
+   "group": "D"
+  },
+  {
+   "ein": "161528821",
+   "mission": "Graycliff Conservancy is dedicated to the preservation of the Frank Lloyd Wright designed structures and grounds, along with the Ellen Biddle Shipman-designed gardens and landscape, that comprise Graycliff, the summer retreat of Isabelle & Darwin Martin of Buffalo, NY. The nonprofit organization strives to share the journey and all the stories of Graycliff, advancing the property as a publicly accessible historic site.",
+   "group": "A"
+  },
+  {
+   "ein": "842996414",
+   "mission": "To assist with fundraising to benefit \"Meals on Wheels\" in Malheur County and \"Help Them to Hope\" in surrounding areas.",
+   "group": "W"
+  },
+  {
+   "ein": "311605169",
+   "mission": "Support and Fundraising for Scioto Ridge",
+   "group": "B"
+  },
+  {
+   "ein": "043645006",
+   "mission": "WE PROVIDE TECHNICAL SOLUTIONS, FINANCIAL SERVICES & PROFESSIONAL SUPPORT TO USMX.",
+   "group": "S"
+  },
+  {
+   "ein": "391894354",
+   "mission": "Psychological & Spiritual Counseling",
+   "group": "X"
+  },
+  {
+   "ein": "232072722",
+   "mission": "CARING FOR FRIENDS, FOUNDED IN 1974, IS A FOOD BANK, PREPARED MEALS PROGRAM, AND CARING KITCHEN. OUR MISSION IS TO PROVIDE FOOD AND FRIENDSHIP TO SENIORS, KIDS AND ADULTS, THE HOMELESS, AND THOSE IN SHELTER IN GREATER PHILADELPHIA. WE ARE A VOLUNTEER ORGANIZATION SUPPORTED BY A SMALL STAFF. CARING FOR FRIENDS VOLUNTEERS SORT, PREPARE, PACK, AND DELIVER SIX DAYS A WEEK. WE PROVIDE FRESH, FROZEN, AND SHELF-STABLE FOOD TO FAITH-BASED AND COMMUNITY ORGANIZATIONS TO FILL THEIR PANTRIES AND SUPPORT THEIR FOOD SHARING PROGRAMS.",
+   "group": "K"
+  },
+  {
+   "ein": "205732142",
+   "mission": "Assistance to Childrens hospital patients",
+   "group": "E"
+  },
+  {
+   "ein": "833311050",
+   "mission": "Provide basic needs such as food, hygiene Products, Medical care and education for abandoned and orphaned Children at the Pillars of Africa",
+   "group": "W"
+  },
+  {
+   "ein": "742842560",
+   "mission": "TO PROMOTE THE SPORT OF PURE-BRED DOGS THROUGH AKC SANCTIONED AND LICENSED ACTIVITIES.",
+   "group": "D"
+  },
+  {
+   "ein": "752482631",
+   "mission": "RECRUIT AND TRAIN VOLUNTEERS TO SERVE AS ADVOCATES FOR ABUSED AND NEGLECTED CHILDREN.",
+   "group": "I"
+  },
+  {
+   "ein": "453955836",
+   "mission": "Minorities Advancement In Auto Industry",
+   "group": "S"
+  }
+ ]
+}

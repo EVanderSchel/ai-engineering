@@ -27,6 +27,17 @@ fast:
   timeout: {first_token: 10, attempt: 30, total: 60}
   guardrails: {pii_input: flag, injection: flag}
 
+# Self-hosted (step 6): Qwen2.5-0.5B-Instruct on llama-server (docker-compose.yml, service `llm`), on this PC's CPU.
+# Q8_0: on this CPU it's faster under load than Q4_K_M and as accurate as F16 (results/quantization.md).
+# A 0.5B model is for short, simple tasks, not a stand-in for Claude. No fallback: if the server is down, the request
+# fails rather than quietly costing money elsewhere. Its timeouts allow for a CPU that may be busy with 4 answers.
+local:
+  candidates:
+    - {provider: local, model: qwen2.5-0.5b-instruct-q8_0}
+  max_tokens_ceiling: 1024
+  timeout: {first_token: 15, attempt: 60, total: 90}
+  guardrails: {pii_input: flag, injection: flag}
+
 # Offline and free: answers by echoing the last message. For local development and load tests.
 stub:
   candidates:

@@ -1,0 +1,215 @@
+{
+  "cloud_price": {
+    "instance": "c7i.2xlarge (us-east-2, on demand)",
+    "usd_per_hour": 0.357
+  },
+  "ntee_majority": {
+    "category": "Human Services",
+    "share": 0.4075
+  },
+  "ntee_reference": {
+    "about": "accuracy of ntee-classification's own dev predictions (results/*_dev.json) on these 400 rows: the 25 groups, and the 9 broad categories their top group falls in",
+    "TF-IDF baseline": {
+      "groups": 0.5525,
+      "broad": 0.65
+    },
+    "LoRA Qwen2.5-0.5B (fine-tuned)": {
+      "groups": 0.585,
+      "broad": 0.68
+    },
+    "Claude Haiku 4.5 few-shot": {
+      "groups": 0.615,
+      "broad": 0.7225
+    },
+    "Claude Sonnet 5.5 guided": {
+      "groups": 0.635,
+      "broad": 0.7275
+    }
+  },
+  "models": {
+    "q4_k_m": {
+      "model": "qwen2.5-0.5b-instruct-q4_k_m",
+      "file_mb": 491,
+      "load_seconds": 41.1,
+      "peak_memory_mb": 688,
+      "single": {
+        "requests": 8,
+        "ttft_p50_ms": 409,
+        "ttft_p95_ms": 459,
+        "latency_p50_ms": 4431,
+        "latency_p95_ms": 5589,
+        "tokens_per_s_per_request": 30.9,
+        "tokens_per_s_total": 28.2,
+        "requests_per_s": 0.22
+      },
+      "best": {
+        "requests": 8,
+        "ttft_p50_ms": 1734,
+        "ttft_p95_ms": 1821,
+        "latency_p50_ms": 11176,
+        "latency_p95_ms": 11488,
+        "tokens_per_s_per_request": 13.5,
+        "tokens_per_s_total": 45.8,
+        "requests_per_s": 0.358
+      },
+      "transport_retries": 0,
+      "fidelity": {
+        "prompts": 16,
+        "identical_to_reference": 0,
+        "words_in_common_mean": 10.1,
+        "reference_words_mean": 102.6,
+        "repeats_itself": 16
+      },
+      "quiz": {
+        "rows": 400,
+        "accuracy": 0.63,
+        "unparseable": 2,
+        "same_as_reference": 0.8625
+      },
+      "ntee": {
+        "rows": 400,
+        "accuracy": 0.2875,
+        "unparseable": 17,
+        "same_as_reference": 0.5775
+      },
+      "task_timing": {
+        "quiz": {
+          "latency_p50_ms": 2106,
+          "latency_p95_ms": 2897,
+          "requests_per_s": 1.85
+        },
+        "ntee": {
+          "latency_p50_ms": 3464,
+          "latency_p95_ms": 4963,
+          "requests_per_s": 1.12
+        }
+      },
+      "cost_per_1k_usd": {
+        "generation_128_tokens": 0.277,
+        "classification": 0.0885
+      }
+    },
+    "q8_0": {
+      "model": "qwen2.5-0.5b-instruct-q8_0",
+      "file_mb": 676,
+      "load_seconds": 32.8,
+      "peak_memory_mb": 836,
+      "single": {
+        "requests": 8,
+        "ttft_p50_ms": 282,
+        "ttft_p95_ms": 304,
+        "latency_p50_ms": 4436,
+        "latency_p95_ms": 4572,
+        "tokens_per_s_per_request": 30.7,
+        "tokens_per_s_total": 29.1,
+        "requests_per_s": 0.227
+      },
+      "best": {
+        "requests": 16,
+        "ttft_p50_ms": 9422,
+        "ttft_p95_ms": 9469,
+        "latency_p50_ms": 16663,
+        "latency_p95_ms": 16833,
+        "tokens_per_s_per_request": 17.2,
+        "tokens_per_s_total": 61.4,
+        "requests_per_s": 0.48
+      },
+      "transport_retries": 0,
+      "fidelity": {
+        "prompts": 16,
+        "identical_to_reference": 1,
+        "words_in_common_mean": 26.3,
+        "reference_words_mean": 102.6,
+        "repeats_itself": 16
+      },
+      "quiz": {
+        "rows": 400,
+        "accuracy": 0.6525,
+        "unparseable": 1,
+        "same_as_reference": 0.965
+      },
+      "ntee": {
+        "rows": 400,
+        "accuracy": 0.21,
+        "unparseable": 6,
+        "same_as_reference": 0.9375
+      },
+      "task_timing": {
+        "quiz": {
+          "latency_p50_ms": 1995,
+          "latency_p95_ms": 3094,
+          "requests_per_s": 1.91
+        },
+        "ntee": {
+          "latency_p50_ms": 2791,
+          "latency_p95_ms": 3912,
+          "requests_per_s": 1.41
+        }
+      },
+      "cost_per_1k_usd": {
+        "generation_128_tokens": 0.2066,
+        "classification": 0.0703
+      }
+    },
+    "f16": {
+      "model": "qwen2.5-0.5b-instruct-fp16",
+      "file_mb": 1270,
+      "load_seconds": 33.7,
+      "peak_memory_mb": 1399,
+      "single": {
+        "requests": 8,
+        "ttft_p50_ms": 265,
+        "ttft_p95_ms": 535,
+        "latency_p50_ms": 8163,
+        "latency_p95_ms": 13979,
+        "tokens_per_s_per_request": 16.1,
+        "tokens_per_s_total": 14.2,
+        "requests_per_s": 0.111
+      },
+      "best": {
+        "requests": 8,
+        "ttft_p50_ms": 948,
+        "ttft_p95_ms": 973,
+        "latency_p50_ms": 12737,
+        "latency_p95_ms": 12831,
+        "tokens_per_s_per_request": 10.8,
+        "tokens_per_s_total": 40.2,
+        "requests_per_s": 0.314
+      },
+      "transport_retries": 1,
+      "fidelity": {
+        "prompts": 16,
+        "identical_to_reference": 16,
+        "words_in_common_mean": 102.6,
+        "reference_words_mean": 102.6,
+        "repeats_itself": 16
+      },
+      "quiz": {
+        "rows": 400,
+        "accuracy": 0.6525,
+        "unparseable": 1
+      },
+      "ntee": {
+        "rows": 400,
+        "accuracy": 0.21,
+        "unparseable": 11
+      },
+      "task_timing": {
+        "quiz": {
+          "latency_p50_ms": 1850,
+          "latency_p95_ms": 3158,
+          "requests_per_s": 1.83
+        },
+        "ntee": {
+          "latency_p50_ms": 2615,
+          "latency_p95_ms": 3890,
+          "requests_per_s": 1.48
+        }
+      },
+      "cost_per_1k_usd": {
+        "generation_128_tokens": 0.3158,
+        "classification": 0.067
+      }
+    }
+  }
+}
