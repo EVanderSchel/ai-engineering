@@ -7,8 +7,10 @@ import keys
 
 def test_the_committed_routes_file_is_valid():
     routes = config.load_routes()
-    assert {"smart", "fast", "stub"} <= routes.keys()
+    assert {"smart", "fast", "local", "stub"} <= routes.keys()
     assert routes["smart"].candidates[0].refusal_fallback
+    # The self-hosted route has no fallback: a request for the free model never quietly costs money elsewhere.
+    assert [c.provider for c in routes["local"].candidates] == ["local"]
 
 
 @pytest.mark.parametrize(

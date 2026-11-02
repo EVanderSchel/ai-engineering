@@ -5,9 +5,10 @@ Plain language: llama-server already speaks the same language as the gateway's o
 passes the request through and reads the answer back. What it adds is the same treatment every provider gets: the
 same error kinds, timeouts, retries and fallback decided by the router.
 
-The server's address comes from the environment (GATEWAY_LOCAL_URL, default http://localhost:8080/v1); in the
-Kubernetes cluster it's the llama-server service's in-cluster address. No API key by default: the server is only
-reachable inside the cluster.
+The server's address comes from the environment (GATEWAY_LOCAL_URL, default http://127.0.0.1:8081/v1: not localhost,
+which Windows tries over IPv6 first and can hang on, and port 8081 because an Apache server on this PC has 8080); in
+the Kubernetes cluster it's the llama-server service's in-cluster address. No API key by default: the server is only
+reachable on this PC, or inside the cluster.
 """
 
 import json
@@ -28,7 +29,7 @@ from providers import (
 )
 
 NAME = "local"
-DEFAULT_URL = "http://localhost:8080/v1"
+DEFAULT_URL = "http://127.0.0.1:8081/v1"
 
 FINISH_REASONS: dict[str, FinishReason] = {"stop": "stop", "length": "length", "content_filter": "content_filter"}
 
@@ -134,12 +135,14 @@ def to_usage(usage: dict | None) -> Usage:
 
 def status_error(status: int, body: str, provider: str) -> ProviderError:
     try:
-        message = json.loads(body)["error"]["message"]
+        error = json.loads(body)["error"]
+        message, kind = error["message"], error.get("type")
     except ValueError, KeyError, TypeError:
-        message = body[:200] or f"HTTP {status}"
+        message, kind = body[:200] or f"HTTP {status}", None
     if status in (401, 403, 404):
         return ProviderError("misconfigured", f"the server refused the gateway's request (HTTP {status})", provider)
-    if status == 413:
+    # llama-server answers 400 when a prompt won't fit a slot's share of the context: too large, not malformed.
+    if status == 413 or kind == "exceed_context_size_error":
         return ProviderError("too_large", message, provider)
     if status in (400, 422):
         return ProviderError("rejected", message, provider)

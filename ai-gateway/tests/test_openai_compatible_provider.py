@@ -129,6 +129,16 @@ def test_http_statuses_become_gateway_error_kinds(status, kind):
     assert status_error(status, '{"error": {"message": "x"}}', "local").kind == kind
 
 
+def test_a_prompt_over_the_context_is_too_large_not_malformed():
+    # What llama-server (build 12033) answers when a prompt won't fit a slot's share of the context.
+    body = (
+        '{"error": {"code": 400, "message": "request (3030 tokens) exceeds the available context size (2048 tokens), '
+        'try increasing it", "type": "exceed_context_size_error", "n_prompt_tokens": 3030, "n_ctx": 2048}}'
+    )
+    error = status_error(400, body, "local")
+    assert error.kind == "too_large" and "2048 tokens" in error.message
+
+
 @pytest.mark.anyio
 @pytest.mark.parametrize(
     "error, kind",

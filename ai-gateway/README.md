@@ -170,7 +170,7 @@ New files: `src/bedrock_provider.py` (the Bedrock adapter: Converse and Converse
 
 ### Stage 4: an adapter for OpenAI-compatible servers
 
-[`src/openai_compatible_provider.py`](src/openai_compatible_provider.py) talks to any server that speaks OpenAI's chat completions API: llama-server, which will run the self-hosted model in step 6, or vLLM. The request mostly passes straight through (system prompt back as a system message, `temperature` and `top_p` allowed: these models accept them); streams ask the server for usage, and the server's statuses map to the same error kinds as every other provider (llama-server's 503 while its model is loading counts as `unavailable`, so the router falls back). It's registered as the `local` provider (address from `GATEWAY_LOCAL_URL`, default `http://localhost:8080/v1`), but no route uses it until step 6 brings a model to serve.
+[`src/openai_compatible_provider.py`](src/openai_compatible_provider.py) talks to any server that speaks OpenAI's chat completions API: llama-server, which will run the self-hosted model in step 6, or vLLM. The request mostly passes straight through (system prompt back as a system message, `temperature` and `top_p` allowed: these models accept them); streams ask the server for usage, and the server's statuses map to the same error kinds as every other provider (llama-server's 503 while its model is loading counts as `unavailable`, so the router falls back). It's registered as the `local` provider (address from `GATEWAY_LOCAL_URL`, default `http://127.0.0.1:8081/v1`); step 6 gives it a route.
 
 New files: `src/openai_compatible_provider.py` and `tests/test_openai_compatible_provider.py` (17 tests against a mock HTTP transport: the request it sends, usage with cached tokens, streams with an error partway, every status and transport failure).
 
@@ -425,6 +425,63 @@ What it means:
 - **A measurement mistake caught**: the first run showed streamed answers arriving all at once. The in-memory test transport only returns a finished response, so streams are measured behind a real uvicorn server on localhost instead.
 
 New files: `src/measure_guardrail_latency.py` (the measurement) and `tests/test_measure_guardrail_latency.py` (4 tests of its summary logic); `results/guardrail-latency.{json,md}`.
+
+## Step 6: self-hosted inference
+
+Plain language: so far every answer came from Claude, rented by the token. Here the gateway also serves a small model running on this PC's CPU. It's far less capable, but it costs nothing per request, and nothing leaves the machine. Quantization (storing the model's numbers at lower precision, like a more compressed JPEG) is what makes it small and fast enough; stage 2 measures what each level gives up.
+
+### Stage 1: a local model behind the gateway
+
+[Qwen2.5-0.5B-Instruct](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF) quantized to Q4_K_M (491 MB) runs on llama-server, llama.cpp's own server, which speaks OpenAI's API. The gateway reaches it through the adapter from step 3 stage 4, as a new route `local`:
+
+```powershell
+# once: the model file into ai-gateway/models/ (gitignored), checked against Hugging Face's SHA-256
+curl.exe -L -o models/qwen2.5-0.5b-instruct-q4_k_m.gguf https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf
+docker compose --profile local up -d --wait llm     # ready in about 25 s
+```
+
+- **The server**: the official CPU image, pinned by digest. It has 4 slots that answer at once (continuous batching: new requests join the batch as others finish), 2,048 tokens of context each, and one thread per physical core. It's published on `127.0.0.1:8081`, because an Apache server on this PC already has 8080. `/health` answers 503 while the model loads; the adapter treats that as `unavailable`. Its peak memory is 688 MB: the model file it reads plus its context cache and working buffers (stage 2).
+- **The route**: `local` has one candidate and no fallback. A team that asked for the free model should get it or an error, not a paid answer from Claude without being told. Its guardrail defaults match the Claude routes (flag personal data and likely injections).
+- **Cost**: migration 005 prices each quantization at $0 per token, so the ledger records every request without a provider bill. The model's real cost is the machine it runs on; stage 2 measures that as cost per 1,000 requests at the measured throughput.
+- **Too long a prompt**: llama-server answers 400 `exceed_context_size_error` when a prompt won't fit a slot. The adapter maps it to `too_large`, so the client gets 413 `request_too_large` (what to fix) instead of a generic rejection.
+
+Checked through the real gateway (PostgreSQL keys and ledger, a team allowed only `local`): normal and streamed answers came back with `x-gateway-provider: local` and one attempt each. The first streamed word arrived in 0.10 s and the 28-word answer finished in 1.55 s. A 3,000-word prompt got 413, the `smart` route got 403 `route_not_allowed`, and the ledger has a row for each at $0.000000, naming the quantization that answered.
+
+An example answer to "In one sentence, what does a food bank do?": "A food bank provides food, groceries, and other necessities to those who cannot afford them, helping people in need." That's fine for a short, plain task like this; stage 2 measures where it stops being fine.
+
+New files: `migrations/005_local_model_prices.sql` (a $0 price row for each Qwen quantization). Changed: `docker-compose.yml` (the `llm` service, behind the `local` profile so `docker compose up -d db` is unchanged), `config/routes.yaml` (the `local` route), `src/openai_compatible_provider.py` (default address `127.0.0.1:8081`; context overflow as `too_large`); tests for the route, the overflow and that the migrations price every committed route.
+
+### Stage 2: quantization levels compared
+
+[src/measure_quantization.py](src/measure_quantization.py), free, about 35 minutes ([results/quantization.md](results/quantization.md)). The same model at three precisions: Q4_K_M (about 4.5 bits per weight), Q8_0 (8 bits) and F16 (16 bits, unquantized, the reference). Each runs alone on the same server settings and gets the same 897 requests, measured against llama-server directly (the gateway adds about a millisecond).
+
+| | Q4_K_M | Q8_0 | F16 |
+|---|---|---|---|
+| File / peak memory | 491 / 688 MB | 676 / 836 MB | 1,270 / 1,399 MB |
+| One request: first token, generation | 409 ms, 30.9 tokens/s | 282 ms, 30.7 tokens/s | 265 ms, 16.1 tokens/s |
+| Server total, 4 at once | 45.8 tokens/s | **61.0 tokens/s** | 40.2 tokens/s |
+| Same answer as F16, word for word (16 explanations) | 0 of 16, first differs after 10 words | 1 of 16, after 26 words | (reference) |
+| ARC-Easy (400 science questions, 4 choices) | 63.0% | **65.2%** | 65.2% |
+| Same ARC answer as F16 | 86.2% | 96.5% | (reference) |
+| Cost per 1,000 128-token answers | $0.28 | **$0.21** | $0.32 |
+
+What it shows:
+
+- **Smaller isn't faster here**: Q8_0 generates as fast as Q4_K_M one at a time and a third faster under load, with a quicker first token. Q4_K_M reads fewer bytes, but its packed 4-bit blocks take more arithmetic to unpack. The likely reason (not measured directly) is that on a model this small, this 2015 CPU (AVX2, no AVX-512) runs short of arithmetic before it runs short of memory bandwidth. F16 is slowest: twice Q8_0's bytes per token, and the CPU has no native 16-bit float math. On a different CPU or a larger model the order can change, which is why it's measured rather than assumed.
+- **Quantization changes answers early, and doesn't always make them worse**: with temperature 0 every model repeats itself exactly (16 of 16), so the differences from F16 are real, not noise. Q4_K_M's explanations part ways with F16's after about 10 words, Q8_0's after 26. On the quiz Q8_0 is as accurate as F16, with 96.5% of answers identical; Q4_K_M loses 2.2 points.
+- **4 slots means 4 at once**: the server's total stays flat beyond 4 requests, and the rest wait. At 8 at once the first token takes 9 to 14 s; at 16, 27 to 40 s. The `local` route allows 15 s for a first token, so beyond about 8 simultaneous requests the gateway would start answering 504. That's a capacity limit to plan for (more slots, a second replica in step 8, or a cap on concurrent requests per provider), and a reason to measure under load rather than one request at a time.
+- **The plain model can't do Project 4's task**: sorting 400 mission statements into 9 broad categories, it scores 21 to 29% at every precision, below the 40.8% of always answering "Human Services". The same 0.5B model fine-tuned in Project 4 scores 68.0% on these rows. Fine-tuning made the difference, not precision. (An earlier pilot on training rows, with Project 4's 25 groups, scored 0%: the model answered the same letter for nearly everything.)
+- **Cost, honestly**: a self-hosted model is paid by the hour, so cost per request depends on keeping it busy. At $0.357 an hour (a comparable cloud CPU, c7i.2xlarge in us-east-2), Q8_0 at full load is $0.21 per 1,000 128-token answers and $0.07 per 1,000 classifications, against $0.72 per 1,000 for Claude Haiku 4.5 on Project 4's task. Idle hours cost the same as busy ones.
+
+**Decision**: the `local` route now serves Q8_0 (and `docker compose --profile local up -d llm` starts it by default). It's faster under load, as accurate as F16, and the 148 MB it adds still fits the cluster's memory budget (design doc section 9, now about 3.25 of 3.8 GB). Q4_K_M stays an option with `LOCAL_MODEL`, for a machine where memory is tighter than arithmetic.
+
+How the measurement was kept honest:
+
+- **Quality data**: ARC-Easy was added because the plain model can't do NTEE, so NTEE accuracy couldn't separate the quantizations. 400 questions from ARC-Easy's test split, a standard benchmark small models can do (CC BY-SA 4.0, attributed in the file). NTEE rows come from Project 4's dev split only; its test split was scored once and isn't reused. The prompt shapes were tried on training rows, not on the 400 measured.
+- **Memory**: `docker stats` first reported about 1,016 MB for both Q4_K_M and Q8_0, right at the container's 1 GB limit, because it counts the file cache from reading the model. The figures above are llama-server's own peak resident memory (`VmHWM`), re-measured with `--memory-only`.
+- **One dropped connection**: the first run stopped when one stream's connection closed without an answer. It didn't reproduce in 36 targeted tries, so each request is now retried once on a dropped connection and the retry is counted: 1 in 2,691 requests, in the F16 run. The gateway does the same in production (a dropped connection is `unavailable`, retried once).
+
+New files: `src/measure_quantization.py` (the measurement: starts each model in turn, measures speed, fidelity, accuracy and memory, writes the report), `tests/test_measure_quantization.py` (18 tests of its logic, no server), `data/self_hosted/arc_easy_sample.json` (the 400 ARC-Easy questions), `data/self_hosted/ntee_dev_sample.json` (the 400 NTEE dev rows, the 9 broad categories, and Project 4's accuracy on these rows), `results/quantization.{json,md}` and `results/quantization/*.json` (each model's raw answers and timings).
 
 ## Setup
 

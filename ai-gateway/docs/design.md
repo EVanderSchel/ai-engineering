@@ -137,7 +137,8 @@ Two models the project serves itself, chosen to fit this PC (no NVIDIA GPU, Dock
 - **Qwen2.5-0.5B-Instruct on llama-server** (llama.cpp's server: OpenAI-compatible, continuous batching, parallel slots, `/health` and Prometheus `/metrics`; CPU image `ghcr.io/ggml-org/llama.cpp:server`). Quantizations compared: Q4_K_M (491 MB), Q8_0 (676 MB) and F16 (1.27 GB) from Qwen's official GGUF repository (downloads asked for first).
 - **The NTEE classifier from Project 4** (LoRA Qwen2.5-0.5B with a classification head), exported to ONNX in Colab and served with ONNX Runtime on CPU, fp32 vs. int8. Accuracy is measured on Project 4's dev split only: its test split has been used.
 - **Measured:** time to first token, tokens per second, latency p50/p95 and throughput at 1, 4, 8 and 16 concurrent requests; memory; accuracy or answer quality per quantization; cost per 1,000 requests at the measured throughput. The same instruct model on vLLM on a Colab T4 gives the GPU comparison point.
-- What a 0.5B model is for, honestly: short, simple tasks (classification, extraction from short text, routing). It's the `local` route and the last fallback of `fast`, not a substitute for Claude.
+- **As measured** (step 6 stage 2, `results/quantization.md`): on this CPU Q8_0 beats Q4_K_M on speed under load and on accuracy (ARC-Easy 65.2% vs 63.0%, the same as F16), for 148 MB more memory; throughput stops growing past the server's 4 slots. The plain model can't do the NTEE task (below the majority class at every precision), so ARC-Easy (400 test questions) is the accuracy measure, alongside agreement with F16.
+- What a 0.5B model is for, honestly: short, simple tasks (classification, extraction from short text, routing). It's the `local` route, not a substitute for Claude. (Planned as the last fallback of `fast` too; as built in stage 1, `local` stands alone, and that fallback waits until stage 2 has measured the model's answers: a silent fallback to a much weaker model is a quality decision, not just a resilience one.)
 
 ## 8. Observability
 
@@ -155,11 +156,11 @@ The cluster has to fit in Docker's 3.8 GB. Estimated working set (to be replaced
 | kind node (control plane, kubelet, system pods) | ~700 MB |
 | gateway, 2 replicas | ~300 MB |
 | PostgreSQL | ~150 MB |
-| llama-server, Qwen2.5-0.5B Q4_K_M | ~700 MB |
+| llama-server, Qwen2.5-0.5B Q8_0 (836 MB peak, measured in step 6) | ~850 MB |
 | classifier, ONNX int8 | ~700 MB |
 | OpenTelemetry collector | ~100 MB |
 | Prometheus + Grafana (plain charts, not the full kube-prometheus stack) | ~450 MB |
-| **Total** | **~3.1 GB** |
+| **Total** | **~3.25 GB** |
 
 - It fits only with the smallest model variants, so the fp32 and F16 measurements in step 6 run outside the cluster, one at a time.
 - Every pod sets memory requests and limits; a pod over its limit is killed and restarted rather than starving the node. The autoscaler (HPA) scales the gateway on CPU between 2 and 4 replicas; the model servers stay at one replica here (on a real cluster they would scale on queue depth).

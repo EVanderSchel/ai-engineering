@@ -26,5 +26,51 @@ services:
     # Small on purpose: this PC's Docker has about 3.8 GB in all.
     mem_limit: 256m
 
+  # llama-server (llama.cpp's server) running a small self-hosted model, the `local` provider (step 6). Started only
+  # when asked for, since it needs a model file in ./models (downloaded by hand, gitignored):
+  #
+  #     docker compose --profile local up -d llm
+  #     $env:LOCAL_MODEL = "qwen2.5-0.5b-instruct-q4_k_m"; docker compose --profile local up -d llm   # another one
+  #
+  # LOCAL_MODEL is the file's name without .gguf (default Q8_0, the route's model); it is also the model name the server reports, so the usage ledger
+  # records which quantization answered.
+  llm:
+    profiles: [local]
+    # Official CPU image, pinned by digest (llama.cpp build 12033). Its default port changed to 9931, so it's set.
+    image: ghcr.io/ggml-org/llama.cpp:server@sha256:0b0212befa4facc6fd1e34ee04e19f13b570d0b9ec87d26edf4c402dc0dd636f
+    command:
+      - --model
+      - /models/${LOCAL_MODEL:-qwen2.5-0.5b-instruct-q8_0}.gguf
+      - --alias
+      - ${LOCAL_MODEL:-qwen2.5-0.5b-instruct-q8_0}
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      # 4 slots answer at once (continuous batching); the 8192-token context is shared, so 2048 tokens each.
+      - --parallel
+      - "4"
+      - --ctx-size
+      - "8192"
+      # One thread per physical core of this PC's 4-core CPU: more (hyperthreads) usually slows generation.
+      - --threads
+      - "4"
+      - --metrics
+      - --no-webui
+    ports:
+      # 8081 on this PC: an Apache web server installed here already listens on 8080. Localhost only.
+      - "127.0.0.1:8081:8080"
+    volumes:
+      - ./models:/models:ro
+    healthcheck:
+      # /health answers 503 while the model loads and 200 once it can serve.
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    # Measured peak (results/quantization.md): Q4_K_M 688 MB, Q8_0 836 MB, F16 1399 MB, so F16 needs LOCAL_MEM=2g
+    # (src/measure_quantization.py sets it per model).
+    mem_limit: ${LOCAL_MEM:-1g}
+
 volumes:
   gateway-pgdata:
