@@ -12,6 +12,10 @@ more of the model's precision, to find what the damage came from:
 - matmul:                 the transformer's matrices only; the token embeddings stay fp32
 - matmul-perchannel:      the same, with one scale per output column instead of one per matrix
 - matmul-perchannel-head: the same, and the 25-way classification head stays fp32 too
+- matmul-reducerange, matmul-uint8: the remedies for int8 overflow on CPUs without VNNI
+- matmul-uint8-down-fp32: unsigned weights, with the 24 MLP down projections (the outliers' inputs) left in fp32
+- weightonly8, weightonly4-gather: weight-only quantization (activations stay fp32); 4-bit includes the embeddings
+- weightonly8-level4, weightonly4-gather-level4: the same, multiplied in integers with activations quantized per block
 
 Variants go in models/ntee/int8-<name>/ (gitignored). The check compares each one's logits with fp32's on the 64
 check rows; src/measure_classifier.py then measures the chosen one in full.
@@ -41,6 +45,19 @@ VARIANTS = {
     # scale and flatten everything else. Keeping the 24 down projections in fp32 tests that.
     "matmul-uint8-down-fp32": {"per_channel": False, "nodes_to_exclude": "down", "weight_type": QuantType.QUInt8},
 }
+# Weight-only: weights stored in 8 (or 4) bits with one scale per block of 128, and turned back into floats for the
+# multiply, so activations are never quantized and their outliers can't do damage (ONNX Runtime's MatMulNBits and,
+# for the embeddings, GatherBlockQuantized).
+# Only the 4-bit version quantizes the embeddings: asked for 8-bit Gather, this ONNX Runtime left them in fp32.
+WEIGHT_ONLY = {
+    "weightonly8": {"bits": 8, "ops": ("MatMul",)},
+    "weightonly4-gather": {"bits": 4, "ops": ("MatMul", "Gather")},
+    # Unset, the multiply turns weights back into floats on a general path: accurate but, at 8 bits, 7x slower than
+    # fp32 here. Level 4 multiplies in integers on the optimized kernels, quantizing activations per block of 128
+    # values rather than per tensor, so an outlier only coarsens its own block.
+    "weightonly8-level4": {"bits": 8, "ops": ("MatMul",), "accuracy_level": 4},
+    "weightonly4-gather-level4": {"bits": 4, "ops": ("MatMul", "Gather"), "accuracy_level": 4},
+}
 
 
 def down_projections() -> list[str]:
@@ -52,7 +69,24 @@ def down_projections() -> list[str]:
     return [n.name for n in model.graph.node if n.op_type == "MatMul" and shapes.get(n.input[1]) == [4864, 896]]
 
 
+def quantize_weight_only(name: str) -> None:
+    from onnxruntime.quantization.matmul_nbits_quantizer import MatMulNBitsQuantizer
+
+    out = NTEE_DIR / f"int8-{name}" / "model.onnx"
+    out.parent.mkdir(exist_ok=True)
+    settings = WEIGHT_ONLY[name]
+    quantizer = MatMulNBitsQuantizer(
+        str(NTEE_DIR / "fp32" / "model.onnx"), bits=settings["bits"], block_size=128, is_symmetric=True,
+        op_types_to_quantize=settings["ops"], accuracy_level=settings.get("accuracy_level"),
+    )  # fmt: skip
+    quantizer.process()
+    quantizer.model.save_model_to_file(str(out), use_external_data_format=False)
+    print(f"{name}: {out.stat().st_size / 1e6:,.1f} MB")
+
+
 def quantize(name: str) -> None:
+    if name in WEIGHT_ONLY:
+        return quantize_weight_only(name)
     out = NTEE_DIR / f"int8-{name}" / "model.onnx"
     out.parent.mkdir(exist_ok=True)
     settings = VARIANTS[name]
@@ -96,7 +130,7 @@ def check(names: list[str]) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--check-only", action="store_true")
-    parser.add_argument("--variants", default=",".join(VARIANTS))
+    parser.add_argument("--variants", default=",".join([*VARIANTS, *WEIGHT_ONLY]))
     args = parser.parse_args()
     names = args.variants.split(",")
     if not args.check_only:

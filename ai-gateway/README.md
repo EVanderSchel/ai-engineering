@@ -473,7 +473,7 @@ What it shows:
 - **The plain model can't do Project 4's task**: sorting 400 mission statements into 9 broad categories, it scores 21 to 29% at every precision, below the 40.8% of always answering "Human Services". The same 0.5B model fine-tuned in Project 4 scores 68.0% on these rows. Fine-tuning made the difference, not precision. (An earlier pilot on training rows, with Project 4's 25 groups, scored 0%: the model answered the same letter for nearly everything.)
 - **Cost, honestly**: a self-hosted model is paid by the hour, so cost per request depends on keeping it busy. At $0.357 an hour (a comparable cloud CPU, c7i.2xlarge in us-east-2), Q8_0 at full load is $0.21 per 1,000 128-token answers and $0.07 per 1,000 classifications, against $0.72 per 1,000 for Claude Haiku 4.5 on Project 4's task. Idle hours cost the same as busy ones.
 
-**Decision**: the `local` route now serves Q8_0 (and `docker compose --profile local up -d llm` starts it by default). It's faster under load, as accurate as F16, and the 148 MB it adds still fits the cluster's memory budget (design doc section 9, now about 3.25 of 3.8 GB). Q4_K_M stays an option with `LOCAL_MODEL`, for a machine where memory is tighter than arithmetic.
+**Decision**: the `local` route now serves Q8_0 (and `docker compose --profile local up -d llm` starts it by default). It's faster under load, as accurate as F16, and the 148 MB it adds still fits the cluster's memory budget (design doc section 9; stage 3 then puts it over, see there). Q4_K_M stays an option with `LOCAL_MODEL`, for a machine where memory is tighter than arithmetic.
 
 How the measurement was kept honest:
 
@@ -483,7 +483,7 @@ How the measurement was kept honest:
 
 New files: `src/measure_quantization.py` (the measurement: starts each model in turn, measures speed, fidelity, accuracy and memory, writes the report), `tests/test_measure_quantization.py` (18 tests of its logic, no server), `data/self_hosted/arc_easy_sample.json` (the 400 ARC-Easy questions), `data/self_hosted/ntee_dev_sample.json` (the 400 NTEE dev rows, the 9 broad categories, and Project 4's accuracy on these rows), `results/quantization.{json,md}` and `results/quantization/*.json` (each model's raw answers and timings).
 
-### Stage 3: the NTEE classifier on ONNX Runtime, fp32 vs. int8
+### Stage 3: the NTEE classifier on ONNX Runtime, fp32 vs. int8 vs. weight-only
 
 Project 4's fine-tuned classifier (LoRA on Qwen2.5-0.5B with a 25-way head, 58.7% on its dev split) now runs on this PC's CPU without PyTorch. ONNX is a portable model file format, and ONNX Runtime is a lean engine that runs it.
 
@@ -516,12 +516,26 @@ What it shows:
   | Unsigned, the 24 MLP down projections fp32 | **58 of 64** | mostly **outlier activations** |
 
   Dynamic quantization turns each layer's *inputs* into 8 bits too, with one scale per tensor. Models like Qwen have a few activation channels hundreds of times larger than the rest, largest where each MLP projects back down to the model's width. Those few values set the scale, and everything else is rounded to almost nothing. Keeping those 24 matrices in fp32 recovers the model (57.8% on the full split), but then it's barely smaller or faster than fp32: 1.2 GB, 126 ms, and the same peak memory.
-- **On this CPU fp32 is the choice for now.** The proper fix is weight-only int8: weights in 8 bits, activations left in fp32, with ONNX Runtime's `MatMulNBits`. It wasn't tried here because ONNX Runtime's tool for it needs one more package (`onnx_ir`), and it's noted as an open question in the design doc.
+- **The fix: quantize only the weights.** Weight-only quantization (ONNX Runtime's `MatMulNBits`) stores each weight in 8 or 4 bits, with one scale per block of 128 values, and leaves activations alone, so the outliers can't do damage. Measured on the full split, next to fp32:
+
+  | | fp32 | **8-bit weight-only** | 8-bit, activations in blocks | 4-bit, embeddings too, activations in blocks |
+  |---|---|---|---|---|
+  | File / peak memory | 1,980 / 2,432 MB | **917 / 1,463 MB** | 917 / 2,041 MB | 266 / 1,115 MB |
+  | One at a time, p50 | 149 ms | 1,075 ms | 277 ms | 201 ms |
+  | Accuracy / top 3 | 58.7% / 80.3% | **58.8%** / 80.2% | 58.7% / 80.0% | 55.9% / 76.3% |
+  | Same top group as fp32 | (itself) | 99.2% | 97.1% | 79.1% |
+  | Cost per 1,000, one at a time | $0.018 | $0.110 | $0.035 | $0.026 |
+
+  - **8-bit weight-only keeps the model exactly** (58.8%, 99.2% the same answers as fp32) in 40% less memory.
+  - **But it's 7 times slower on this CPU**: about 1 s a mission. With no accuracy level set, ONNX Runtime turns the 8-bit weights back into floats on a general path on every call. 4-bit has a hand-tuned kernel, which is why it runs at about 200 ms.
+  - **`accuracy_level=4`** multiplies in integers on the tuned kernels. It quantizes activations again, but per block of 128 values rather than per tensor, so an outlier only coarsens its own block: 58.7% at 277 ms. It also keeps a repacked copy of the weights, so it peaks at 2 GB, giving up most of the memory saving.
+  - **Nothing beats fp32 on speed here.** On this 2015 CPU, float math has the best-optimized code path, and the integer paths can't use the VNNI instructions it lacks. On a newer cloud CPU (the c7i used for pricing has VNNI and AMX) the order may well flip, which is worth measuring there rather than assuming.
+- **Decision: 8-bit weight-only is the classifier** (`models/ntee/int8-weightonly8/`, made by `src/quantize_classifier.py`). It's Project 4's accuracy in the least memory of any accurate version. Its 1 s per mission is about Claude Haiku 4.5's speed at a seventh of the cost ($0.11 against $0.72 per 1,000). Its 1.46 GB is still over the design's 700 MB, so step 8 has to find room (design doc section 9).
 - **Batching doesn't help a CPU**: batches of 32 manage 2.1 missions/s against 5.5 one at a time. Every batch is padded to its longest mission (up to 128 tokens; the median is about 33), and a CPU has no idle parallel units for a batch to fill. On Project 4's GPU it was the opposite. The int8 model even changes its answers with batching (25.3% batched, 19.0% alone), because its activation scales depend on the whole batch, padding included.
-- **Memory is the real cost**: fp32 peaks at about 2.4 GB, against the design's estimate of 700 MB for the classifier. That doesn't fit in the local cluster next to everything else (design doc section 9), so it's decided at step 8: weight-only int8, or the classifier outside the cluster.
+- **Memory was the reason to quantize**: fp32 peaks at about 2.4 GB against the design's 700 MB for the classifier. Peaks include about 180 MB for Python, the tokenizer and the data before any model is loaded.
 - **Against the alternatives on the same rows**: fp32 here costs $0.018 per 1,000 missions one at a time, against $0.72 for Claude Haiku 4.5 at the same accuracy (58.7%) and $0.0007 for the same model batched on a T4 GPU. TF-IDF, at 53.7%, costs almost nothing.
 
-New files: `notebooks/make_export_notebook.py` (generates the Colab notebook) and `notebooks/export_ntee_onnx.ipynb` (merges, exports and checks the classifier in Colab), `src/measure_classifier.py` (measures each version in its own process: check rows, accuracy, latency, memory, cost), `src/quantize_classifier.py` (makes int8 variants from fp32 here and compares each with fp32 on the check rows), `tests/test_export_notebook.py` (the notebook matches its generator and parses), `tests/test_measure_classifier.py` (7 tests: tokenizer settings, ranking, scoring, memory reading, the variant comparison), `data/self_hosted/ntee_dev.json` (Project 4's 1,813 dev missions, with its fine-tuned model's answer for each and its reference scores), `results/classifier.{json,md}`, `results/classifier/*.json` (each version's ranked answers and timings) and `results/classifier-int8-check.json`. Changed: `pyproject.toml` (a `classifier` dependency group: onnxruntime, tokenizers, onnx; the generated notebook excluded from linting).
+New files: `notebooks/make_export_notebook.py` (generates the Colab notebook) and `notebooks/export_ntee_onnx.ipynb` (merges, exports and checks the classifier in Colab), `src/measure_classifier.py` (measures each version in its own process: check rows, accuracy, latency, memory, cost), `src/quantize_classifier.py` (makes the int8 and weight-only variants from fp32 here, including the chosen classifier, and compares each with fp32 on the check rows), `tests/test_export_notebook.py` (the notebook matches its generator and parses), `tests/test_measure_classifier.py` (7 tests: tokenizer settings, ranking, scoring, memory reading, the variant comparison), `data/self_hosted/ntee_dev.json` (Project 4's 1,813 dev missions, with its fine-tuned model's answer for each and its reference scores), `results/classifier.{json,md}`, `results/classifier/*.json` (each version's ranked answers and timings) and `results/classifier-int8-check.json`. Changed: `pyproject.toml` (a `classifier` dependency group: onnxruntime, tokenizers, onnx, onnx-ir; the generated notebook excluded from linting).
 
 ## Setup
 

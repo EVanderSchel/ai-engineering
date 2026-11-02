@@ -157,10 +157,10 @@ The cluster has to fit in Docker's 3.8 GB. Estimated working set (to be replaced
 | gateway, 2 replicas | ~300 MB |
 | PostgreSQL | ~150 MB |
 | llama-server, Qwen2.5-0.5B Q8_0 (836 MB peak, measured in step 6) | ~850 MB |
-| classifier, ONNX (int8 planned; fp32 measured at 2.4 GB peak in step 6, see open questions) | ~700 MB |
+| classifier, ONNX 8-bit weight-only (1.46 GB peak measured in step 6, including about 180 MB of Python) | ~1.4 GB |
 | OpenTelemetry collector | ~100 MB |
 | Prometheus + Grafana (plain charts, not the full kube-prometheus stack) | ~450 MB |
-| **Total** | **~3.25 GB** |
+| **Total** | **~3.95 GB: over the 3.8 GB** |
 
 - It fits only with the smallest model variants, so the fp32 and F16 measurements in step 6 run outside the cluster, one at a time.
 - Every pod sets memory requests and limits; a pod over its limit is killed and restarted rather than starving the node. The autoscaler (HPA) scales the gateway on CPU between 2 and 4 replicas; the model servers stay at one replica here (on a real cluster they would scale on queue depth).
@@ -211,4 +211,4 @@ Decisions 1-15 were made in step 1; later ones say which step added them.
 - **Bedrock from inside kind**: short-lived credentials exported into a Secret need refreshing (they expire within hours). Fine for demos; step 8 decides whether to automate the refresh or keep Bedrock calls to local runs.
 - **The NTEE export**: exporting the classification head to ONNX in Colab needs the adapter from Google Drive; if export fails, the classifier runs on plain PyTorch on CPU in the cluster, at a larger memory cost.
 - **Docker's memory**: if measurements in step 6 exceed the budget above, Docker's WSL2 limit can be raised (a setting the user changes), at the cost of the rest of the PC.
-- **The classifier's memory** (step 6 stage 3): standard dynamic int8 broke the model (19% vs 58.7%; outlier activations), and fp32 peaks at 2.4 GB, which doesn't fit the cluster budget above. Before step 8: weight-only int8 (`MatMulNBits`, activations stay fp32; needs the `onnx_ir` package), or run the classifier outside the cluster.
+- **The classifier's memory** (step 6 stage 3): standard dynamic int8 broke the model (19% vs 58.7%; outlier activations). The classifier is now 8-bit weight-only (58.8%, 1.46 GB peak, about 1 s per mission on this CPU), which puts the budget above at about 3.95 of 3.8 GB. Step 8 decides how to find about 150 MB: a lighter monitoring stack, one gateway replica at rest, or the classifier outside the cluster. The 4-bit version (55.9%, 1.1 GB) is the fallback if nothing else gives.
