@@ -1,0 +1,150 @@
+{
+  "cloud_price": {
+    "instance": "c7i.2xlarge (us-east-2, on demand)",
+    "usd_per_hour": 0.357
+  },
+  "reference": {
+    "about": "ntee-classification's own dev results (results/*_dev.json), scored here on the same rows: top group, top 3, and the broad category of the top group",
+    "TF-IDF baseline": {
+      "accuracy": 0.5367,
+      "top3": 0.754,
+      "broad": 0.6393,
+      "latency_ms": 1.8808000313583761,
+      "cost_per_1k_usd": 0.0
+    },
+    "LoRA Qwen2.5-0.5B (fine-tuned, PyTorch on a T4)": {
+      "accuracy": 0.5869,
+      "top3": 0.8031,
+      "broad": 0.6707,
+      "latency_ms": 61.326,
+      "cost_per_1k_usd": 0.0007451791666666666
+    },
+    "Claude Haiku 4.5 few-shot": {
+      "accuracy": 0.5869,
+      "top3": 0.8025,
+      "broad": 0.6977,
+      "latency_ms": 984.0,
+      "cost_per_1k_usd": 0.7221639271924987
+    },
+    "Claude Sonnet 5.5 guided": {
+      "accuracy": 0.6255,
+      "top3": 0.8307,
+      "broad": 0.7082,
+      "latency_ms": 1149.0,
+      "cost_per_1k_usd": 0.903891781577496
+    }
+  },
+  "models": {
+    "fp32": {
+      "file_mb": 1979.5,
+      "load_seconds": 15.29,
+      "memory_before_load_mb": 179,
+      "peak_memory_mb": 2432,
+      "check": {
+        "matching": 64,
+        "rows": 64
+      },
+      "single": {
+        "missions": 1813,
+        "latency_p50_ms": 148.7,
+        "latency_p95_ms": 444.2,
+        "missions_per_s": 5.5
+      },
+      "batched": {
+        "batch_size": 32,
+        "missions": 256,
+        "missions_per_s": 2.1
+      },
+      "versions": {
+        "onnxruntime": "1.31.1",
+        "threads": 4
+      },
+      "quality": {
+        "rows": 1813,
+        "accuracy": 0.5869,
+        "top3": 0.8031,
+        "broad": 0.6702
+      },
+      "same_as_colab": 0.9983,
+      "same_as_fp32": 1.0,
+      "cost_per_1k_usd": {
+        "batched": 0.0472,
+        "one_at_a_time": 0.018
+      }
+    },
+    "int8": {
+      "file_mb": 497.3,
+      "load_seconds": 1.74,
+      "memory_before_load_mb": 179,
+      "peak_memory_mb": 1725,
+      "check": {
+        "matching": 25,
+        "rows": 64
+      },
+      "single": {
+        "missions": 1813,
+        "latency_p50_ms": 85.3,
+        "latency_p95_ms": 288.4,
+        "missions_per_s": 9.3
+      },
+      "batched": {
+        "batch_size": 32,
+        "missions": 256,
+        "missions_per_s": 3.3
+      },
+      "versions": {
+        "onnxruntime": "1.31.1",
+        "threads": 4
+      },
+      "quality": {
+        "rows": 1813,
+        "accuracy": 0.1903,
+        "top3": 0.3938,
+        "broad": 0.262
+      },
+      "same_as_colab": 0.2284,
+      "same_as_fp32": 0.2289,
+      "cost_per_1k_usd": {
+        "batched": 0.0301,
+        "one_at_a_time": 0.0107
+      }
+    },
+    "int8-matmul-uint8-down-fp32": {
+      "file_mb": 1219.5,
+      "load_seconds": 3.23,
+      "memory_before_load_mb": 179,
+      "peak_memory_mb": 2391,
+      "check": {
+        "matching": 58,
+        "rows": 64
+      },
+      "single": {
+        "missions": 1813,
+        "latency_p50_ms": 125.6,
+        "latency_p95_ms": 403.0,
+        "missions_per_s": 6.2
+      },
+      "batched": {
+        "batch_size": 32,
+        "missions": 256,
+        "missions_per_s": 2.6
+      },
+      "versions": {
+        "onnxruntime": "1.31.1",
+        "threads": 4
+      },
+      "quality": {
+        "rows": 1813,
+        "accuracy": 0.5775,
+        "top3": 0.7992,
+        "broad": 0.6613
+      },
+      "same_as_colab": 0.8969,
+      "same_as_fp32": 0.8969,
+      "cost_per_1k_usd": {
+        "batched": 0.0381,
+        "one_at_a_time": 0.016
+      }
+    }
+  }
+}

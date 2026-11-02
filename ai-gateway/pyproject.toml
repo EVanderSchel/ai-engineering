@@ -26,6 +26,13 @@ dev = [
     "openai>=2.0",
     "pytest>=9.0",
     { include-group = "lint" },
+    { include-group = "classifier" },
+]
+# The NTEE classifier on ONNX Runtime (step 6 stage 3); in step 8 it runs as its own service.
+classifier = [
+    "onnx>=1.23.2",
+    "onnxruntime>=1.31.1",
+    "tokenizers>=0.23.3",
 ]
 
 [tool.uv]
@@ -35,6 +42,8 @@ package = false
 [tool.ruff]
 line-length = 120
 target-version = "py314"
+# The notebook is generated from notebooks/make_export_notebook.py (linted) and checked by tests/test_export_notebook.py.
+extend-exclude = ["notebooks/*.ipynb"]
 
 [tool.ruff.lint]
 # Same rules as the other projects: E/W style, F real bugs, I import order, B likely bugs, UP modern syntax.

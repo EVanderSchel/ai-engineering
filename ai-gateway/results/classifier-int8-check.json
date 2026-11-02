@@ -1,0 +1,51 @@
+{
+  "int8": {
+    "file_mb": 497.3,
+    "same_top1": 25,
+    "rows": 64,
+    "max_abs_diff": 9.4464,
+    "mean_abs_diff": 1.4983
+  },
+  "int8-matmul": {
+    "file_mb": 905.7,
+    "same_top1": 20,
+    "rows": 64,
+    "max_abs_diff": 10.5954,
+    "mean_abs_diff": 1.4379
+  },
+  "int8-matmul-perchannel": {
+    "file_mb": 907.2,
+    "same_top1": 5,
+    "rows": 64,
+    "max_abs_diff": 20.7716,
+    "mean_abs_diff": 5.0033
+  },
+  "int8-matmul-perchannel-head": {
+    "file_mb": 907.3,
+    "same_top1": 5,
+    "rows": 64,
+    "max_abs_diff": 20.7468,
+    "mean_abs_diff": 5.0002
+  },
+  "int8-matmul-reducerange": {
+    "file_mb": 905.7,
+    "same_top1": 34,
+    "rows": 64,
+    "max_abs_diff": 8.5761,
+    "mean_abs_diff": 1.202
+  },
+  "int8-matmul-uint8": {
+    "file_mb": 905.7,
+    "same_top1": 34,
+    "rows": 64,
+    "max_abs_diff": 7.6212,
+    "mean_abs_diff": 1.1725
+  },
+  "int8-matmul-uint8-down-fp32": {
+    "file_mb": 1219.5,
+    "same_top1": 58,
+    "rows": 64,
+    "max_abs_diff": 1.734,
+    "mean_abs_diff": 0.3645
+  }
+}
