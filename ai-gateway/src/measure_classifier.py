@@ -34,7 +34,11 @@ from measure_quantization import CLOUD_PRICE, cost_per_1k, percentile
 from paths import MODELS_DIR, RESULTS_DIR, ROOT
 
 NTEE_DIR = MODELS_DIR / "ntee"
-PRECISIONS = ("fp32", "int8", "int8-matmul-uint8-down-fp32")  # the last made by src/quantize_classifier.py
+# The Colab export (fp32, int8) and the versions src/quantize_classifier.py makes from fp32.
+PRECISIONS = (
+    "fp32", "int8", "int8-matmul-uint8-down-fp32", "int8-weightonly8", "int8-weightonly4-gather",
+    "int8-weightonly8-level4", "int8-weightonly4-gather-level4",
+)  # fmt: skip
 DATA = ROOT / "data" / "self_hosted" / "ntee_dev.json"
 OUT_DIR = RESULTS_DIR / "classifier"
 THREADS = 4  # one per physical core, as llama-server uses
@@ -248,6 +252,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--one", choices=PRECISIONS, help=argparse.SUPPRESS)  # the per-precision child process
     parser.add_argument("--report-only", action="store_true")
+    parser.add_argument("--precisions", default=",".join(PRECISIONS), help="measure only these")
     args = parser.parse_args()
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     if args.one:
@@ -255,7 +260,7 @@ def main() -> None:
         (OUT_DIR / f"{args.one}.json").write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
         return
     if not args.report_only:
-        for precision in PRECISIONS:
+        for precision in args.precisions.split(","):
             subprocess.run([sys.executable, __file__, "--one", precision], check=True)
     result = combine()
     (RESULTS_DIR / "classifier.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")

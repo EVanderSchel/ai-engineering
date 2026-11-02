@@ -47,5 +47,33 @@
     "rows": 64,
     "max_abs_diff": 1.734,
     "mean_abs_diff": 0.3645
+  },
+  "int8-weightonly8": {
+    "file_mb": 916.8,
+    "same_top1": 64,
+    "rows": 64,
+    "max_abs_diff": 0.1908,
+    "mean_abs_diff": 0.0404
+  },
+  "int8-weightonly4-gather": {
+    "file_mb": 265.6,
+    "same_top1": 60,
+    "rows": 64,
+    "max_abs_diff": 3.4802,
+    "mean_abs_diff": 0.6309
+  },
+  "int8-weightonly8-level4": {
+    "file_mb": 916.8,
+    "same_top1": 63,
+    "rows": 64,
+    "max_abs_diff": 0.4469,
+    "mean_abs_diff": 0.081
+  },
+  "int8-weightonly4-gather-level4": {
+    "file_mb": 265.6,
+    "same_top1": 61,
+    "rows": 64,
+    "max_abs_diff": 3.268,
+    "mean_abs_diff": 0.6344
   }
 }
