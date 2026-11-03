@@ -29,6 +29,9 @@
   "models": {
     "q4_k_m": {
       "model": "qwen2.5-0.5b-instruct-q4_k_m",
+      "engine": "llama.cpp build 12033",
+      "hardware": "i7-6700, 4 threads",
+      "usd_per_hour": 0.357,
       "file_mb": 491,
       "load_seconds": 41.1,
       "peak_memory_mb": 688,
@@ -52,6 +55,7 @@
         "tokens_per_s_total": 45.8,
         "requests_per_s": 0.358
       },
+      "best_level": 4,
       "transport_retries": 0,
       "fidelity": {
         "prompts": 16,
@@ -91,6 +95,9 @@
     },
     "q8_0": {
       "model": "qwen2.5-0.5b-instruct-q8_0",
+      "engine": "llama.cpp build 12033",
+      "hardware": "i7-6700, 4 threads",
+      "usd_per_hour": 0.357,
       "file_mb": 676,
       "load_seconds": 32.8,
       "peak_memory_mb": 836,
@@ -114,6 +121,7 @@
         "tokens_per_s_total": 61.4,
         "requests_per_s": 0.48
       },
+      "best_level": 8,
       "transport_retries": 0,
       "fidelity": {
         "prompts": 16,
@@ -153,6 +161,9 @@
     },
     "f16": {
       "model": "qwen2.5-0.5b-instruct-fp16",
+      "engine": "llama.cpp build 12033",
+      "hardware": "i7-6700, 4 threads",
+      "usd_per_hour": 0.357,
       "file_mb": 1270,
       "load_seconds": 33.7,
       "peak_memory_mb": 1399,
@@ -176,6 +187,7 @@
         "tokens_per_s_total": 40.2,
         "requests_per_s": 0.314
       },
+      "best_level": 4,
       "transport_retries": 1,
       "fidelity": {
         "prompts": 16,
@@ -209,6 +221,72 @@
       "cost_per_1k_usd": {
         "generation_128_tokens": 0.3158,
         "classification": 0.067
+      }
+    },
+    "vllm-t4": {
+      "model": "qwen2.5-0.5b-instruct-fp16-vllm",
+      "engine": "vLLM 0.33.0",
+      "hardware": "Tesla T4 (Colab)",
+      "usd_per_hour": 0.35,
+      "file_mb": 988,
+      "load_seconds": 148.7,
+      "peak_memory_mb": 13701,
+      "single": {
+        "requests": 8,
+        "ttft_p50_ms": 26,
+        "ttft_p95_ms": 32,
+        "latency_p50_ms": 726,
+        "latency_p95_ms": 733,
+        "tokens_per_s_per_request": 181.2,
+        "tokens_per_s_total": 175.9,
+        "requests_per_s": 1.374
+      },
+      "best": {
+        "requests": 128,
+        "ttft_p50_ms": 294,
+        "ttft_p95_ms": 371,
+        "latency_p50_ms": 2202,
+        "latency_p95_ms": 2260,
+        "tokens_per_s_per_request": 67.5,
+        "tokens_per_s_total": 3700.1,
+        "requests_per_s": 28.907
+      },
+      "best_level": 64,
+      "transport_retries": 0,
+      "fidelity": {
+        "prompts": 16,
+        "identical_to_reference": 0,
+        "words_in_common_mean": 10.9,
+        "reference_words_mean": 102.6,
+        "repeats_itself": 16
+      },
+      "quiz": {
+        "rows": 400,
+        "accuracy": 0.6675,
+        "unparseable": 4,
+        "same_as_reference": 0.88
+      },
+      "ntee": {
+        "rows": 400,
+        "accuracy": 0.23,
+        "unparseable": 5,
+        "same_as_reference": 0.855
+      },
+      "task_timing": {
+        "quiz": {
+          "latency_p50_ms": 65,
+          "latency_p95_ms": 95,
+          "requests_per_s": 57.1
+        },
+        "ntee": {
+          "latency_p50_ms": 62,
+          "latency_p95_ms": 75,
+          "requests_per_s": 63.94
+        }
+      },
+      "cost_per_1k_usd": {
+        "generation_128_tokens": 0.0034,
+        "classification": 0.0015
       }
     }
   }
