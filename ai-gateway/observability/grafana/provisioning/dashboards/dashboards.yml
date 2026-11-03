@@ -1,0 +1,10 @@
+# Load every dashboard in /var/lib/grafana/dashboards (observability/grafana/dashboards, mounted read-only). They're
+# files in the repo: change the JSON, not the UI (edits made in the UI can't be saved over a provisioned dashboard).
+apiVersion: 1
+providers:
+  - name: gateway
+    folder: ai-gateway
+    type: file
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards

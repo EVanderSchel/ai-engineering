@@ -143,10 +143,10 @@ Two models the project serves itself, chosen to fit this PC (no NVIDIA GPU, Dock
 
 ## 8. Observability
 
-- **Traces** (OpenTelemetry): one span per request, with child spans for auth, limits, each guardrail, each provider attempt (provider, model, outcome, retry number) and the ledger write. Attributes carry team, route, tokens and cost; never content (decision 15).
-- **Metrics** (Prometheus): requests, errors and latency by route, provider and outcome; time to first token; tokens and cost by team; fallbacks and open breakers; budget used per team; guardrail flags and blocks.
-- **Alerts** (step 7): error rate, p95 latency, a breaker open for more than 5 minutes, and a cost spike (a team's spend in the last hour well above its usual hour).
-- **Logs**: one JSON line per request with the request id, matching the trace.
+- **Traces** (OpenTelemetry): one span per request, with child spans for auth, limits, each guardrail, each provider attempt (provider, model, outcome, retry number) and the ledger write. Attributes carry team, route, tokens and cost; never content (decision 15). As built (step 7 stage 3, `src/tracing.py`): the request span is FastAPI's native one (HTTP conventions, `traceparent` continued), annotated by the gateway; provider calls are `chat <model>` spans with `gen_ai.*` attributes; exported over OTLP only when an endpoint is set (Jaeger locally, a collector in the cluster); the log line carries the trace id.
+- **Metrics** (Prometheus): requests, errors and latency by route, provider and outcome; time to first token; tokens and cost by team; fallbacks and open breakers; budget used per team; guardrail flags and blocks. As built (step 7 stage 2, `src/metrics.py`): served on a separate port (9464) because they name teams and spend; counted from each request's log fields; label values only from the config, the database or fixed words (a made-up route is `unknown`); breakers read at scrape time, budgets from PostgreSQL every 30 s.
+- **Alerts** (step 7): error rate, p95 latency, a breaker open for more than 5 minutes, and a cost spike (a team's spend in the last hour well above its usual hour). As built (step 7 stage 4, `observability/alerts.yml`): those four plus a first-token latency rule and a budget at 90%. They're unit-tested with promtool in CI, and shown in Prometheus and on the Grafana dashboard. There's no Alertmanager, so nothing is sent to a person yet. Seen firing and resolving against injected faults (step 7 stage 5, `results/alerts.md`). Instrumentation costs about 1.2 ms a request, 1 ms of it traces (`results/observability.md`); sample traces if that ever matters.
+- **Logs**: one JSON line per request with the request id, matching the trace. As built (step 7 stage 1, `src/logs.py`): written on stdout when the response has been sent (a stream's after its last event), with the attempts, outcome, model, tokens, cost and guardrail kinds; other lines during the request carry its id; health checks aren't logged.
 
 ## 9. Kubernetes (step 8) and the memory budget
 
@@ -160,7 +160,7 @@ The cluster has to fit in Docker's 3.8 GB. Estimated working set (to be replaced
 | llama-server, Qwen2.5-0.5B Q8_0 (836 MB peak, measured in step 6) | ~850 MB |
 | classifier, ONNX 8-bit weight-only (1.46 GB peak measured in step 6, including about 180 MB of Python) | ~1.4 GB |
 | OpenTelemetry collector | ~100 MB |
-| Prometheus + Grafana (plain charts, not the full kube-prometheus stack) | ~450 MB |
+| Prometheus + Grafana (plain charts, not the full kube-prometheus stack; measured in step 7: about 130 + 320 MB) | ~450 MB |
 | **Total** | **~3.95 GB: over the 3.8 GB** |
 
 - It fits only with the smallest model variants, so the fp32 and F16 measurements in step 6 run outside the cluster, one at a time.

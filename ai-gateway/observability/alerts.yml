@@ -1,0 +1,84 @@
+# The gateway's alert rules (design section 8, step 7 stage 4). Prometheus evaluates them every few seconds; an alert
+# is "pending" while its condition holds and "firing" once it has held for its `for:` time, so a blip doesn't page
+# anyone. Unit-tested with promtool: observability/alerts_test.yml.
+#
+# Each rule sums across gateway replicas (the counters are per replica) and says, in its annotations, what to look
+# at first. No Alertmanager runs locally, so firing alerts show in Prometheus's Alerts tab and on the Grafana
+# dashboard; Alertmanager is what would send them to a person (email, Slack, a pager).
+groups:
+  - name: gateway
+    rules:
+      # More than 5% of requests answered with a server error. 4xx are the caller's mistakes and don't count.
+      - alert: GatewayHighErrorRate
+        expr: |
+          sum(rate(gateway_requests_total{status=~"5.."}[5m]))
+            / sum(rate(gateway_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "{{ $value | humanizePercentage }} of gateway requests are failing with 5xx"
+          look_at: "gateway_provider_attempts_total by outcome (which provider, which error), and gateway_breaker_open"
+
+      # Whole answers (not streams, whose duration is the length of the answer) taking too long for a typical
+      # request. Per route, since a fast route and a self-hosted one have different normal speeds.
+      - alert: GatewayHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum by (route, le) (rate(gateway_request_duration_seconds_bucket{stream="false", route!~"|unknown"}[5m]))
+          ) > 15
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "p95 latency on route {{ $labels.route }} is {{ $value | humanizeDuration }}"
+          look_at: "the route's traces in Jaeger: which span is slow (a provider, admission, the ledger write)"
+
+      # Streams: what a user waits before the first word appears.
+      - alert: GatewaySlowFirstToken
+        expr: |
+          histogram_quantile(0.95, sum by (route, le) (rate(gateway_first_token_seconds_bucket[5m]))) > 5
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "p95 time to first token on route {{ $labels.route }} is {{ $value | humanizeDuration }}"
+          look_at: "gateway_first_token_seconds by provider, and gateway_fallbacks_total (a slow primary timing out)"
+
+      # A candidate skipped for 5 minutes straight: its breaker keeps tripping, so the route runs on its fallback
+      # (or not at all). max() because any replica's breaker counts.
+      - alert: GatewayBreakerOpen
+        expr: max by (provider, model) (gateway_breaker_open) == 1
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "circuit breaker for {{ $labels.provider }}/{{ $labels.model }} has been open for 5 minutes"
+          look_at: "the provider's status page and gateway_provider_attempts_total{provider=\"{{ $labels.provider }}\"}"
+
+      # A team's spend in the last hour well above its usual hour: three times its average hour over the day
+      # before, and at least $1, so a team that normally spends cents doesn't page anyone for spending a dime.
+      # A runaway loop in an app, a leaked key, or a new heavy use: either way someone should know today.
+      - alert: GatewayCostSpike
+        expr: |
+          sum by (team) (increase(gateway_cost_usd_total[1h]))
+            > 3 * sum by (team) (increase(gateway_cost_usd_total[1d] offset 1h)) / 24
+          and sum by (team) (increase(gateway_cost_usd_total[1h])) > 1
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "team {{ $labels.team }} spent ${{ $value | printf \"%.2f\" }} in the last hour, over 3x its usual"
+          look_at: "the usage ledger for the team (admin.py team spend), by key and route"
+
+      # Not in the design's list, but nearly free: a team about to be refused for budget_exceeded.
+      # The budget gauges come from PostgreSQL, so every replica reports the same value: max(), not sum().
+      - alert: GatewayBudgetNearlySpent
+        expr: |
+          max by (team) (gateway_budget_spent_usd) / max by (team) (gateway_budget_limit_usd) > 0.9
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "team {{ $labels.team }} has used {{ $value | humanizePercentage }} of its monthly budget"
+          look_at: "whether to raise its cap (admin.py team budget) before its requests start getting 429"

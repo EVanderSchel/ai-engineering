@@ -1,0 +1,168 @@
+# Unit tests for alerts.yml, run by Prometheus's own tool (CI runs this too):
+#
+#     docker run --rm -v "${PWD}/observability:/w" -w /w --entrypoint promtool prom/prometheus:v3.15.1 test rules alerts_test.yml
+#
+# Each test writes made-up metric history ("0+10x20": start at 0, add 10 per interval, 20 times) and states which
+# alerts must be firing at given times, and that the others aren't. A rule that's never seen to fire, or to stay
+# quiet, isn't trusted.
+rule_files:
+  - alerts.yml
+evaluation_interval: 1m
+
+tests:
+  # 10 failures for every 100 answers (9%): pending once the 5-minute rate sees it, firing 5 minutes later.
+  # Two replicas, so the rule has to sum them.
+  - interval: 1m
+    input_series:
+      - series: 'gateway_requests_total{instance="a",route="smart",status="200",outcome="ok"}'
+        values: "0+50x20"
+      - series: 'gateway_requests_total{instance="b",route="smart",status="200",outcome="ok"}'
+        values: "0+50x20"
+      - series: 'gateway_requests_total{instance="a",route="smart",status="503",outcome="failed"}'
+        values: "0+10x20"
+      - series: 'gateway_requests_total{instance="b",route="smart",status="429",outcome="refused"}'
+        values: "0+40x20" # the caller's mistakes: not errors
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: GatewayHighErrorRate
+        exp_alerts: [] # pending, not firing yet
+      - eval_time: 10m
+        alertname: GatewayHighErrorRate
+        exp_alerts:
+          - exp_labels: { severity: page }
+            exp_annotations:
+              summary: "6.667% of gateway requests are failing with 5xx"
+              look_at: "gateway_provider_attempts_total by outcome (which provider, which error), and gateway_breaker_open"
+
+  # 2% failing: under the threshold.
+  - interval: 1m
+    input_series:
+      - series: 'gateway_requests_total{route="smart",status="200",outcome="ok"}'
+        values: "0+98x20"
+      - series: 'gateway_requests_total{route="smart",status="503",outcome="failed"}'
+        values: "0+2x20"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: GatewayHighErrorRate
+        exp_alerts: []
+
+  # Route "smart": 10 answers a minute, 9 of them between 15 and 30 s, so p95 is about 29 s. Route "fast": all under
+  # a second. Streams are left to the first-token rule, and made-up route names to nobody.
+  - interval: 1m
+    input_series:
+      - series: 'gateway_request_duration_seconds_bucket{route="smart",stream="false",le="1"}'
+        values: "0x30"
+      - series: 'gateway_request_duration_seconds_bucket{route="smart",stream="false",le="15"}'
+        values: "0+1x30"
+      - series: 'gateway_request_duration_seconds_bucket{route="smart",stream="false",le="30"}'
+        values: "0+10x30"
+      - series: 'gateway_request_duration_seconds_bucket{route="smart",stream="false",le="+Inf"}'
+        values: "0+10x30"
+      - series: 'gateway_request_duration_seconds_bucket{route="fast",stream="false",le="1"}'
+        values: "0+10x30"
+      - series: 'gateway_request_duration_seconds_bucket{route="fast",stream="false",le="+Inf"}'
+        values: "0+10x30"
+      - series: 'gateway_request_duration_seconds_bucket{route="smart",stream="true",le="30"}'
+        values: "0x30"
+      - series: 'gateway_request_duration_seconds_bucket{route="smart",stream="true",le="+Inf"}'
+        values: "0+10x30" # long streams are normal
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: GatewayHighLatency
+        exp_alerts: [] # pending: needs 10 minutes
+      - eval_time: 15m
+        alertname: GatewayHighLatency
+        exp_alerts:
+          - exp_labels: { severity: ticket, route: smart }
+            exp_annotations:
+              summary: "p95 latency on route smart is 29.17s"
+              look_at: "the route's traces in Jaeger: which span is slow (a provider, admission, the ledger write)"
+
+  # Streams on "smart" waiting 5 to 8 s for a first word.
+  - interval: 1m
+    input_series:
+      - series: 'gateway_first_token_seconds_bucket{route="smart",provider="anthropic",le="1"}'
+        values: "0x30"
+      - series: 'gateway_first_token_seconds_bucket{route="smart",provider="anthropic",le="8"}'
+        values: "0+10x30"
+      - series: 'gateway_first_token_seconds_bucket{route="smart",provider="anthropic",le="+Inf"}'
+        values: "0+10x30"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: GatewaySlowFirstToken
+        exp_alerts:
+          - exp_labels: { severity: ticket, route: smart }
+            exp_annotations:
+              summary: "p95 time to first token on route smart is 7.65s"
+              look_at: "gateway_first_token_seconds by provider, and gateway_fallbacks_total (a slow primary timing out)"
+
+  # One replica's breaker for anthropic open throughout, the other's closed: it counts. Bedrock's closed everywhere.
+  - interval: 1m
+    input_series:
+      - series: 'gateway_breaker_open{instance="a",provider="anthropic",model="claude-sonnet-5-5"}'
+        values: "1x10"
+      - series: 'gateway_breaker_open{instance="b",provider="anthropic",model="claude-sonnet-5-5"}'
+        values: "0x10"
+      - series: 'gateway_breaker_open{instance="a",provider="bedrock",model="us.anthropic.claude-sonnet-4-6"}'
+        values: "0x10"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: GatewayBreakerOpen
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: GatewayBreakerOpen
+        exp_alerts:
+          - exp_labels: { severity: page, provider: anthropic, model: claude-sonnet-5-5 }
+            exp_annotations:
+              summary: "circuit breaker for anthropic/claude-sonnet-5-5 has been open for 5 minutes"
+              look_at: 'the provider''s status page and gateway_provider_attempts_total{provider="anthropic"}'
+
+  # Over a day and an hour, every 5 minutes. "research" spends $0.20 an hour, then $3 in the last hour: a spike.
+  # "ops" spends a steady $2 an hour: more, but usual for it. "tiny" goes from 1 cent to 50 cents an hour: 50 times
+  # its usual, but under the $1 floor.
+  - interval: 5m
+    input_series:
+      - series: 'gateway_cost_usd_total{team="research",route="smart",kind="model"}'
+        values: "0+0.016667x288 4.8+0.25x12"
+      - series: 'gateway_cost_usd_total{team="ops",route="fast",kind="model"}'
+        values: "0+0.166667x300"
+      - series: 'gateway_cost_usd_total{team="tiny",route="fast",kind="model"}'
+        values: "0+0.000833x288 0.24+0.041667x12"
+    alert_rule_test:
+      - eval_time: 1440m
+        alertname: GatewayCostSpike
+        exp_alerts: [] # before the spike
+      - eval_time: 1500m
+        alertname: GatewayCostSpike
+        exp_alerts:
+          - exp_labels: { severity: ticket, team: research }
+            exp_annotations:
+              summary: "team research spent $3.00 in the last hour, over 3x its usual"
+              look_at: "the usage ledger for the team (admin.py team spend), by key and route"
+
+  # "research" at 95% of its $10 cap, reported by two replicas (the same value from PostgreSQL); "ops" at 10%; "free"
+  # has no cap, so no limit series and no alert.
+  - interval: 1m
+    input_series:
+      - series: 'gateway_budget_spent_usd{instance="a",team="research"}'
+        values: "9.5x10"
+      - series: 'gateway_budget_spent_usd{instance="b",team="research"}'
+        values: "9.5x10"
+      - series: 'gateway_budget_limit_usd{instance="a",team="research"}'
+        values: "10x10"
+      - series: 'gateway_budget_limit_usd{instance="b",team="research"}'
+        values: "10x10"
+      - series: 'gateway_budget_spent_usd{instance="a",team="ops"}'
+        values: "1x10"
+      - series: 'gateway_budget_limit_usd{instance="a",team="ops"}'
+        values: "10x10"
+      - series: 'gateway_budget_spent_usd{instance="a",team="free"}'
+        values: "500x10"
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: GatewayBudgetNearlySpent
+        exp_alerts:
+          - exp_labels: { severity: ticket, team: research }
+            exp_annotations:
+              summary: "team research has used 95% of its monthly budget"
+              look_at: "whether to raise its cap (admin.py team budget) before its requests start getting 429"

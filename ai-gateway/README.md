@@ -21,7 +21,7 @@ Each step is merged on its own; numbers are measured, not assumed.
 | 4 | Governance in PostgreSQL: teams, hashed keys, rate limits (token bucket), monthly budgets, a usage ledger with the cost of every call, an audit log; migrations *(done)* | Multi-tenant limits that hold under concurrency |
 | 5 | Guardrails: PII redaction, prompt-injection screening, output validation, per-route policy (reusing what Projects 3 and 5 measured) *(done; answer `json_schema` validation deferred)* | Reusable safety checks at the platform layer |
 | 6 | Self-hosted inference and optimization: a small instruct model on llama.cpp (quantization levels compared) and the NTEE classifier from Project 4 on ONNX Runtime (int8 vs fp32); accuracy, latency and throughput under concurrency; vLLM on a Colab GPU for comparison *(done)* | Inference optimization: quantization, batching, CPU vs GPU |
-| 7 | Observability: OpenTelemetry traces, Prometheus metrics, a Grafana dashboard, alerts on error rate, latency and cost spikes | Seeing a platform's health and cost |
+| 7 | Observability: OpenTelemetry traces, Prometheus metrics, a Grafana dashboard, alerts on error rate, latency and cost spikes *(done)* | Seeing a platform's health and cost |
 | 8 | Kubernetes: a local cluster (kind), a Helm chart, resource requests and limits, health probes, secrets, autoscaling (HPA) shown with a k6 load test, a rolling update with no dropped requests | Running services on Kubernetes |
 | 9 | Quality: a versioned prompt registry, an eval canary that gates prompt and model changes on the earlier projects' gold sets, a drift monitor that scores sampled live traffic | Catching prompt regressions and drift |
 | 10 | Build vs. adopt: the same tests and load against LiteLLM's proxy; a LangChain app that uses the gateway unchanged | When to build a platform piece and when to adopt one |
@@ -576,6 +576,199 @@ New files: `notebooks/make_vllm_notebook.py` (generates the notebook) and `noteb
 - **A GPU's advantage is batching.** It's about 6 times faster for one request and about 60 times faster in total under load, at about the same hourly price.
 - **Everything was measured on the same requests**, with accuracy from held-apart data. Two things carry to step 8: the memory budget, now about 150 MB over, and the `local` route's limit of about 8 simultaneous requests on the CPU.
 
+## Step 7: observability
+
+Plain language: until now, the only way to know the gateway was slow or failing was to notice. This step gives it three ways to report on itself:
+- **Logs** are a diary entry per request: what happened to it.
+- **Metrics** are running counters and timers that a computer can watch, like a car's dashboard lights.
+- **Traces** are a stopwatch breakdown of one request, step by step.
+
+**Alerts** then watch the metrics so that a person doesn't have to. None of it records what was asked or answered (decision 15).
+
+### Stage 1: one JSON line per request
+
+[src/logs.py](src/logs.py) writes the gateway's logs as JSON lines on stdout, where containers and Kubernetes collect them. Every request gets exactly one line, written once its response has been sent. For a stream, that's after the last event, or when the client goes away. So `duration_ms` is what the caller actually waited.
+
+```json
+{"ts": "2026-11-03T14:43:29.256Z", "level": "info", "logger": "gateway", "message": "request",
+ "request_id": "2c5b3b1a84fd490a96f130d2f1b97ea2", "method": "POST", "path": "/v1/chat/completions", "status": 200,
+ "duration_ms": 63, "team": "observe", "route": "stub", "stream": true, "first_token_ms": 44,
+ "attempts": [{"provider": "stub", "model": "stub-echo", "outcome": "ok", "ms": 0}], "fallback": false,
+ "outcome": "ok", "provider": "stub", "model": "stub-echo", "input_tokens": 4, "output_tokens": 7, "cost_usd": 0.0}
+```
+
+- **The request id ties things together.** It's the caller's own `x-request-id` if that's safe, or a new one. It's returned in the response header, stored in the usage row, and added to every other line logged while the request is handled (a warning, an exception), through a context variable. A user's "my request failed" plus the header value finds the exact line, its ledger row and, from stage 3, its trace.
+- **What's in it:** the team, route, every provider attempt with its outcome and time, whether a fallback answered, the outcome as settled in the ledger, the answering model, tokens, cost, the judge's cost, the first-token time for streams, and the error code for a refused request. Fields with no value are left out rather than written as null. For example, a request refused before admission has no provider.
+- **What's never in it:** the messages and the answer. Guardrail findings appear as kinds and actions only (`pii_input=flagged:card`), as in the response header. Tests send a card number and check it appears nowhere in the line.
+- **Health checks aren't logged:** Kubernetes probes `/healthz` and `/readyz` every few seconds, and a line each would bury everything else.
+- **uvicorn's own access log is off** (`serve.py`), since the gateway's line says more. The level comes from `GATEWAY_LOG_LEVEL` (default `INFO`). This closes the gap noted in step 2, where the gateway's request lines didn't show under uvicorn because no logging was set up.
+
+Checked against the real gateway (`serve.py`, PostgreSQL, a team allowed only `stub`): a plain request, a stream, a 403 for a route the team can't use, and a 401 for a bad key each wrote one line. A request sent with `x-request-id: live-1` was logged under that id, `/healthz` wrote nothing, and the email address in the messages appeared nowhere in the output.
+
+New files: `src/logs.py` (the JSON formatter, the request id context variable and the request line), `tests/test_logs.py` (9 tests: the fields, streams, refusals, failed attempts, guardrail findings, health checks, the formatter). Changed: `src/app.py` (the middleware writes the line when the body is done; the request path notes what happened; it replaces the old free-text attempts line), `src/accounting.py` (settling a hold records its outcome, model, tokens, cost and guardrail findings for the line), `src/serve.py` (no access log).
+
+### Stage 2: Prometheus metrics
+
+[src/metrics.py](src/metrics.py) keeps running totals and distributions, which Prometheus scrapes every few seconds. A log line describes one request; a metric summarizes all of them ("how many failed in the last 5 minutes", "what was the 95th percentile wait"). Metrics are cheap enough to keep for months, and they're what alerts are written against (stage 4).
+
+| Metric | Type | Labels | What it answers |
+|---|---|---|---|
+| `gateway_requests_total` | counter | route, status, outcome | traffic and error rate per route |
+| `gateway_request_duration_seconds` | histogram | route, stream | latency percentiles (p50, p95) |
+| `gateway_first_token_seconds` | histogram | route, provider | how soon streams start |
+| `gateway_provider_attempts_total` | counter | provider, model, outcome | which providers fail, and how (timeout, unavailable, skipped by a breaker) |
+| `gateway_fallbacks_total` | counter | route, provider | how often the first choice didn't answer |
+| `gateway_tokens_total`, `gateway_cost_usd_total` | counter | team, route, kind | usage and spend per team (kind: input/output; model/judge) |
+| `gateway_guardrail_findings_total` | counter | check, action | flags, redactions and blocks |
+| `gateway_requests_in_flight` | gauge | | load right now |
+| `gateway_breaker_open` | gauge | provider, model | 1 while a breaker is open or on trial |
+| `gateway_budget_spent_usd`, `gateway_budget_limit_usd` | gauge | team | each team's month against its cap |
+
+- **One source of truth:** each request is counted from the same fields as its log line, at the same moment, so the line and the metrics can't disagree.
+- **Labels the gateway controls:** every label value comes from the config (route names), the database (teams) or a fixed set of words (outcomes, statuses). A route name a caller makes up is counted as `unknown`, and `route=""` is anything that isn't a chat request. Guardrail findings are counted by check and action, not by personal-data kind. This matters because Prometheus stores one series per combination of label values: a label taken from user input would let anyone create unlimited series and exhaust its memory.
+- **On their own port** (9464, OpenTelemetry's default for Prometheus metrics; `serve.py --metrics-port`), not the API's. The metrics name teams and their spend, so callers who can reach the API shouldn't be able to read them. On the API port, `/metrics` is a 404. In the cluster (step 8), only Prometheus will reach that port.
+- **Gauges read at scrape time:** breaker states are read from the replica's breakers when scraped, so they're never stale. Budgets are shared state in PostgreSQL, so they're re-read every 30 s. Every replica reports the same numbers, which means dashboards take `max()` across replicas, not `sum()`.
+- **Histogram buckets** run from 50 ms to 2 minutes, since a stub answers in milliseconds and a long Claude answer takes a minute or more. Percentiles are estimated within a bucket, so p95 is approximate. The buckets are where the precision is needed.
+
+Checked against the real gateway (`serve.py`, PostgreSQL), scraping port 9464 after 4 answered requests, a 403, a 401, a made-up route and a stray `GET /metrics` on the API port:
+- Each request was counted once, under the right labels.
+- The made-up route name appeared only as `unknown`.
+- The breaker gauge showed the stub's breaker closed.
+- The budget gauges showed all 3 teams' spend, and a cap only for the team that has one.
+- Cost series stay empty while the only model used is the $0 stub. The tests cover real costs.
+
+New files: `src/metrics.py` (the metrics, counting from a request's fields, breaker and budget gauges, the separate endpoint), `tests/test_metrics.py` (9 tests: counting, streams, refusals and bounded labels, fallbacks, guardrails, breakers, budgets from the database, the separate port). Changed: `src/app.py` (counts each finished request and tracks requests in flight; serves metrics while the app runs; `metrics_port`), `src/serve.py` (`--metrics-port`, default 9464), `pyproject.toml` and `uv.lock` (`prometheus-client`).
+
+### Stage 3: traces with OpenTelemetry
+
+[src/tracing.py](src/tracing.py). A trace is a stopwatch breakdown of one request. The request is the outer span, and each step inside it is a child span with its own start, duration and outcome. A slow request shows where its time went; a failed one shows which step failed.
+
+```powershell
+docker compose --profile observability up -d jaeger          # UI: http://127.0.0.1:16686
+$env:OTEL_EXPORTER_OTLP_ENDPOINT = "http://127.0.0.1:4318"   # without it, tracing is off (OpenTelemetry's no-op)
+uv run python src/serve.py
+```
+
+One request through the real gateway, as Jaeger stored it (times from the start of the request):
+
+```
+POST /v1/chat/completions        +0.0 ms  51.0 ms  team=observe route=stub outcome=ok model=stub-echo tokens 4/7
+  fastapi.dependencies           +5.0 ms   0.1 ms
+  fastapi.endpoint               +5.2 ms  45.0 ms
+    gateway.auth                 +5.3 ms   4.8 ms  the key lookup (PostgreSQL)
+    gateway.admit               +10.4 ms  25.3 ms  rate limits and the budget hold (PostgreSQL)
+    gateway.guardrails.input    +35.8 ms   0.0 ms
+    chat stub-echo              +35.9 ms   0.1 ms  provider=stub retry=0
+    gateway.guardrails.output   +36.1 ms   0.0 ms
+    gateway.settle              +36.2 ms  13.8 ms  the ledger write (PostgreSQL)
+```
+
+- **The request span is FastAPI's.** FastAPI 0.162 opens an OpenTelemetry server span for each request by itself, following OpenTelemetry's HTTP conventions (method, route, status). It also reads a caller's W3C `traceparent` header and ends the span when the last byte is sent, a stream's included. My first version opened a second root span alongside it, in a separate trace, and the tests caught that. Now the gateway adds what only it knows (team, route, outcome, answering model, tokens, cost, fallback, first-token time, guardrail kinds) to FastAPI's span, from the same fields as the log line and the metrics.
+- **A span per step:** auth, admission (limits and budget hold), the input and output guardrails, the ledger write, and **one span per provider call** (`chat <model>`, OpenTelemetry's naming for model calls, with `gen_ai.*` attributes). A retry is a second span with `gateway.retry=1`, and a failed call has error status and its kind (`timeout`, `unavailable`). A candidate skipped because its breaker is open is an event, "candidate skipped: breaker open", not a call. For a stream, the call's span ends at the first event and the ledger write comes after the endpoint returns, while the answer streams.
+- **Joined to the logs:** the log line carries `trace_id`, and the span carries `gateway.request_id`. The live check started from each log line's trace id and fetched that trace from Jaeger, which is how you'd chase a reported failure.
+- **The caller's trace continues:** a request sent with `traceparent: 00-4bf92f35…-00f067aa…-01` landed in trace `4bf92f35…` under the caller's span. An application that traces its own work sees the gateway's steps inside it.
+- **Errors:** 5xx responses mark the request span as an error (FastAPI's rule, following OpenTelemetry's HTTP conventions); 4xx responses don't, because the caller made the mistake. The gateway's own error code is `gateway.error` (`route_not_allowed`, `all_candidates_failed`), since FastAPI sets `error.type` itself for 5xx responses. One quirk: FastAPI also marks its `fastapi.endpoint` span as an error for a refused request, because the gateway refuses by raising an exception.
+- **Never content:** no span carries the messages or the answer. Tests send a social security number and check every span's attributes and events, and the live check looked for a phone number in Jaeger's stored traces.
+- **Off by default:** without `OTEL_EXPORTER_OTLP_ENDPOINT`, OpenTelemetry's no-op tracer is used, and FastAPI skips its spans too. Spans are sent in batches, off the request path, and flushed when the app stops. Health checks aren't traced.
+
+**What the first trace showed:** on this PC the database does almost all of a request's work. With the stub answering in 0.1 ms, the key lookup, admission and ledger write took 30 to 45 ms in all: about four round trips to PostgreSQL in Docker on WSL2, each a few milliseconds. Step 5 measured the gateway's own overhead at about 1 ms, but without the database. Against a real provider (0.3 to 1.5 s to a first token), it's small. It is, however, the gateway's floor, and stage 5 measures it properly. The obvious fix, if it ever matters, is to move the ledger write off the request path, which a stream already does in effect.
+
+Jaeger runs locally from `docker-compose.yml` (profile `observability`, image pinned by digest, 256 MB limit, traces in memory). In the cluster (step 8), an OpenTelemetry Collector would take its place.
+
+New files: `src/tracing.py` (export setup from the standard `OTEL_*` variables, the gateway's attributes on the request span), `tests/test_tracing.py` (9 tests with an in-memory exporter: the span tree, no content, attempts and retries, the breaker event, error status, health checks, streams, the caller's trace, the log's trace id). Changed: `src/app.py` (step spans; the request span annotated; FastAPI's telemetry set to skip health checks), `src/router.py` (a span per provider call; the skipped-candidate event), `src/accounting.py` (the ledger write's span), `docker-compose.yml` (Jaeger), `pyproject.toml` and `uv.lock` (`opentelemetry-api`, `opentelemetry-sdk`, `opentelemetry-exporter-otlp-proto-http`; the exporter brings `requests` and protobuf).
+
+### Stage 4: a dashboard and alerts
+
+Prometheus scrapes the metrics and evaluates the alert rules. Grafana draws the dashboard. Both run locally from `docker-compose.yml` beside Jaeger, configured entirely from files in [observability/](observability/):
+
+```powershell
+docker compose --profile observability up -d   # Jaeger, Prometheus and Grafana (needs GRAFANA_ADMIN_PASSWORD in .env)
+$env:OTEL_EXPORTER_OTLP_ENDPOINT = "http://127.0.0.1:4318"
+uv run python src/serve.py                     # the gateway; metrics on 127.0.0.1:9464
+# Grafana   http://127.0.0.1:3000/d/ai-gateway   (no login needed on this PC)
+# Prometheus http://127.0.0.1:9090/alerts        (what's pending and firing)
+# Jaeger    http://127.0.0.1:16686
+```
+
+**The dashboard** ([observability/grafana/dashboards/gateway.json](observability/grafana/dashboards/gateway.json), generated by [make_dashboard.py](observability/grafana/make_dashboard.py)), from top to bottom:
+- **Headline numbers:** requests per second, the share of server errors, p95 for whole answers and for streams' first token, requests in flight, breakers open.
+- **Traffic:** by route and outcome, and by status.
+- **Latency:** p50 and p95 by route, and first-token time by route and provider.
+- **Providers:** calls by outcome, fallbacks, breakers.
+- **Money:** spend per hour and tokens per minute by team, budget used this month.
+- **Safety:** guardrail findings, and a table of alerts firing now.
+
+The dashboard is generated from Python, like the notebooks, so its queries can be reviewed and tested. [tests/test_dashboard.py](tests/test_dashboard.py) checks that the committed JSON is current and that every metric named in a chart or an alert rule is one the gateway exports. Otherwise a renamed metric would leave an empty chart, or an alert that can never fire, with no error anywhere.
+
+**The alerts** ([observability/alerts.yml](observability/alerts.yml)):
+
+| Alert | Fires when | For | Severity |
+|---|---|---|---|
+| `GatewayHighErrorRate` | over 5% of requests answered 5xx (4xx don't count: they're the caller's) | 5 min | page |
+| `GatewayHighLatency` | p95 of whole (non-streamed) answers on a route over 15 s | 10 min | ticket |
+| `GatewaySlowFirstToken` | p95 time to a stream's first token on a route over 5 s | 10 min | ticket |
+| `GatewayBreakerOpen` | a provider model's breaker open, on any replica | 5 min | page |
+| `GatewayCostSpike` | a team's last hour over 3x its average hour of the day before, and over $1 | 5 min | ticket |
+| `GatewayBudgetNearlySpent` | a team past 90% of its monthly cap (not in the design's list, but nearly free) | 5 min | ticket |
+
+- **`for:` is what keeps alerts quiet:** a condition has to hold that long before the alert fires (until then it's "pending"), so a few seconds of errors don't wake anyone. "page" means someone should act now; "ticket" means today.
+- **Each alert says where to look first.** The annotation names the metric or the trace to check (`look_at`), the first thing someone woken at 3 a.m. needs.
+- **Replicas:** counters are summed across gateway replicas, since each counts its own requests. Breaker states use `max`, since an open breaker on any replica matters. Budgets also use `max`, since every replica reports the same figure from PostgreSQL.
+- **The cost spike compares a team with itself.** A team that normally spends $2 an hour isn't alerted at $2, and a team that normally spends a cent isn't paged for a dime. The $1 floor keeps small teams quiet.
+- **Tested like code:** [observability/alerts_test.yml](observability/alerts_test.yml) gives each rule made-up metric history and states, with promtool (Prometheus's own tool), when it must fire, with what labels and text, and when it must stay quiet. The quiet cases: 2% errors, a long stream, a steady big spender, a small team's spike under $1, and a breaker closed on every replica. One test was broken on purpose to confirm promtool really compares the alert text. CI runs `promtool check config` and `promtool test rules` in the `ai-gateway-test` job.
+- **No one gets notified yet.** Alertmanager is the piece that would route firing alerts to email, Slack or a pager, with grouping and silences. Locally, alerts show in Prometheus's Alerts tab and on the dashboard.
+
+Checked live: the gateway on this PC, with Prometheus, Grafana and Jaeger in Docker.
+- Prometheus reached the gateway's metrics port (bound to 127.0.0.1) through Docker Desktop's `host.docker.internal`. The `llama-server` target shows down, because the `local` profile wasn't running.
+- Every panel drew from about 400 mixed requests: answers, streams, 403s and 401s.
+- The traffic also hit the gateway's own rate limit: the test team's key allows 60 requests a minute, and 203 of the first run's 403 requests got 429. They show as `refused`, not errors.
+
+Three fixes came out of the live check:
+- **Server errors said "No data", not 0%.** With no 5xx at all there's no error series to divide, so the query now adds `or vector(0)`. The alert rule needs no change, since no data means not firing.
+- **Grafana didn't reload the regenerated dashboard.** File changes on a Windows bind mount don't reach a container as change events, so after editing the dashboard here, run `docker compose restart grafana`.
+- **Grafana used 321 of its 384 MB limit.** Its limit is now 512 MB. Prometheus uses about 130 MB and Jaeger about 25 MB. Prometheus and Grafana together come to about 450 MB, the design doc's estimate.
+
+New files: `observability/prometheus.yml` (what Prometheus scrapes, and the rule file), `observability/alerts.yml` (the 6 alert rules), `observability/alerts_test.yml` (their promtool unit tests), `observability/grafana/make_dashboard.py` (generates the dashboard) and `observability/grafana/dashboards/gateway.json` (the dashboard), `observability/grafana/provisioning/datasources/datasources.yml` (Prometheus and Jaeger as data sources), `observability/grafana/provisioning/dashboards/dashboards.yml` (loads the dashboard folder), `tests/test_dashboard.py` (4 tests: current, metrics exist for charts and alerts, panels fit the grid). Changed: `docker-compose.yml` (Prometheus and Grafana, images pinned by digest), `.github/workflows/ai-gateway-ci.yml` (promtool checks).
+
+### Stage 5: the alerts fired for real, and what it all costs
+
+**Every alert made to fire.** [src/measure_alerts.py](src/measure_alerts.py) runs the real gateway (PostgreSQL, metrics on 9464) with one route per injected fault, all at once, scraped by the local Prometheus ([results/alerts.md](results/alerts.md)). When every alert had fired, the faults stopped and traffic went on, to see each one resolve. Minutes from the start of the faults, which stopped at 10.7:
+
+| Alert | Fault | Pending | Firing | Resolved |
+|---|---|---|---|---|
+| `GatewayHighErrorRate` | a provider failing 70% of calls (35% of that route's requests failed after a retry) | 0.3 | 5.2 | 13.0 |
+| `GatewayBreakerOpen` | a first candidate that's always down, with a healthy fallback | 0.3 | 5.1 | 11.1 |
+| `GatewayHighLatency` | 18 s per answer | 0.8 | 10.7 | 12.9 |
+| `GatewaySlowFirstToken` | 6 s to a stream's first word | 0.3 | 10.3 | 14.3 |
+| `GatewayBudgetNearlySpent` | a costly model, for a team with a $1 budget | 3.6 | 8.5 | (stays: the money is spent) |
+
+- **Each alert fired when its `for:` time ran out** (5 or 10 minutes after it went pending), and no other alert fired, the steady route included.
+- **The breaker alert is the one a user wouldn't see:** every request on the outage route was answered (547 of 547, by the fallback). Only the alert said the first choice had been down for 5 minutes.
+- **The budget worked as well as its alert:** 61 requests were answered, then 221 refused with 429 `budget_exceeded`, never overspent. The alert went pending as spend passed 90%, and fired 5 minutes later.
+- **Resolving takes minutes:** the breaker alert cleared 0.4 minutes after the faults stopped, once the next trial call succeeded and closed the breaker. The others took 2.2 to 3.6 minutes, as their 5-minute rate windows filled with healthy traffic. That lag is the cost of not paging on blips; an alert that cleared instantly would also fire instantly.
+- **Not fired live: `GatewayCostSpike`.** It compares a team's last hour with the day before, which a 25-minute run can't provide. Its proof is the promtool tests.
+- **One isolation choice:** the flaky provider's breaker was set not to trip in this run. Otherwise it opens after 5 failures, and the error-rate scenario turns into the breaker one. In real life a flaky provider usually trips both.
+
+**What observability costs** ([src/measure_observability.py](src/measure_observability.py), [results/observability.md](results/observability.md)): the gateway in memory with the stub and no database, 6,000 requests per set-up, medians.
+
+| Set-up | p50 per request | Added |
+|---|---|---|
+| metrics only (they can't be turned off) | 1.49 ms | (baseline) |
+| + the JSON request line | 1.65 ms | +0.16 ms |
+| + traces recorded (9 spans a request) | 2.50 ms | +1.0 ms |
+
+Each piece timed alone takes about 16-19 µs: counting a request in the metrics, formatting its log line, annotating its span. So the cost of traces is in making the spans, about 110 µs each, not the gateway's own code. Against the 30-45 ms PostgreSQL takes per request here and the seconds a model takes, all of it is noise. At high traffic, the lever is **sampling**: keep a share of traces (the standard `OTEL_TRACES_SAMPLER=parentbased_traceidratio` with `OTEL_TRACES_SAMPLER_ARG=0.1`), while metrics and logs still count every request.
+
+New files: `src/measure_alerts.py` (the live alerts run), `src/measure_observability.py` (the overhead measurement), `tests/test_measure_alerts.py` (3 tests: the scenario's wiring, the pending/firing/resolved timeline), `results/alerts.{json,md}` and `results/observability.{json,md}`.
+
+### Step 7 in short
+
+- **Logs, metrics and traces each answer a different question:** what happened to this request (logs), how the gateway is doing overall (metrics), and where this request's time went (traces). The request id and the trace id join them.
+- **All three come from one set of fields per request,** so they can't disagree, and none of them carries content.
+- **Six alerts were written and unit-tested like code,** and five were seen to fire and resolve against injected faults. The sixth, the cost spike, needs a day of history.
+- **The first trace found the real cost:** the database takes 30 to 45 ms of every request on this PC; the instrumentation itself, about 1 ms.
+- **What step 8 takes from here:** Prometheus will find pods in the cluster rather than one fixed address, the dashboard and rules move into the Helm chart, and an OpenTelemetry Collector takes Jaeger's place in receiving spans. The memory budget's estimate for Prometheus and Grafana held (about 450 MB measured).
+
 ## Setup
 
 ```powershell
@@ -585,6 +778,8 @@ uv run pytest      # tests (no network, no providers, no cluster)
 uv run ruff check . ; uv run ruff format --check .
 bash security/audit.sh   # known vulnerabilities in locked dependencies (Git Bash)
 ```
+
+`.env` (gitignored, local only) holds `POSTGRES_PASSWORD` and `DATABASE_URL` for the database (step 4), and `GRAFANA_ADMIN_PASSWORD` for the monitoring stack (step 7); any long random values will do.
 
 Local tools for the later steps: Docker Desktop, kubectl, [kind](https://kind.sigs.k8s.io/) (local Kubernetes clusters), [Helm](https://helm.sh/) (packaging the services for Kubernetes) and [k6](https://k6.io/) (load tests).
 

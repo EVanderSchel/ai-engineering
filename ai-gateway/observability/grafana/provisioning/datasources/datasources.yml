@@ -1,0 +1,16 @@
+# Grafana's data sources, created when it starts (provisioning: configuration as files, not clicks).
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    uid: prometheus # the dashboard refers to it by this id
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      timeInterval: 5s # Prometheus's scrape interval here (observability/prometheus.yml)
+  - name: Jaeger
+    uid: jaeger
+    type: jaeger
+    access: proxy
+    url: http://jaeger:16686

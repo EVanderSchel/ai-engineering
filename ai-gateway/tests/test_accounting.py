@@ -130,6 +130,7 @@ async def test_a_hold_is_replaced_by_the_actual_cost(conn, database_url):
     assert month_row(conn) == (Decimal("0.007"), Decimal(0))
     row = conn.execute("select outcome, cost_usd, reserved_usd, input_tokens, output_tokens, key_prefix from usage")
     assert row.fetchone() == ("ok", Decimal("0.007"), hold.reserved_usd, 2, 5, key[:10])
+    assert (hold.outcome, hold.model, hold.cost_usd) == ("ok", "stub-echo", Decimal("0.007"))  # for the log line
 
 
 @pytest.mark.anyio

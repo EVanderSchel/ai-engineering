@@ -1,0 +1,22 @@
+# Prometheus for local development (step 7): scrapes the gateway's metrics and evaluates the alert rules.
+#
+#     docker compose --profile observability up -d prometheus     # UI: http://127.0.0.1:9090 (Alerts tab)
+#
+# The gateway runs on this PC (src/serve.py, metrics on 127.0.0.1:9464); host.docker.internal is how a Docker
+# Desktop container reaches it. In the cluster (step 8) Prometheus finds the gateway's pods by itself instead.
+global:
+  scrape_interval: 5s # short for a local demo, so a change shows within seconds (15-30 s is usual)
+  evaluation_interval: 5s
+
+rule_files:
+  - alerts.yml
+
+scrape_configs:
+  - job_name: gateway
+    static_configs:
+      - targets: ["host.docker.internal:9464"]
+
+  # llama-server's own metrics (tokens per second, queue), when the `local` profile is running (step 6).
+  - job_name: llama-server
+    static_configs:
+      - targets: ["llm:8080"]

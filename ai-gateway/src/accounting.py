@@ -29,6 +29,7 @@ from psycopg.types.json import Jsonb
 
 import config
 import keys
+import tracing
 from providers import Usage
 from schemas import ChatRequest
 
@@ -87,6 +88,18 @@ class Hold:
     judge_reserved_usd: Decimal = Decimal(0)  # the part of the hold set aside for the injection judge
     started: float = field(default_factory=lambda: asyncio.get_running_loop().time())
     settled: bool = False
+    # What settling found, for the request's log line (logs.py). Cost stays None without a price list.
+    outcome: str | None = None
+    provider: str | None = None
+    model: str | None = None
+    usage: Usage | None = None
+    cost_usd: Decimal | None = None
+    screen_cost_usd: Decimal | None = None
+    guardrails: str = ""  # what the guardrails found: kinds and actions, never the text (guardrails.header)
+
+    def note(self, outcome, provider=None, model=None, usage=None, cost=None, screen_cost=None, guardrails="") -> None:
+        self.outcome, self.provider, self.model, self.usage = outcome, provider, model, usage
+        self.cost_usd, self.screen_cost_usd, self.guardrails = cost, screen_cost, guardrails
 
 
 class Prices:
@@ -125,8 +138,11 @@ class NoAccounting:
     async def admit(self, team, route_name, route, request, request_id, judged: bool = False) -> Hold:
         return Hold(team, route_name, request_id, request.stream, 0, Decimal(0), None)
 
-    async def settle(self, hold: Hold, **_outcome) -> None:
+    async def settle(
+        self, hold: Hold, *, outcome: str, provider=None, model=None, usage=None, guardrails="", **_rest
+    ) -> None:
         hold.settled = True
+        hold.note(outcome, provider, model, usage, guardrails=guardrails)
 
     async def audit_guardrails(self, hold: Hold, findings) -> None:
         pass
@@ -304,36 +320,38 @@ class Accounting:
         else:
             cost = model_hold  # a stream that broke partway: its usage is unknown
         screen_cost = self.prices.find(*JUDGE).cost(screen_usage) if screen_usage else Decimal(0)
+        hold.note(outcome, provider, model, usage, cost, screen_cost, guardrails)
         used_tokens = (
             usage.input_tokens + usage.output_tokens + usage.cache_read_tokens + usage.cache_write_tokens
             if usage
             else hold.estimated_tokens
         )
         latency_ms = round((asyncio.get_running_loop().time() - hold.started) * 1000)
+        u = usage or Usage()
         try:
-            async with self.pool.connection() as conn, conn.transaction():
-                await conn.execute(
-                    """
-                    update budgets set reserved_usd = greatest(reserved_usd - %s, 0), spent_usd = spent_usd + %s
-                    where team_id = %s and month = %s
-                    """,
-                    (hold.reserved_usd, cost + screen_cost, hold.team.id, hold.month),
-                )
-                await self._refund_tokens(conn, hold.team, max(hold.estimated_tokens - used_tokens, 0))
-                u = usage or Usage()
-                await conn.execute(
-                    """
-                    insert into usage (request_id, team_id, key_prefix, route, provider, model, attempts, stream,
-                        input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, reserved_usd, cost_usd,
-                        latency_ms, outcome, guardrails, screen_cost_usd)
-                    values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    """,
-                    (
-                        hold.request_id, hold.team.id, hold.team.key_prefix, hold.route, provider, model, attempts,
-                        hold.stream, u.input_tokens, u.output_tokens, u.cache_read_tokens, u.cache_write_tokens,
-                        hold.reserved_usd, cost, latency_ms, outcome, guardrails, screen_cost,
-                    ),
-                )  # fmt: skip
+            with tracing.tracer.start_as_current_span("gateway.settle"):  # the ledger write
+                async with self.pool.connection() as conn, conn.transaction():
+                    await conn.execute(
+                        """
+                        update budgets set reserved_usd = greatest(reserved_usd - %s, 0), spent_usd = spent_usd + %s
+                        where team_id = %s and month = %s
+                        """,
+                        (hold.reserved_usd, cost + screen_cost, hold.team.id, hold.month),
+                    )
+                    await self._refund_tokens(conn, hold.team, max(hold.estimated_tokens - used_tokens, 0))
+                    await conn.execute(
+                        """
+                        insert into usage (request_id, team_id, key_prefix, route, provider, model, attempts, stream,
+                            input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, reserved_usd,
+                            cost_usd, latency_ms, outcome, guardrails, screen_cost_usd)
+                        values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        (
+                            hold.request_id, hold.team.id, hold.team.key_prefix, hold.route, provider, model, attempts,
+                            hold.stream, u.input_tokens, u.output_tokens, u.cache_read_tokens, u.cache_write_tokens,
+                            hold.reserved_usd, cost, latency_ms, outcome, guardrails, screen_cost,
+                        ),
+                    )  # fmt: skip
         except Exception:
             log.exception("settling request %s failed", hold.request_id)
 
