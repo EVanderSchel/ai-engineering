@@ -23,6 +23,7 @@ from collections.abc import AsyncIterator
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
+from opentelemetry import trace
 
 import accounting
 import anthropic_provider
@@ -32,9 +33,12 @@ import db
 import guardrails
 import injection
 import keys
+import logs
+import metrics
 import openai_compatible_provider
 import router
 import schemas
+import tracing
 from providers import Finish, Provider, ProviderError, StreamEvent, TextDelta
 from stub_provider import StubProvider
 from translate import InvalidMessages, to_provider_request
@@ -87,13 +91,18 @@ def create_app(
     breakers: router.Breakers | None = None,
     policy: router.Policy | None = None,
     judge: injection.Judge | None = None,
+    metrics_port: int | None = None,
 ) -> FastAPI:
     """Everything the app depends on can be passed in, so tests run with the stub provider and test keys.
 
     `api_keys`: a key store, or {hash: team} for an in-memory one. Left out, keys come from PostgreSQL when
     DATABASE_URL is set (a connection pool opened when the app starts), else from GATEWAY_KEYS.
     `judge`: the injection judge, for routes or teams that ask for it. Left out, one on the Claude API client.
+    `metrics_port`: where to serve Prometheus metrics while the app runs. Left out, GATEWAY_METRICS_PORT; neither
+    set (tests), they're kept but not served (app.state.metrics.render() reads them).
     """
+    logs.configure(os.environ.get("GATEWAY_LOG_LEVEL", "INFO"))
+    tracing.configure()  # exports spans only if OTEL_EXPORTER_OTLP_ENDPOINT is set
     routes = routes if routes is not None else config.load_routes()
     judge = judge or injection.Judge()  # its Claude client is made on first use
     if providers is None:
@@ -122,6 +131,10 @@ def create_app(
     breakers = breakers or router.Breakers()
     policy = policy or router.Policy()
     ledger = accounting.Accounting(pool) if pool is not None else accounting.NoAccounting()
+    gauges = metrics.Metrics(routes, breakers)
+    if metrics_port is None and os.environ.get("GATEWAY_METRICS_PORT"):
+        metrics_port = int(os.environ["GATEWAY_METRICS_PORT"])
+    metrics_addr = os.environ.get("GATEWAY_METRICS_ADDR", "127.0.0.1")
 
     @contextlib.asynccontextmanager
     async def lifespan(_app: FastAPI):
@@ -129,39 +142,78 @@ def create_app(
             await pool.open(wait=True, timeout=10)
             await db.check_schema(pool)  # refuses to start against a database that isn't migrated to this code
         await ledger.start(routes)  # loads prices; refuses to start if a route's model has none
+        budgets = asyncio.create_task(gauges.keep_budgets_fresh(pool)) if pool is not None else None
         try:
-            yield
+            with metrics.serving(gauges, metrics_port, metrics_addr):
+                yield
         finally:
+            if budgets is not None:
+                budgets.cancel()
             if pool is not None:
                 await pool.close()
+            tracing.flush()
 
-    app = FastAPI(title="ai-gateway", docs_url=None, redoc_url=None, lifespan=lifespan)
+    app = FastAPI(
+        title="ai-gateway", docs_url=None, redoc_url=None, lifespan=lifespan,
+        # FastAPI's own OpenTelemetry spans (tracing.py), but not for health checks, which aren't logged either.
+        telemetry={"exclude": lambda scope: scope.get("path") in QUIET_PATHS},
+    )  # fmt: skip
 
     @app.middleware("http")
     async def request_id(request: Request, call_next):
+        """Gives every request an id (the caller's, if it's safe, else a new one), returned in `x-request-id`, and
+        writes the request's log line once its response has been sent (logs.py)."""
         incoming = request.headers.get("x-request-id", "")
         rid = incoming if REQUEST_ID.match(incoming) else uuid.uuid4().hex
         request.state.request_id = rid
-        response = await call_next(request)
+        request.state.started = time.perf_counter()
+        request.state.log = {}  # filled in along the request path; read by request_fields()
+        if request.url.path in QUIET_PATHS:
+            response = await call_next(request)
+            response.headers["x-request-id"] = rid
+            return response
+
+        span = request.state.span = trace.get_current_span()  # FastAPI's span for this request (tracing.py)
+
+        def finished(status: int) -> None:  # once per request: its log line, its count in the metrics, its span
+            fields = request_fields(request, status) | {"trace_id": tracing.trace_id(span)}
+            logs.request_line(fields)
+            gauges.observe(fields)
+            gauges.in_flight.dec()
+            tracing.annotate(span, fields)
+
+        gauges.in_flight.inc()
+        token = logs.REQUEST_ID.set(rid)  # the handler runs in a copy of this context, so its log lines carry it
+        try:
+            response = await call_next(request)
+        except Exception:
+            finished(500)
+            raise
+        finally:
+            logs.REQUEST_ID.reset(token)
         response.headers["x-request-id"] = rid
+        response.body_iterator = logged(response.body_iterator, functools.partial(finished, response.status_code))
         return response
 
     @app.exception_handler(GatewayError)
-    async def gateway_error(_request: Request, error: GatewayError):
+    async def gateway_error(request: Request, error: GatewayError):
+        request.state.log["error"] = error.code
         return error.response()
 
     @app.exception_handler(RequestValidationError)
-    async def invalid_request(_request: Request, error: RequestValidationError):
+    async def invalid_request(request: Request, error: RequestValidationError):
         first = error.errors()[0]
         field = ".".join(str(part) for part in first["loc"] if part != "body")
         reason = "isn't supported" if first["type"] == "extra_forbidden" else first["msg"].lower()
         message = f"{field}: {reason}" if field else reason
+        request.state.log["error"] = "invalid_request"
         return GatewayError(400, message, "invalid_request_error", "invalid_request", param=field or None).response()
 
     async def authenticate(request: Request) -> keys.Team:
         key = keys.bearer_key(request.headers.get("authorization"))
         try:
-            team = await key_store.team_for(key) if key else None
+            with tracing.tracer.start_as_current_span("gateway.auth"):
+                team = await key_store.team_for(key) if key else None
         except db.UNAVAILABLE:
             log.exception("key check failed: database unavailable")
             raise GatewayError(
@@ -170,6 +222,7 @@ def create_app(
             ) from None  # fmt: skip
         if team is None:
             raise GatewayError(401, "missing, invalid or revoked API key", "authentication_error", "invalid_api_key")
+        request.state.log["team"] = team.name
         return team
 
     @app.get("/healthz")
@@ -202,6 +255,8 @@ def create_app(
 
     @app.post("/v1/chat/completions")
     async def chat_completions(body: schemas.ChatRequest, request: Request):
+        noted = request.state.log
+        noted.update(route=body.model, stream=body.stream)
         team = await authenticate(request)
         route = routes.get(body.model)
         if route is None:
@@ -242,9 +297,10 @@ def create_app(
 
         # Rate limits and the budget hold (accounting.py), before any provider, or the injection judge, is called.
         try:
-            hold = await ledger.admit(
-                team, body.model, route, body, request.state.request_id, judged=guard.injection_judge
-            )
+            with tracing.tracer.start_as_current_span("gateway.admit"):  # rate limits and the budget hold
+                hold = await ledger.admit(
+                    team, body.model, route, body, request.state.request_id, judged=guard.injection_judge
+                )
         except accounting.Limited as limited:
             headers = {"retry-after": str(max(1, math.ceil(limited.retry_after)))} if limited.retry_after else None
             type_ = "rate_limit_error" if limited.status == 429 else "invalid_request_error"
@@ -255,11 +311,14 @@ def create_app(
                 503, "the gateway can't check limits right now", "service_unavailable_error",
                 "accounting_unavailable", headers={"retry-after": "5"},
             ) from None  # fmt: skip
+        noted["hold"] = hold  # settling it records the outcome, model, tokens and cost for the log line
 
         # Input guardrails (guardrails.py): personal data, then prompt injection. A blocked request is settled
         # (charging only the judge, if it ran) and never reaches a provider.
         try:
-            checked = await guardrails.check_input(body, guard, judge)
+            with tracing.tracer.start_as_current_span("gateway.guardrails.input") as guard_span:
+                checked = await guardrails.check_input(body, guard, judge)
+                guard_span.set_attribute("gateway.guardrails", guardrails.header(checked.findings))
         except guardrails.Blocked as blocked:
             await ledger.settle(
                 hold, outcome="blocked", attempts=0, screen_usage=blocked.judge_usage,
@@ -290,7 +349,7 @@ def create_app(
             else:
                 completion, result = await router.complete(route, providers, breakers, build, deadline, policy)
         except router.AllFailed as failure:
-            log_attempts(request, team.name, body.model, failure.attempts, "failed")
+            noted["attempts"] = attempt_fields(failure.attempts)
             await settle_failed(outcome="failed", attempts=len(failure.attempts))
             await ledger.audit_guardrails(hold, findings)
             raise from_all_failed(failure) from None
@@ -298,7 +357,11 @@ def create_app(
             spawn(settle_failed(outcome="failed", attempts=0))
             raise
 
-        log_attempts(request, team.name, body.model, result.attempts, "ok")
+        noted["attempts"] = attempt_fields(result.attempts)
+        noted["fallback"] = result.candidate != route.candidates[0]
+        if body.stream:  # the router waited for the first event: the provider's time to first token, as we saw it
+            noted["first_token_ms"] = round((time.perf_counter() - request.state.started) * 1000)
+            request.state.span.add_event("first token")
         settle = functools.partial(
             ledger.settle, hold, attempts=len(result.attempts), provider=result.candidate.provider,
             configured_model=result.candidate.model, screen_usage=checked.judge_usage,
@@ -312,7 +375,8 @@ def create_app(
         }
 
         if not body.stream:
-            output = guardrails.check_output(completion.text, guard)
+            with tracing.tracer.start_as_current_span("gateway.guardrails.output"):
+                output = guardrails.check_output(completion.text, guard)
             if output.findings:
                 findings += output.findings
                 finish = "content_filter" if output.withheld else completion.finish_reason
@@ -355,12 +419,48 @@ def create_app(
 
     app.state.breakers = breakers
     app.state.providers = providers
+    app.state.metrics = gauges
     return app
 
 
-def log_attempts(request: Request, team: str, route: str, attempts: list[router.Attempt], outcome: str) -> None:
-    tried = ", ".join(f"{a.provider}/{a.model}={a.outcome}" for a in attempts) or "none"
-    log.info("request %s team=%s route=%s %s attempts: %s", request.state.request_id, team, route, outcome, tried)
+QUIET_PATHS = {"/healthz", "/readyz"}  # probed every few seconds by Kubernetes: a line each would bury the rest
+
+
+def attempt_fields(attempts: list[router.Attempt]) -> list[dict]:
+    return [{"provider": a.provider, "model": a.model, "outcome": a.outcome, "ms": round(a.seconds * 1000)}
+            for a in attempts]  # fmt: skip
+
+
+def request_fields(request: Request, status: int) -> dict:
+    """The request's log line: what the path noted (request.state.log) and what settling its hold found."""
+    noted = request.state.log
+    fields = {
+        "request_id": request.state.request_id, "method": request.method, "path": request.url.path,
+        "status": status, "duration_ms": round((time.perf_counter() - request.state.started) * 1000),
+        "error": noted.get("error"), "team": noted.get("team"), "route": noted.get("route"),
+        "stream": noted.get("stream"), "first_token_ms": noted.get("first_token_ms"),
+        "attempts": noted.get("attempts"), "fallback": noted.get("fallback"),
+    }  # fmt: skip
+    if (hold := noted.get("hold")) is not None:
+        usage = hold.usage
+        fields |= {
+            # Not settled yet: the client went away mid-stream and settling runs in the background.
+            "outcome": hold.outcome or "unsettled", "provider": hold.provider, "model": hold.model,
+            "input_tokens": usage.input_tokens if usage else None,
+            "output_tokens": usage.output_tokens if usage else None,
+            "cost_usd": hold.cost_usd, "screen_cost_usd": hold.screen_cost_usd or None,
+            "guardrails": hold.guardrails or None,
+        }  # fmt: skip
+    return fields
+
+
+async def logged(body: AsyncIterator, finished) -> AsyncIterator:
+    """The response body, passed through; `finished` runs when it's done, however it ends."""
+    try:
+        async for chunk in body:
+            yield chunk
+    finally:
+        finished()
 
 
 def from_all_failed(failure: router.AllFailed) -> GatewayError:

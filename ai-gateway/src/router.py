@@ -16,6 +16,9 @@ from collections import deque
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
 
+from opentelemetry import trace
+
+import tracing
 from config import Candidate, Route
 from providers import Completion, Provider, ProviderError, ProviderRequest, StreamEvent
 
@@ -133,6 +136,10 @@ async def _tries(
         breaker = breakers[candidate]
         if not breaker.allow():
             attempts.append(Attempt(candidate.provider, candidate.model, "skipped"))
+            trace.get_current_span().add_event(
+                "candidate skipped: breaker open", {"gen_ai.provider.name": candidate.provider,
+                                                    "gen_ai.request.model": candidate.model},
+            )  # fmt: skip
             continue
         provider = providers[candidate.provider]
         for retry in range(policy.retries + 1):
@@ -142,7 +149,20 @@ async def _tries(
                 break
             started = loop.time()
             try:
-                value = await attempt_fn(provider, candidate, remaining)
+                # One span per call (OpenTelemetry's naming for model calls: "chat <model>"). For a stream it ends at
+                # the first event: that's when the attempt has succeeded.
+                with tracing.tracer.start_as_current_span(
+                    f"chat {candidate.model}", kind=trace.SpanKind.CLIENT,
+                    attributes={"gen_ai.operation.name": "chat", "gen_ai.provider.name": candidate.provider,
+                                "gen_ai.request.model": candidate.model, "gateway.retry": retry},
+                    record_exception=False, set_status_on_exception=False,
+                ) as span:  # fmt: skip
+                    try:
+                        value = await attempt_fn(provider, candidate, remaining)
+                    except ProviderError as error:
+                        span.set_status(trace.StatusCode.ERROR, error.kind)
+                        span.set_attribute("error.type", error.kind)
+                        raise
             except ProviderError as error:
                 attempts.append(Attempt(candidate.provider, candidate.model, error.kind, loop.time() - started))
                 last_error = error

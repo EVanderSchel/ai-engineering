@@ -142,6 +142,17 @@ jobs:
           REQUIRE_DATABASE: "1"
         run: python -m pytest -v
 
+      # The alert rules and Prometheus config are code too: checked and unit-tested with Prometheus's own tool, from
+      # the same image (pinned by digest) docker-compose.yml runs.
+      - name: Check and test the alert rules
+        run: |
+          promtool() {
+            docker run --rm -v "$PWD/observability:/w" -w /w --entrypoint promtool \
+              prom/prometheus:v3.15.1@sha256:fa3302279710be2f21a8301ec17a8b4f2301fd829bd113839b3b6b02b6f191a2 "$@"
+          }
+          promtool check config prometheus.yml
+          promtool test rules alerts_test.yml
+
   # Every locked production dependency is checked for known vulnerabilities. Fails on any that isn't
   # listed, with a reason, in ai-gateway/security/accepted-vulnerabilities.txt.
   audit:

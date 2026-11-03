@@ -1,0 +1,27 @@
+{
+  "end_to_end": {
+    "metrics only": {
+      "requests": 6000,
+      "p50_us": 1493,
+      "p95_us": 2987,
+      "mean_us": 1723
+    },
+    "+ request log": {
+      "requests": 6000,
+      "p50_us": 1648,
+      "p95_us": 3756,
+      "mean_us": 2056
+    },
+    "+ traces": {
+      "requests": 6000,
+      "p50_us": 2503,
+      "p95_us": 4785,
+      "mean_us": 2877
+    }
+  },
+  "per_call_us": {
+    "count in the metrics (metrics.observe)": 18.57,
+    "format the log line (JsonFormatter)": 16.3,
+    "annotate the request span (tracing.annotate)": 17.87
+  }
+}

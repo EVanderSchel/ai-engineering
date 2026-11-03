@@ -1,0 +1,1624 @@
+{
+ "faults_stopped_s": 643,
+ "expected": {
+  "GatewayHighErrorRate": "flaky",
+  "GatewayBreakerOpen": "outage",
+  "GatewayHighLatency": "slow",
+  "GatewaySlowFirstToken": "slow-stream",
+  "GatewayBudgetNearlySpent": "priced"
+ },
+ "timeline": {
+  "GatewayHighErrorRate": {
+   "pending": 16,
+   "firing": 312,
+   "resolved": 778
+  },
+  "GatewayBreakerOpen": {
+   "pending": 16,
+   "firing": 307,
+   "resolved": 663
+  },
+  "GatewaySlowFirstToken": {
+   "pending": 21,
+   "firing": 618,
+   "resolved": 859
+  },
+  "GatewayHighLatency": {
+   "pending": 46,
+   "firing": 643,
+   "resolved": 773
+  },
+  "GatewayBudgetNearlySpent": {
+   "pending": 216,
+   "firing": 512,
+   "resolved": null
+  }
+ },
+ "polls": [
+  [
+   5,
+   {}
+  ],
+  [
+   10,
+   {}
+  ],
+  [
+   16,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   21,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   26,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   31,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   36,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   41,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   46,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   51,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   56,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   61,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   66,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   71,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   76,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   81,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   86,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   91,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   96,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   101,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   106,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   111,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   116,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   121,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   126,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   131,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   136,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   141,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   146,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   151,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   156,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   161,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   166,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   171,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   176,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   181,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   186,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   191,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   196,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   201,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   206,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   211,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending"
+   }
+  ],
+  [
+   216,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   221,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   226,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   231,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   237,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   242,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   247,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   252,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   257,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   262,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   267,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   272,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   277,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   282,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   287,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   292,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   297,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   302,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "pending",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   307,
+   {
+    "GatewayHighErrorRate": "pending",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   312,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   317,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   322,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   327,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   332,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   337,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   342,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   347,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   352,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   357,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   362,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   367,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   372,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   377,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   382,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   387,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   392,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   397,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   402,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   407,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   412,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   417,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   422,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   427,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   432,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   437,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   442,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   447,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   452,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   457,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   462,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   467,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   472,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   477,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   482,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   487,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   492,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   497,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   502,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   507,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "pending"
+   }
+  ],
+  [
+   512,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   517,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   522,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   527,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   532,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   538,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   543,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   548,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   553,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   558,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   563,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   568,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   573,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   578,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   583,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   588,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   593,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   598,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   603,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   608,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   613,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "pending",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   618,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   623,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   628,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   633,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   638,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "pending",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   643,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   648,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   653,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   658,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBreakerOpen": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   663,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   668,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   673,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   678,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   683,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   688,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   693,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   698,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   703,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   708,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   713,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   718,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   723,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   728,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   733,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   738,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   743,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   748,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   753,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   758,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   763,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   768,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewayHighLatency": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   773,
+   {
+    "GatewayHighErrorRate": "firing",
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   778,
+   {
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   783,
+   {
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   788,
+   {
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   793,
+   {
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   798,
+   {
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   803,
+   {
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   808,
+   {
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   813,
+   {
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   818,
+   {
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   823,
+   {
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   828,
+   {
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   833,
+   {
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   838,
+   {
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   843,
+   {
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   849,
+   {
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   854,
+   {
+    "GatewaySlowFirstToken": "firing",
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ],
+  [
+   859,
+   {
+    "GatewayBudgetNearlySpent": "firing"
+   }
+  ]
+ ],
+ "responses": {
+  "flaky 200": 594,
+  "flaky 503": 320,
+  "outage 200": 547,
+  "priced 200": 61,
+  "priced 429": 221,
+  "slow 200": 1200,
+  "slow-stream 200": 574,
+  "steady 200": 987
+ }
+}
