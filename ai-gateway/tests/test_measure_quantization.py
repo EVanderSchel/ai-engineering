@@ -60,6 +60,37 @@ def test_cost_per_thousand_requests_follows_throughput():
     assert mq.cost_per_1k(10.0, usd_per_hour=3.6) == 0.1
 
 
+def fake_run(model: str, requests_per_s: float, **extra) -> dict:
+    level = {"requests": 4, "ttft_p50_ms": 50, "ttft_p95_ms": 60, "latency_p50_ms": 900, "latency_p95_ms": 950,
+             "tokens_per_s_per_request": 140.0, "tokens_per_s_total": 500.0,
+             "requests_per_s": requests_per_s}  # fmt: skip
+    answers = {"quiz": {"q1": "A"}, "ntee": {"e1": "5"}}
+    timing = {"latency_p50_ms": 70, "latency_p95_ms": 90, "requests_per_s": 1.0}
+    return {"model": model, "file_mb": 988, "load_seconds": 1.0, "peak_memory_mb": 1000,
+            "speed": {"1": level, "8": {**level, "requests_per_s": 2 * requests_per_s}},
+            "fidelity_answers": [["bees make honey"], ["bees make honey"]],
+            "quiz": {"answers": answers["quiz"], **timing}, "ntee": {"answers": answers["ntee"], **timing},
+            **extra}  # fmt: skip
+
+
+def test_a_gpu_run_joins_the_report_priced_at_its_own_hardware(tmp_path, monkeypatch):
+    import json
+
+    monkeypatch.setattr(mq, "OUT_DIR", tmp_path)
+    (tmp_path / "f16.json").write_text(json.dumps(fake_run("qwen-fp16", 1.0)))
+    gpu = fake_run("qwen-fp16-vllm", 1.0, engine="vLLM 0.33.0", hardware="Tesla T4 (Colab)", usd_per_hour=3.6)
+    (tmp_path / "vllm-t4.json").write_text(json.dumps(gpu))
+    quiz = {"rows": [{"id": "q1", "answer": "A"}]}
+    ntee = {"rows": [{"ein": "e1", "group": "K"}], "broad": BROAD, "reference_on_these_rows": {}}
+
+    result = mq.combine(quiz, ntee)
+    cpu, t4 = result["models"]["f16"], result["models"]["vllm-t4"]
+    assert cpu["engine"].startswith("llama.cpp") and cpu["usd_per_hour"] == mq.CLOUD_PRICE["usd_per_hour"]
+    assert t4["best_level"] == 8 and t4["cost_per_1k_usd"]["generation_128_tokens"] == 0.5  # $3.60 / 7,200 an hour
+    assert t4["quiz"]["same_as_reference"] == 1.0 and t4["fidelity"]["identical_to_reference"] == 1  # against F16
+    assert "| qwen-fp16-vllm | vLLM 0.33.0, Tesla T4 (Colab) |" in mq.report(result)
+
+
 def test_the_pool_runs_every_item_at_most_n_at_once():
     running, peak = 0, 0
 
