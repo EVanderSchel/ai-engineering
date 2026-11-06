@@ -323,6 +323,19 @@ def line(run: dict) -> str:
     return text
 
 
+def skip_reason(subject_: dict, baseline: dict | None, changed: bool, ref: str | None) -> str | None:
+    """Why `--changed` leaves a check out, or None to run it. Compared with a git ref (CI), a check with no baseline
+    there is new, or the canary itself is: a run could only say "no_baseline", which can't fail, so it isn't paid
+    for. The baseline the pull request commits becomes the one to compare with once it's merged."""
+    if not changed:
+        return None
+    if baseline is None:
+        return f"new         (no baseline at {ref}: nothing to compare with, not run)" if ref else None
+    if baseline["subject"] == subject_:
+        return "unchanged   (same route and prompt as its baseline: not run)"
+    return None
+
+
 async def main_async(args) -> int:
     settings = load_checks()
     names = args.checks or list(settings.checks)
@@ -339,8 +352,9 @@ async def main_async(args) -> int:
     to_run = []
     for name in names:
         subject_ = subject(settings.checks[name], routes, registry)
-        if args.changed and baselines[name] is not None and baselines[name]["subject"] == subject_:
-            print(f"{name:<11} unchanged   (same route and prompt as its baseline: not run)")
+        reason = skip_reason(subject_, baselines[name], args.changed, args.baseline_ref)
+        if reason:
+            print(f"{name:<11} {reason}")
         else:
             to_run.append((name, subject_))
     if to_run and not args.stub and not os.environ.get("ANTHROPIC_API_KEY"):

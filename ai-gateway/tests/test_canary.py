@@ -247,3 +247,17 @@ def test_the_live_baselines_match_the_current_checks():
         assert baseline is not None, name
         assert baseline["subject"] == canary.subject(check, routes, registry), name
         assert baseline["summary"]["rows"] == check.rows and baseline["comparison"]["verdict"] != "incomplete"
+
+
+@pytest.mark.parametrize(
+    ("baseline", "changed", "ref", "runs"),
+    [
+        (None, False, None, True),  # without --changed, every check runs
+        (None, True, None, True),  # locally, a check with no baseline runs, to make one
+        (None, True, "HEAD^1", False),  # in CI, nothing on main to compare with: not paid for
+        ({"subject": {"route": "fast"}}, True, "HEAD^1", False),  # unchanged
+        ({"subject": {"route": "smart"}}, True, "HEAD^1", True),  # changed: compared with main's
+    ],
+)
+def test_changed_runs_only_checks_that_can_be_compared_and_have_changed(baseline, changed, ref, runs):
+    assert (canary.skip_reason({"route": "fast"}, baseline, changed, ref) is None) == runs

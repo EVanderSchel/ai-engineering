@@ -1204,7 +1204,7 @@ What this shows:
 
 **The CI gate** is a new job, `ai-gateway-canary`, on pull requests that touch `ai-gateway/`:
 1. Every check runs on the scripted model (free), to catch a broken canary.
-2. `canary.py --changed --baseline-ref HEAD^1 ntee-fast ntee-smart` runs the NTEE checks on real models only if their subject differs from the baseline on main. It compares with main's baselines, not with any the pull request commits. So a PR can't pass by committing a new baseline, and it pays (about $0.27 per push) only when a route's candidates or a prompt version changed.
+2. `canary.py --changed --baseline-ref HEAD^1 ntee-fast ntee-smart` runs the NTEE checks on real models only if their subject differs from the baseline on main. It compares with main's baselines, not with any the pull request commits. So a PR can't pass by committing a new baseline, and it pays (about $0.27 per push) only when a route's candidates or a prompt version changed. A check with no baseline on main (a new check, or this first PR) isn't run, since a run could only report `no_baseline`, which can't fail.
 3. The runs are uploaded as an artifact (`canary-runs`). The PR commits them to `results/canary/baselines/`. A test fails until it does, because every committed baseline must test what its check tests now.
 
 `arc-local` isn't run in CI, because it needs llama-server and the model file. Run it locally before changing the `local` route.
