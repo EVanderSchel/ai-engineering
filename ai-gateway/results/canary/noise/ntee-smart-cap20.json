@@ -1,0 +1,924 @@
+{
+  "check": "ntee-smart",
+  "suite": "ntee",
+  "date": "2026-11-06T17:26:05+00:00",
+  "subject": {
+    "route": "smart",
+    "candidates": [
+      {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "effort": null,
+        "refusal_fallback": true
+      },
+      {
+        "provider": "bedrock",
+        "model": "us.anthropic.claude-sonnet-4-6",
+        "effort": null,
+        "refusal_fallback": false
+      }
+    ],
+    "prompt": {
+      "ref": "ntee-classify@v1",
+      "sha256": "c210a4a866acc9148869a41846512704ba5fb56dcd21c1641547ac586b80fb17"
+    }
+  },
+  "summary": {
+    "rows": 60,
+    "answered": 60,
+    "errors": 0,
+    "accuracy": 0.6667,
+    "unparseable": 5,
+    "input_tokens": 98894,
+    "output_tokens": 492,
+    "models": {
+      "claude-sonnet-5-5": 60
+    },
+    "top3": 0.7833
+  },
+  "items": [
+    {
+      "id": "223901156",
+      "gold": "X",
+      "answer": "X, B, P",
+      "predicted": [
+        "X",
+        "B",
+        "P"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1570,
+      "output_tokens": 7
+    },
+    {
+      "id": "412011402",
+      "gold": "X",
+      "answer": "X, B, A",
+      "predicted": [
+        "X",
+        "B",
+        "A"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1582,
+      "output_tokens": 7
+    },
+    {
+      "id": "591805535",
+      "gold": "K",
+      "answer": "K, P, E",
+      "predicted": [
+        "K",
+        "P",
+        "E"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1695,
+      "output_tokens": 7
+    },
+    {
+      "id": "593607032",
+      "gold": "B",
+      "answer": "B, O, P",
+      "predicted": [
+        "B",
+        "O",
+        "P"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1707,
+      "output_tokens": 7
+    },
+    {
+      "id": "823136572",
+      "gold": "B",
+      "answer": "B, T, O",
+      "predicted": [
+        "B",
+        "T",
+        "O"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1560,
+      "output_tokens": 7
+    },
+    {
+      "id": "943263110",
+      "gold": "C",
+      "answer": "C, U, S",
+      "predicted": [
+        "C",
+        "U",
+        "S"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1604,
+      "output_tokens": 7
+    },
+    {
+      "id": "208809060",
+      "gold": "V",
+      "answer": "W, S, R",
+      "predicted": [
+        "W",
+        "S",
+        "R"
+      ],
+      "correct": false,
+      "top3": false,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1613,
+      "output_tokens": 7
+    },
+    {
+      "id": "300277253",
+      "gold": "Q",
+      "answer": "Q, P, B",
+      "predicted": [
+        "Q",
+        "P",
+        "B"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1614,
+      "output_tokens": 8
+    },
+    {
+      "id": "810586795",
+      "gold": "B",
+      "answer": "O, B, N",
+      "predicted": [
+        "O",
+        "B",
+        "N"
+      ],
+      "correct": false,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1615,
+      "output_tokens": 7
+    },
+    {
+      "id": "814245018",
+      "gold": "N",
+      "answer": "N, O, B",
+      "predicted": [
+        "N",
+        "O",
+        "B"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1680,
+      "output_tokens": 7
+    },
+    {
+      "id": "742429518",
+      "gold": "G",
+      "answer": "E, G, F",
+      "predicted": [
+        "E",
+        "G",
+        "F"
+      ],
+      "correct": false,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1745,
+      "output_tokens": 7
+    },
+    {
+      "id": "472719636",
+      "gold": "A",
+      "answer": "A, S, B",
+      "predicted": [
+        "A",
+        "S",
+        "B"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1593,
+      "output_tokens": 7
+    },
+    {
+      "id": "880687841",
+      "gold": "C",
+      "answer": "C, B, A",
+      "predicted": [
+        "C",
+        "B",
+        "A"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1690,
+      "output_tokens": 7
+    },
+    {
+      "id": "751535746",
+      "gold": "W",
+      "answer": "",
+      "predicted": [],
+      "correct": false,
+      "top3": false,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1621,
+      "output_tokens": 20
+    },
+    {
+      "id": "710891704",
+      "gold": "L",
+      "answer": "P, I, R",
+      "predicted": [
+        "P",
+        "I",
+        "R"
+      ],
+      "correct": false,
+      "top3": false,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1636,
+      "output_tokens": 7
+    },
+    {
+      "id": "930478660",
+      "gold": "P",
+      "answer": "P, E, L",
+      "predicted": [
+        "P",
+        "E",
+        "L"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1623,
+      "output_tokens": 7
+    },
+    {
+      "id": "851598684",
+      "gold": "O",
+      "answer": "B, J, O",
+      "predicted": [
+        "B",
+        "J",
+        "O"
+      ],
+      "correct": false,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1759,
+      "output_tokens": 7
+    },
+    {
+      "id": "873397818",
+      "gold": "X",
+      "answer": "T, P, S",
+      "predicted": [
+        "T",
+        "P",
+        "S"
+      ],
+      "correct": false,
+      "top3": false,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1682,
+      "output_tokens": 7
+    },
+    {
+      "id": "872146640",
+      "gold": "D",
+      "answer": "D, B, C",
+      "predicted": [
+        "D",
+        "B",
+        "C"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1790,
+      "output_tokens": 7
+    },
+    {
+      "id": "570314417",
+      "gold": "P",
+      "answer": "P, N, O",
+      "predicted": [
+        "P",
+        "N",
+        "O"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1604,
+      "output_tokens": 7
+    },
+    {
+      "id": "862138211",
+      "gold": "C",
+      "answer": "C, U, S",
+      "predicted": [
+        "C",
+        "U",
+        "S"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1603,
+      "output_tokens": 7
+    },
+    {
+      "id": "872835686",
+      "gold": "P",
+      "answer": "R, S, W",
+      "predicted": [
+        "R",
+        "S",
+        "W"
+      ],
+      "correct": false,
+      "top3": false,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1629,
+      "output_tokens": 7
+    },
+    {
+      "id": "770331230",
+      "gold": "B",
+      "answer": "B, O, P",
+      "predicted": [
+        "B",
+        "O",
+        "P"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1584,
+      "output_tokens": 7
+    },
+    {
+      "id": "474978384",
+      "gold": "E",
+      "answer": "O, F, A",
+      "predicted": [
+        "O",
+        "F",
+        "A"
+      ],
+      "correct": false,
+      "top3": false,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1775,
+      "output_tokens": 7
+    },
+    {
+      "id": "320138163",
+      "gold": "O",
+      "answer": "O, W, B",
+      "predicted": [
+        "O",
+        "W",
+        "B"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1850,
+      "output_tokens": 7
+    },
+    {
+      "id": "010533179",
+      "gold": "L",
+      "answer": "L, P, S",
+      "predicted": [
+        "L",
+        "P",
+        "S"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1714,
+      "output_tokens": 7
+    },
+    {
+      "id": "812706775",
+      "gold": "B",
+      "answer": "B, C, P",
+      "predicted": [
+        "B",
+        "C",
+        "P"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1729,
+      "output_tokens": 7
+    },
+    {
+      "id": "203222424",
+      "gold": "R",
+      "answer": "R, P, I",
+      "predicted": [
+        "R",
+        "P",
+        "I"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1592,
+      "output_tokens": 7
+    },
+    {
+      "id": "222477781",
+      "gold": "A",
+      "answer": "A, N, B",
+      "predicted": [
+        "A",
+        "N",
+        "B"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1635,
+      "output_tokens": 7
+    },
+    {
+      "id": "371092066",
+      "gold": "P",
+      "answer": "P, L, E",
+      "predicted": [
+        "P",
+        "L",
+        "E"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1611,
+      "output_tokens": 7
+    },
+    {
+      "id": "912162264",
+      "gold": "T",
+      "answer": "",
+      "predicted": [],
+      "correct": false,
+      "top3": false,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1605,
+      "output_tokens": 20
+    },
+    {
+      "id": "205983258",
+      "gold": "S",
+      "answer": "S, A, N",
+      "predicted": [
+        "S",
+        "A",
+        "N"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1579,
+      "output_tokens": 7
+    },
+    {
+      "id": "481200834",
+      "gold": "N",
+      "answer": "N, O, B",
+      "predicted": [
+        "N",
+        "O",
+        "B"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1604,
+      "output_tokens": 7
+    },
+    {
+      "id": "020634996",
+      "gold": "N",
+      "answer": "This reads like a Christian college fraternity. Fraternities and",
+      "predicted": [],
+      "correct": false,
+      "top3": false,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1614,
+      "output_tokens": 20
+    },
+    {
+      "id": "911992410",
+      "gold": "K",
+      "answer": "K, Y, D",
+      "predicted": [
+        "K",
+        "Y",
+        "D"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1614,
+      "output_tokens": 8
+    },
+    {
+      "id": "833289582",
+      "gold": "B",
+      "answer": "B, T, S",
+      "predicted": [
+        "B",
+        "T",
+        "S"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1605,
+      "output_tokens": 7
+    },
+    {
+      "id": "566067763",
+      "gold": "P",
+      "answer": "P, W, J",
+      "predicted": [
+        "P",
+        "W",
+        "J"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1726,
+      "output_tokens": 7
+    },
+    {
+      "id": "832179227",
+      "gold": "O",
+      "answer": "B, O, X",
+      "predicted": [
+        "B",
+        "O",
+        "X"
+      ],
+      "correct": false,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1584,
+      "output_tokens": 7
+    },
+    {
+      "id": "411523054",
+      "gold": "X",
+      "answer": "",
+      "predicted": [],
+      "correct": false,
+      "top3": false,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1568,
+      "output_tokens": 20
+    },
+    {
+      "id": "273702294",
+      "gold": "B",
+      "answer": "F, P, E",
+      "predicted": [
+        "F",
+        "P",
+        "E"
+      ],
+      "correct": false,
+      "top3": false,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1646,
+      "output_tokens": 7
+    },
+    {
+      "id": "465278201",
+      "gold": "P",
+      "answer": "G, P, E",
+      "predicted": [
+        "G",
+        "P",
+        "E"
+      ],
+      "correct": false,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1757,
+      "output_tokens": 7
+    },
+    {
+      "id": "331164224",
+      "gold": "Q",
+      "answer": "Q, R, A",
+      "predicted": [
+        "Q",
+        "R",
+        "A"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1617,
+      "output_tokens": 8
+    },
+    {
+      "id": "453771750",
+      "gold": "Q",
+      "answer": "Q, P, I",
+      "predicted": [
+        "Q",
+        "P",
+        "I"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1728,
+      "output_tokens": 8
+    },
+    {
+      "id": "454711737",
+      "gold": "B",
+      "answer": "B, S, T",
+      "predicted": [
+        "B",
+        "S",
+        "T"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1642,
+      "output_tokens": 7
+    },
+    {
+      "id": "900627162",
+      "gold": "S",
+      "answer": "S, Y, B",
+      "predicted": [
+        "S",
+        "Y",
+        "B"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1619,
+      "output_tokens": 8
+    },
+    {
+      "id": "462464012",
+      "gold": "G",
+      "answer": "G, P, E",
+      "predicted": [
+        "G",
+        "P",
+        "E"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1589,
+      "output_tokens": 7
+    },
+    {
+      "id": "860981116",
+      "gold": "K",
+      "answer": "K, S, C",
+      "predicted": [
+        "K",
+        "S",
+        "C"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1591,
+      "output_tokens": 7
+    },
+    {
+      "id": "593685521",
+      "gold": "J",
+      "answer": "This looks like the Florida Education Association, a teachers' union.",
+      "predicted": [],
+      "correct": false,
+      "top3": false,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1804,
+      "output_tokens": 20
+    },
+    {
+      "id": "821751840",
+      "gold": "P",
+      "answer": "T, P, S",
+      "predicted": [
+        "T",
+        "P",
+        "S"
+      ],
+      "correct": false,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1591,
+      "output_tokens": 7
+    },
+    {
+      "id": "202432696",
+      "gold": "B",
+      "answer": "B, P, O",
+      "predicted": [
+        "B",
+        "P",
+        "O"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1589,
+      "output_tokens": 7
+    },
+    {
+      "id": "845011967",
+      "gold": "R",
+      "answer": "W, R, S",
+      "predicted": [
+        "W",
+        "R",
+        "S"
+      ],
+      "correct": false,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1565,
+      "output_tokens": 7
+    },
+    {
+      "id": "452756854",
+      "gold": "O",
+      "answer": "O, B, W",
+      "predicted": [
+        "O",
+        "B",
+        "W"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1564,
+      "output_tokens": 7
+    },
+    {
+      "id": "204510475",
+      "gold": "E",
+      "answer": "E, T, P",
+      "predicted": [
+        "E",
+        "T",
+        "P"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1647,
+      "output_tokens": 7
+    },
+    {
+      "id": "742466095",
+      "gold": "L",
+      "answer": "L, S, Y",
+      "predicted": [
+        "L",
+        "S",
+        "Y"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1696,
+      "output_tokens": 8
+    },
+    {
+      "id": "650888015",
+      "gold": "S",
+      "answer": "S, W, R",
+      "predicted": [
+        "S",
+        "W",
+        "R"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1997,
+      "output_tokens": 7
+    },
+    {
+      "id": "371830636",
+      "gold": "P",
+      "answer": "P, B, O",
+      "predicted": [
+        "P",
+        "B",
+        "O"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1568,
+      "output_tokens": 7
+    },
+    {
+      "id": "371128706",
+      "gold": "E",
+      "answer": "E, P, S",
+      "predicted": [
+        "E",
+        "P",
+        "S"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1702,
+      "output_tokens": 7
+    },
+    {
+      "id": "510661383",
+      "gold": "T",
+      "answer": "Q, K, P",
+      "predicted": [
+        "Q",
+        "K",
+        "P"
+      ],
+      "correct": false,
+      "top3": false,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1564,
+      "output_tokens": 8
+    },
+    {
+      "id": "251331716",
+      "gold": "A",
+      "answer": "B, O, P",
+      "predicted": [
+        "B",
+        "O",
+        "P"
+      ],
+      "correct": false,
+      "top3": false,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1565,
+      "output_tokens": 7
+    },
+    {
+      "id": "822947687",
+      "gold": "C",
+      "answer": "C, S, R",
+      "predicted": [
+        "C",
+        "S",
+        "R"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "claude-sonnet-5-5",
+      "input_tokens": 1649,
+      "output_tokens": 7
+    }
+  ],
+  "comparison": {
+    "verdict": "no_baseline"
+  }
+}

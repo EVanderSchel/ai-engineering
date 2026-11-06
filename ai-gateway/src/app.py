@@ -36,6 +36,7 @@ import keys
 import logs
 import metrics
 import openai_compatible_provider
+import prompts
 import router
 import schemas
 import tracing
@@ -92,6 +93,7 @@ def create_app(
     policy: router.Policy | None = None,
     judge: injection.Judge | None = None,
     metrics_port: int | None = None,
+    prompt_registry: prompts.Registry | None = None,
 ) -> FastAPI:
     """Everything the app depends on can be passed in, so tests run with the stub provider and test keys.
 
@@ -100,11 +102,13 @@ def create_app(
     `judge`: the injection judge, for routes or teams that ask for it. Left out, one on the Claude API client.
     `metrics_port`: where to serve Prometheus metrics while the app runs. Left out, GATEWAY_METRICS_PORT; neither
     set (tests), they're kept but not served (app.state.metrics.render() reads them).
+    `prompt_registry`: the registered prompts. Left out, prompts/ in the repo (or the image), checked at startup.
     """
     logs.configure(os.environ.get("GATEWAY_LOG_LEVEL", "INFO"))
     tracing.configure()  # exports spans only if OTEL_EXPORTER_OTLP_ENDPOINT is set
     routes = routes if routes is not None else config.load_routes()
     judge = judge or injection.Judge()  # its Claude client is made on first use
+    registry = prompt_registry if prompt_registry is not None else prompts.Registry()
     if providers is None:
         claude = anthropic_provider.make_client()
         providers = {
@@ -262,6 +266,19 @@ def create_app(
             ],
         }
 
+    @app.get("/v1/prompts")
+    async def list_prompts(request: Request):
+        """The registered prompts a request can name in gateway.prompt, with each one's active version."""
+        await authenticate(request)
+        return {
+            "object": "list",
+            "data": [
+                {"id": name, "object": "prompt", "active": registry.active[name],
+                 "versions": sorted(v for n, v in registry.prompts if n == name)}
+                for name in registry.names()
+            ],
+        }  # fmt: skip
+
     @app.post("/v1/chat/completions")
     async def chat_completions(body: schemas.ChatRequest, request: Request):
         noted = request.state.log
@@ -298,8 +315,21 @@ def create_app(
                     "default sampling", "invalid_request_error", "unsupported_parameter", param=field,
                 )  # fmt: skip
 
+        # A registered prompt (step 9): resolved and rendered now, so an unknown prompt or a missing variable fails
+        # before any accounting, and the budget hold counts the prompt's length. It's rendered again below from the
+        # guardrails' copy of the variables, which may be redacted.
+        prompt, rendered = None, body
+        if body.gateway.prompt is not None:
+            try:
+                prompt = registry.resolve(body.gateway.prompt)
+                rendered = prompts.apply(body, prompt)
+            except prompts.PromptError as error:
+                type_ = "not_found_error" if error.status == 404 else "invalid_request_error"
+                raise GatewayError(error.status, error.message, type_, error.code, param=error.param) from None
+            noted["prompt"] = prompt.ref
+
         try:  # the message checks don't depend on the candidate: fail before any call
-            to_provider_request(body, route.candidates[0].model, limit)
+            to_provider_request(rendered, route.candidates[0].model, limit)
         except InvalidMessages as error:
             raise GatewayError(400, str(error), "invalid_request_error", "invalid_messages", "messages") from None
         guard = effective_guardrails(route, team)
@@ -308,7 +338,7 @@ def create_app(
         try:
             with tracing.tracer.start_as_current_span("gateway.admit"):  # rate limits and the budget hold
                 hold = await ledger.admit(
-                    team, body.model, route, body, request.state.request_id, judged=guard.injection_judge
+                    team, body.model, route, rendered, request.state.request_id, judged=guard.injection_judge
                 )
         except accounting.Limited as limited:
             headers = {"retry-after": str(max(1, math.ceil(limited.retry_after)))} if limited.retry_after else None
@@ -321,6 +351,7 @@ def create_app(
                 "accounting_unavailable", headers={"retry-after": "5"},
             ) from None  # fmt: skip
         noted["hold"] = hold  # settling it records the outcome, model, tokens and cost for the log line
+        hold.prompt = prompt.ref if prompt else ""  # the usage row records which prompt version answered
 
         # Input guardrails (guardrails.py): personal data, then prompt injection. A blocked request is settled
         # (charging only the judge, if it ran) and never reaches a provider.
@@ -340,6 +371,8 @@ def create_app(
             spawn(ledger.settle(hold, outcome="failed", attempts=0))
             raise
         safe, findings = checked.request, list(checked.findings)
+        if prompt is not None:  # the variables as the guardrails left them (possibly redacted)
+            safe = prompts.apply(safe, prompt)
 
         def build(candidate: config.Candidate):
             return to_provider_request(
@@ -382,6 +415,9 @@ def create_app(
             "x-gateway-attempts": str(len(result.attempts)),
             "x-gateway-fallback": "true" if result.candidate != route.candidates[0] else "false",
         }
+        if prompt is not None:  # which prompt text answered, exactly: its version and fingerprint
+            headers["x-gateway-prompt"] = prompt.ref
+            headers["x-gateway-prompt-sha256"] = prompt.sha256
 
         if not body.stream:
             with tracing.tracer.start_as_current_span("gateway.guardrails.output"):
@@ -449,7 +485,7 @@ def request_fields(request: Request, status: int) -> dict:
         "status": status, "duration_ms": round((time.perf_counter() - request.state.started) * 1000),
         "error": noted.get("error"), "team": noted.get("team"), "route": noted.get("route"),
         "stream": noted.get("stream"), "first_token_ms": noted.get("first_token_ms"),
-        "attempts": noted.get("attempts"), "fallback": noted.get("fallback"),
+        "attempts": noted.get("attempts"), "fallback": noted.get("fallback"), "prompt": noted.get("prompt"),
     }  # fmt: skip
     if (hold := noted.get("hold")) is not None:
         usage = hold.usage

@@ -12,3 +12,7 @@ models/
 # kind cluster kubeconfigs and Helm's packaged charts: made locally, never committed.
 *.kubeconfig
 *.tgz
+# The canary's latest runs (canary.py): rewritten on every run. A run worth keeping is saved as a baseline, and
+# CI uploads its runs as an artifact.
+results/canary/runs/
+results/canary/stub/runs/

@@ -24,6 +24,8 @@ COPY --from=build /app/.venv /app/.venv
 COPY src/ src/
 COPY config/ config/
 COPY migrations/ migrations/
+# The registered prompts (step 9), checked against their fingerprints when the gateway starts.
+COPY prompts/ prompts/
 ENV PATH=/app/.venv/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

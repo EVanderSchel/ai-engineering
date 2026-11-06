@@ -96,6 +96,7 @@ class Hold:
     cost_usd: Decimal | None = None
     screen_cost_usd: Decimal | None = None
     guardrails: str = ""  # what the guardrails found: kinds and actions, never the text (guardrails.header)
+    prompt: str = ""  # the registered prompt the request used, name@version (prompts.py, step 9); "" for none
 
     def note(self, outcome, provider=None, model=None, usage=None, cost=None, screen_cost=None, guardrails="") -> None:
         self.outcome, self.provider, self.model, self.usage = outcome, provider, model, usage
@@ -343,13 +344,13 @@ class Accounting:
                         """
                         insert into usage (request_id, team_id, key_prefix, route, provider, model, attempts, stream,
                             input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, reserved_usd,
-                            cost_usd, latency_ms, outcome, guardrails, screen_cost_usd)
-                        values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            cost_usd, latency_ms, outcome, guardrails, screen_cost_usd, prompt)
+                        values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         """,
                         (
                             hold.request_id, hold.team.id, hold.team.key_prefix, hold.route, provider, model, attempts,
                             hold.stream, u.input_tokens, u.output_tokens, u.cache_read_tokens, u.cache_write_tokens,
-                            hold.reserved_usd, cost, latency_ms, outcome, guardrails, screen_cost,
+                            hold.reserved_usd, cost, latency_ms, outcome, guardrails, screen_cost, hold.prompt,
                         ),
                     )  # fmt: skip
         except Exception:

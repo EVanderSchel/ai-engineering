@@ -1,0 +1,18 @@
+# The eval canary's checks (step 9, src/canary.py): each scores one route, optionally with one registered prompt, on
+# questions with known answers, and compares the result with that check's baseline (results/canary/baselines/).
+#
+# suite: ntee  Project 4's dev missions (data/self_hosted/ntee_dev_sample.json, never its test split); the answer is
+#              the 25-group NTEE letter; scored on the first letter given (top 1) and on the first three (top 3).
+#        arc   ARC-Easy science questions (data/self_hosted/arc_easy_sample.json); the answer is a letter A to D.
+# temperature: only where every candidate takes it (the local route); Claude routes get none.
+# rows:  how many of the suite's rows, always the same ones (the file's first N), so runs compare item by item.
+# margin: how far accuracy may fall below the baseline before the check fails. Set from 3 runs of each unchanged check
+#         (step 9 stage 3, results/canary/noise/): the largest swing was 2 of 60 answers (3.3 points, ntee-fast);
+#         ntee-smart and arc-local didn't move. 0.05 is 3 NTEE answers or 5 ARC answers.
+
+margin: 0.05
+
+checks:
+  ntee-fast: {suite: ntee, route: fast, prompt: ntee-classify, rows: 60}
+  ntee-smart: {suite: ntee, route: smart, prompt: ntee-classify, rows: 60}
+  arc-local: {suite: arc, route: local, rows: 100, temperature: 0}  # greedy, as in step 6: repeatable

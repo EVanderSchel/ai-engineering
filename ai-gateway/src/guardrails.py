@@ -69,16 +69,23 @@ def _redact_message(message: Message, kinds) -> tuple[Message, set[str]]:
     return message.model_copy(update={"content": parts}), found
 
 
-def _kinds_in(messages: list[Message], kinds) -> list[str]:
-    found = {f.kind for m in messages for f in pii.find(m.text(), kinds)}
+def _kinds_in(messages: list[Message], kinds, extra: tuple[str, ...] = ()) -> list[str]:
+    texts = [m.text() for m in messages] + list(extra)
+    found = {f.kind for text in texts for f in pii.find(text, kinds)}
     return [k for k in pii.KINDS if k in found]
+
+
+def _variables(request: ChatRequest) -> tuple[str, ...]:
+    """A registered prompt's variable values (step 9): they come from the caller, so they're checked like a user
+    message, even though they end up in the system prompt."""
+    return tuple(request.gateway.variables.values())
 
 
 async def check_input(request: ChatRequest, policy: Guardrails, judge: injection.Judge | None) -> InputResult:
     """The request as it may go on (possibly redacted), and what was found. Raises Blocked."""
     result = InputResult(request)
     if policy.pii_input != "off":
-        kinds = _kinds_in(request.messages, policy.pii_kinds)
+        kinds = _kinds_in(request.messages, policy.pii_kinds, _variables(request))
         if kinds:
             if policy.pii_input == "block":
                 finding = Finding("pii_input", "blocked", tuple(kinds))
@@ -89,13 +96,16 @@ async def check_input(request: ChatRequest, policy: Guardrails, judge: injection
                 )  # fmt: skip
             if policy.pii_input == "redact":
                 messages = [_redact_message(m, policy.pii_kinds)[0] for m in request.messages]
-                result.request = request.model_copy(update={"messages": messages})
+                variables = {k: pii.redact(v, policy.pii_kinds)[0] for k, v in request.gateway.variables.items()}
+                gateway = request.gateway.model_copy(update={"variables": variables})
+                result.request = request.model_copy(update={"messages": messages, "gateway": gateway})
                 result.findings.append(Finding("pii_input", "redacted", tuple(kinds)))
             else:
                 result.findings.append(Finding("pii_input", "flagged", tuple(kinds)))
 
     if policy.injection != "off":
-        text = "\n\n".join(m.text() for m in result.request.messages if m.role == "user")
+        users = [m.text() for m in result.request.messages if m.role == "user"]
+        text = "\n\n".join(users + list(_variables(result.request)))
         rules = injection.screen_patterns(text)
         suspected = bool(rules)
         if policy.injection_judge and judge is not None:
