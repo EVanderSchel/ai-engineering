@@ -25,7 +25,7 @@ lint = [
     "ruff>=0.16",
 ]
 dev = [
-    "botocore[crt]>=1.43.118",
+    "botocore[crt]>=1.43.122",
     "httpx>=0.28",
     "openai>=3.41.0",
     "pytest>=9.2.0",
