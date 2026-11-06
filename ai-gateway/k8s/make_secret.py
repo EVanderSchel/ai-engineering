@@ -80,11 +80,13 @@ def main() -> None:
         if not key:
             sys.exit("ANTHROPIC_API_KEY isn't set")
         extra["ANTHROPIC_API_KEY"] = key
+    # The key names are listed separately, never derived from the manifest, so nothing printed is computed from a value.
+    names = sorted(["POSTGRES_PASSWORD", "DATABASE_URL", *extra.keys()])
     result = subprocess.run(["kubectl", "apply", "-f", "-"], input=json.dumps(manifest(password, extra)),
                             capture_output=True, text=True)  # fmt: skip
     if result.returncode:
-        sys.exit(result.stderr.strip())
-    print(result.stdout.strip(), "with keys:", ", ".join(sorted(manifest(password, extra)["data"])))
+        sys.exit(result.stderr.strip())  # kubectl's own message (cluster unreachable, say); it doesn't echo the data
+    print(f"secret/{NAME} applied with keys: {', '.join(names)}")
 
 
 if __name__ == "__main__":
