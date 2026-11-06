@@ -115,12 +115,14 @@ def create_app(
             "local": openai_compatible_provider.OpenAICompatibleProvider(openai_compatible_provider.make_client()),
         }
     pool = None
+    health = None  # with a database: /readyz answers from a background check (db.Health)
     if isinstance(api_keys, dict):
         key_store: keys.KeyStore = keys.MemoryKeyStore(api_keys)
     elif api_keys is not None:
         key_store = api_keys
     elif url := os.environ.get("DATABASE_URL"):
         pool = db.make_pool(url)
+        health = db.Health(url)
         key_store = keys.PostgresKeyStore(pool)
     else:
         key_store = keys.MemoryKeyStore(keys.parse_keys(os.environ.get("GATEWAY_KEYS", "")))
@@ -143,12 +145,19 @@ def create_app(
             await db.check_schema(pool)  # refuses to start against a database that isn't migrated to this code
         await ledger.start(routes)  # loads prices; refuses to start if a route's model has none
         budgets = asyncio.create_task(gauges.keep_budgets_fresh(pool)) if pool is not None else None
+        checking = None
+        if health is not None:
+            await health.check()  # ready from the first probe on, if the database answers
+            checking = asyncio.create_task(health.run())
         try:
             with metrics.serving(gauges, metrics_port, metrics_addr):
                 yield
         finally:
-            if budgets is not None:
-                budgets.cancel()
+            for task in (budgets, checking):
+                if task is not None:
+                    task.cancel()
+            if health is not None:
+                await health.close()
             if pool is not None:
                 await pool.close()
             tracing.flush()
@@ -232,12 +241,12 @@ def create_app(
     @app.get("/readyz")
     async def readyz():
         """Ready for traffic: Kubernetes sends requests only to replicas that say yes (/healthz only says the process
-        is alive). Without a database there's nothing to check."""
-        if pool is None:
+        is alive). Without a database there's nothing to check. With one, the answer comes from the background check
+        (db.Health), not a query here: a pod busy enough to have lent out every pool connection is busy, not broken,
+        and must stay in service (step 8 stage 5)."""
+        if health is None:
             return {"status": "ready", "database": "not used"}
-        try:
-            await db.ping(pool)
-        except db.UNAVAILABLE:
+        if not health.ready():
             return JSONResponse({"status": "not ready", "database": "unreachable"}, status_code=503)
         return {"status": "ready", "database": "ok"}
 
@@ -420,6 +429,7 @@ def create_app(
     app.state.breakers = breakers
     app.state.providers = providers
     app.state.metrics = gauges
+    app.state.health = health
     return app
 
 

@@ -1,0 +1,193 @@
+# The gateway: a Deployment of identical, stateless pods (decision 2), the Service that spreads requests over the
+# ready ones, and a disruption budget.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-gateway
+  labels:
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+    {{- include "ai-gateway.gatewaySelector" . | nindent 4 }}
+spec:
+  {{- if not .Values.gateway.autoscaling.enabled }}
+  replicas: {{ .Values.gateway.replicas }}
+  {{- end }}
+  # With autoscaling, the replica count belongs to the HorizontalPodAutoscaler below: setting it here too would reset
+  # it on every `helm upgrade`.
+  selector:
+    matchLabels:
+      {{- include "ai-gateway.gatewaySelector" . | nindent 6 }}
+  # A new version replaces the old one pod by pod: one extra pod is started and must be ready before an old one is
+  # stopped, so capacity never drops below the replica count (stage 6 measures it under load).
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        {{- include "ai-gateway.labels" . | nindent 8 }}
+        {{- include "ai-gateway.gatewaySelector" . | nindent 8 }}
+      annotations:
+        # A changed routes file changes this, which rolls the pods (a mounted file alone wouldn't restart them).
+        checksum/routes: {{ .Values.routes | sha256sum }}
+        # Prometheus (stage 4) scrapes every pod that says so, at the port and under the job name given here.
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9464"
+        prometheus.io/job: gateway
+    spec:
+      automountServiceAccountToken: false # the gateway never talks to the Kubernetes API
+      terminationGracePeriodSeconds: {{ .Values.gateway.terminationGracePeriodSeconds }}
+      securityContext:
+        seccompProfile: { type: RuntimeDefault }
+      # Migrations run before each pod starts. migrate.py takes a PostgreSQL advisory lock, so pods starting together
+      # don't race, and it's a no-op when the schema is current. Until the database answers this fails, and Kubernetes
+      # retries it with a growing delay: that retry is the "wait for the database".
+      initContainers:
+        - name: migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python", "src/migrate.py"]
+          env:
+            - name: DATABASE_URL
+              valueFrom: { secretKeyRef: { name: {{ .Values.secretName }}, key: DATABASE_URL } }
+          {{- include "ai-gateway.containerSecurity" . | nindent 10 }}
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 128Mi }
+      containers:
+        - name: gateway
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - { name: http, containerPort: 8000 }
+            - { name: metrics, containerPort: 9464 }
+          env:
+            - name: DATABASE_URL
+              valueFrom: { secretKeyRef: { name: {{ .Values.secretName }}, key: DATABASE_URL } }
+            # Provider keys are optional: without one, that provider's routes fail and fall back (or 503); the stub
+            # and local routes need none.
+            - name: ANTHROPIC_API_KEY
+              valueFrom: { secretKeyRef: { name: {{ .Values.secretName }}, key: ANTHROPIC_API_KEY, optional: true } }
+            - name: GATEWAY_LOG_LEVEL
+              value: {{ .Values.gateway.logLevel | quote }}
+            {{- if .Values.llm.enabled }}
+            # The `local` provider: llama-server's Service, by its DNS name inside the cluster.
+            - name: GATEWAY_LOCAL_URL
+              value: "http://{{ .Release.Name }}-llm:8080/v1"
+            {{- end }}
+            {{- if .Values.observability.enabled }}
+            # Traces to Jaeger in the cluster, each span tagged with the pod that made it (the downward API passes
+            # the pod's own name in).
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://{{ .Release.Name }}-jaeger:4318"
+            - name: POD_NAME
+              valueFrom: { fieldRef: { fieldPath: metadata.name } }
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "k8s.pod.name=$(POD_NAME)"
+            {{- end }}
+          {{- include "ai-gateway.containerSecurity" . | nindent 10 }}
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
+          # Stage 6: a pause before shutdown. When a pod is stopped, Kubernetes removes it from the Service and runs
+          # this hook at the same moment, and sends SIGTERM only when the hook ends. Removal takes a moment to reach
+          # every node's routing rules; without the pause, uvicorn stopped accepting connections while some were still
+          # being routed to it (stage 2 lost 1 request in 111). The pod keeps serving normally meanwhile. Kubernetes's
+          # own sleep action, so the image needs no `sleep` binary.
+          {{- if .Values.gateway.preStopSeconds }}
+          lifecycle:
+            preStop:
+              sleep: { seconds: {{ .Values.gateway.preStopSeconds }} }
+          {{- end }}
+          # Startup: up to 60 s to import and start (about 6 s measured) before the other checks begin.
+          startupProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 2
+            failureThreshold: 30
+          # Liveness: is the process still answering at all? Three misses and it's restarted. A pod under heavy load
+          # answers slowly (the probe waits behind queued requests on the event loop), so it gets 5 s per try: being
+          # busy isn't being stuck (stage 5).
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # Readiness: can it serve (the database answers)? Not ready: the Service stops sending it requests, but it
+          # isn't restarted, since a database outage isn't fixed by restarting the gateway. /readyz reads a background
+          # check (db.Health) rather than querying, and gets the same 5 s and three tries as liveness: under load a
+          # busy pod that dropped out of the Service pushed its share onto the others (stage 5).
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - { name: routes, mountPath: /app/config, readOnly: true }
+            - { name: tmp, mountPath: /tmp } # the root filesystem is read-only; Python may want a temp dir
+      volumes:
+        - name: routes
+          configMap: { name: {{ .Release.Name }}-routes }
+        - name: tmp
+          emptyDir: { sizeLimit: 16Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-gateway
+  labels:
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    {{- include "ai-gateway.gatewaySelector" . | nindent 4 }}
+  ports:
+    # Only the API. The metrics port (9464) is reached by Prometheus pod by pod, never through this Service.
+    - { name: http, port: 8000, targetPort: http, nodePort: {{ .Values.gateway.nodePort }} }
+---
+{{- with .Values.gateway.autoscaling }}
+{{- if .enabled }}
+# Stage 5: more gateway pods when they're busy, fewer when they're not. Every 15 s the autoscaler reads the pods' CPU
+# from metrics-server (k8s/metrics-server.yaml), as a percentage of their CPU request, and sets the replica count to
+# keep the average near the target: desired = ceil(current * average / target).
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $.Release.Name }}-gateway
+  labels:
+    {{- include "ai-gateway.labels" $ | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $.Release.Name }}-gateway
+  minReplicas: {{ .minReplicas }}
+  maxReplicas: {{ .maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: {{ .targetCPUUtilization }} }
+  behavior:
+    # Up at once (Kubernetes's default): load that's arrived needs pods now.
+    scaleUp:
+      stabilizationWindowSeconds: 0
+    # Down only after the load has stayed low for the whole window, so a short lull doesn't remove pods that the next
+    # burst needs. Kubernetes's default is 300 s; shorter here so the demo shows it.
+    scaleDown:
+      stabilizationWindowSeconds: {{ .scaleDownWindowSeconds }}
+---
+{{- end }}
+{{- end }}
+# At least one gateway pod stays up through voluntary disruptions (a node drained for maintenance, say). Rolling
+# updates are governed by the Deployment's own strategy above.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Release.Name }}-gateway
+  labels:
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      {{- include "ai-gateway.gatewaySelector" . | nindent 6 }}

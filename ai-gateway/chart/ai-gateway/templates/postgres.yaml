@@ -1,0 +1,68 @@
+# PostgreSQL for the gateway: one pod with its own disk. A StatefulSet (not a Deployment) because the pod and its
+# volume belong together: if the pod is replaced, the new one gets the same volume, and so the same data.
+#
+# Good enough for a local cluster. In production this would be a managed database (RDS, say) outside the cluster, or
+# an operator (CloudNativePG) that handles replicas, failover and backups; this has none of those.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-postgres
+  labels:
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+    {{- include "ai-gateway.postgresSelector" . | nindent 4 }}
+spec:
+  serviceName: {{ .Release.Name }}-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "ai-gateway.postgresSelector" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ai-gateway.labels" . | nindent 8 }}
+        {{- include "ai-gateway.postgresSelector" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      # The official image starts as root to prepare its data directory, then runs PostgreSQL as its own user.
+      containers:
+        - name: postgres
+          image: {{ .Values.postgres.image }}
+          imagePullPolicy: {{ .Values.postgres.pullPolicy }}
+          env:
+            - { name: POSTGRES_USER, value: gateway }
+            - { name: POSTGRES_DB, value: gateway }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ .Values.secretName }}, key: POSTGRES_PASSWORD } }
+            # A subdirectory: the volume's root holds a lost+found PostgreSQL won't initialise over.
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+          ports:
+            - { name: postgres, containerPort: 5432 }
+          readinessProbe:
+            exec: { command: ["pg_isready", "-U", "gateway", "-d", "gateway"] }
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.postgres.resources | nindent 12 }}
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+  # The volume, made on first start by kind's local-path provisioner (a directory on the node) and kept across pod
+  # restarts and `helm upgrade`. `helm uninstall` leaves it too; deleting the cluster deletes it.
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: {{ .Values.postgres.storage }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-postgres
+  labels:
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "ai-gateway.postgresSelector" . | nindent 4 }}
+  ports:
+    - { name: postgres, port: 5432, targetPort: postgres }
