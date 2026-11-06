@@ -6,6 +6,8 @@ opens when the app starts and closes when it stops.
 """
 
 import asyncio
+import contextlib
+import time
 
 import psycopg
 import psycopg_pool
@@ -36,6 +38,56 @@ async def ping(pool: psycopg_pool.AsyncConnectionPool, timeout: float = 2.0) -> 
             await conn.execute("select 1")
     except TimeoutError:
         raise psycopg_pool.PoolTimeout(f"no answer from the database in {timeout} s") from None
+
+
+class Health:
+    """Whether the database answers, checked in the background, for /readyz (step 8 stage 5).
+
+    Plain language: Kubernetes asks every few seconds "can you serve?". Answering by borrowing a connection from the
+    request pool meant that a busy pod, whose connections were all lent out to queued requests, said "no" and was
+    taken out of service: capacity lost exactly when it was most needed (stage 5's load test). So the question is
+    answered from a note instead: a background task checks the database every `interval` seconds on its own single
+    connection, and the pod is ready if the last success is at most `stale_after` seconds old.
+
+    A database that really stops answering still turns the pod not ready, a few seconds later than before (up to
+    `stale_after` plus the probe's own period and failure count).
+    """
+
+    def __init__(self, url: str, interval: float = 2.0, timeout: float = 2.0, stale_after: float = 6.0,
+                 clock=time.monotonic):  # fmt: skip
+        self.url, self.interval, self.timeout, self.stale_after, self.clock = url, interval, timeout, stale_after, clock
+        self.last_ok: float | None = None
+        self._conn: psycopg.AsyncConnection | None = None
+
+    def ready(self) -> bool:
+        return self.last_ok is not None and self.clock() - self.last_ok <= self.stale_after
+
+    async def check(self) -> bool:
+        """One check; records the time if it succeeded. A failed connection is dropped and reopened next time."""
+        try:
+            async with asyncio.timeout(self.timeout):
+                if self._conn is None or self._conn.closed:
+                    self._conn = await psycopg.AsyncConnection.connect(
+                        self.url, autocommit=True, connect_timeout=max(1, int(self.timeout))
+                    )
+                await self._conn.execute("select 1")
+        except (TimeoutError, *UNAVAILABLE):
+            await self.close()
+            return False
+        self.last_ok = self.clock()
+        return True
+
+    async def run(self) -> None:
+        """Checks forever, until cancelled (the app's lifespan does that on shutdown)."""
+        while True:
+            await self.check()
+            await asyncio.sleep(self.interval)
+
+    async def close(self) -> None:
+        if self._conn is not None:
+            with contextlib.suppress(Exception):
+                await self._conn.close()
+            self._conn = None
 
 
 async def check_schema(pool: psycopg_pool.AsyncConnectionPool) -> None:

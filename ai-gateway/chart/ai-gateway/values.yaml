@@ -1,0 +1,103 @@
+# Settings for the chart. Install (from ai-gateway/, after `python k8s/make_secret.py`):
+#
+#     helm upgrade --install ai-gateway chart/ai-gateway --set-file routes=config/routes.yaml --wait
+#
+# Nothing secret is here: the database password and any provider keys are in a Secret made outside the chart
+# (k8s/make_secret.py), which the pods read by name.
+
+# The gateway's image, loaded into the kind node (`kind load docker-image ai-gateway:dev --name ai-gateway`), so it's
+# never pulled from a registry.
+image:
+  repository: ai-gateway
+  tag: dev
+  pullPolicy: Never
+
+# The routes file, as in config/routes.yaml. Required: pass it with --set-file routes=config/routes.yaml, so the
+# cluster runs the same file the repo tests. A change to it rolls the pods (a checksum on the pod template).
+routes: ""
+
+secretName: ai-gateway-secrets
+
+gateway:
+  replicas: 2
+  # The API on the node's port 30080, which kind publishes on this PC as 127.0.0.1:8088 (k8s/kind.yaml).
+  nodePort: 30080
+  logLevel: INFO
+  # Measured: about 123 MiB in use (step 8 stage 1). The request is what the scheduler reserves for the pod; past the
+  # memory limit the pod is killed and restarted, rather than starving the node. CPU has a request and a limit of one
+  # core. The autoscaler measures use as a percentage of the request, so it's set from a measurement (stage 5): about
+  # 250m at 19 stub requests a second per pod, so 200m is about 15 a second.
+  resources:
+    requests: { cpu: 200m, memory: 160Mi }
+    limits: { cpu: "1", memory: 256Mi }
+  # Stage 5: the HorizontalPodAutoscaler (needs metrics-server). While it's enabled, `replicas` above is unused.
+  # 50% of the 200m request is about 7-8 requests a second per pod before another is added. 70% was measured first:
+  # by the time the new pods were ready (about 20 s), the old ones were overloaded, so 50% leaves headroom for that.
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 4
+    targetCPUUtilization: 50
+    scaleDownWindowSeconds: 120
+  # Seconds a stopping pod keeps serving before it's told to shut down, while it's taken out of the Service (stage 6).
+  # 0 turns the pause off.
+  preStopSeconds: 5
+  # The pause plus uvicorn's 30 s graceful shutdown, and a margin, so neither is ever cut short (the grace period
+  # counts from the start of the pause).
+  terminationGracePeriodSeconds: 40
+
+# llama-server for the `local` route (stage 3). Needs the model file on the node at /models/<model>.gguf (kind mounts
+# ai-gateway/models there); set enabled=false on a cluster without it, and the `local` route fails (no fallback).
+llm:
+  enabled: true
+  # The compose image (llama.cpp build 12033, the digest docker-compose.yml pins), loaded into the node; never pulled.
+  image: ghcr.io/ggml-org/llama.cpp:server
+  pullPolicy: Never
+  model: qwen2.5-0.5b-instruct-q8_0 # the routes file's `local` model
+  parallel: 4
+  ctxSize: 8192
+  threads: 4
+  # Q8_0 peaked at 836 MB under load in compose (results/quantization.md). The request reserves most of that so the
+  # scheduler counts it; the limit leaves some headroom. CPU: one core reserved, up to the 4 threads it runs.
+  resources:
+    requests: { cpu: "1", memory: 900Mi }
+    limits: { cpu: "4", memory: 1Gi }
+
+# Prometheus, Jaeger and Grafana in the cluster (stage 4), the images docker-compose.yml pins, loaded into the node.
+# Needs the repo's alert rules and dashboard passed in:
+#     --set-file observability.alerts=observability/alerts.yml
+#     --set-file observability.dashboard=observability/grafana/dashboards/gateway.json
+# and GRAFANA_ADMIN_PASSWORD in the Secret (make_secret.py copies it from .env). enabled=false leaves all three out
+# (about 0.5 GB less); the gateway then sends no traces.
+observability:
+  enabled: true
+  alerts: ""
+  dashboard: ""
+  # Memory measured in compose (step 7): Prometheus about 130 MB, Jaeger about 25 MB, Grafana about 320 MB.
+  prometheus:
+    image: prom/prometheus:v3.15.1
+    retention: 1d
+    resources:
+      requests: { cpu: 50m, memory: 160Mi }
+      limits: { memory: 320Mi }
+  jaeger:
+    image: jaegertracing/jaeger:2.22.0
+    resources:
+      requests: { cpu: 25m, memory: 48Mi }
+      limits: { memory: 192Mi }
+  grafana:
+    image: grafana/grafana:13.3.0
+    # A cold start (building its database in an empty data directory) peaked at the old 448 MiB limit and stalled
+    # there until the startup probe killed it; running, it settles lower.
+    resources:
+      requests: { cpu: 50m, memory: 320Mi }
+      limits: { memory: 640Mi }
+
+postgres:
+  # Loaded into the node from the compose image (the same digest as docker-compose.yml); never pulled.
+  image: postgres:17-alpine
+  pullPolicy: Never
+  storage: 1Gi
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 256Mi }

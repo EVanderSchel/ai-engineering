@@ -1,0 +1,8 @@
+apiVersion: v2
+name: ai-gateway
+description: >-
+  The AI gateway (one OpenAI-compatible API in front of hosted and self-hosted models) with its PostgreSQL, for a
+  local kind cluster (step 8).
+type: application
+version: 0.1.0 # the chart's own version
+appVersion: "0.1.0" # the gateway's

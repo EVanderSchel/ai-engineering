@@ -55,7 +55,7 @@ Chosen in step 0 because nearly every SDK, LangChain and LiteLLM can use it by c
 | `POST /v1/chat/completions` | Text chat, streaming (server-sent events, ending `data: [DONE]`) or not |
 | `GET /v1/models` | The routes this key may use |
 | `POST /v1/classifications` | NTEE classification (not part of the OpenAI API; documented as the gateway's own) |
-| `GET /healthz`, `GET /readyz` | Liveness (the process runs) and readiness (it can reach PostgreSQL); Kubernetes uses both |
+| `GET /healthz`, `GET /readyz` | Liveness (the process runs) and readiness (a background check reached PostgreSQL in the last few seconds, decision 19); Kubernetes uses both |
 | `GET /metrics` | Prometheus metrics (cluster-internal only) |
 
 - **`model` names a route, not a provider model** (decision 5): `smart`, `fast`, `local`, `classify`. The route decides the actual model and its fallbacks (section 4). A client asking for `smart` doesn't change when the route moves to a newer model, which is what lets step 9's eval canary gate model changes.
@@ -150,21 +150,25 @@ Two models the project serves itself, chosen to fit this PC (no NVIDIA GPU, Dock
 
 ## 9. Kubernetes (step 8) and the memory budget
 
-The cluster has to fit in Docker's 3.8 GB. Estimated working set (to be replaced by measurements):
+The cluster has to fit in Docker's 3.8 GB (WSL capped at 4 GB in `.wslconfig`: Docker sees 3.83 GiB). The estimate from step 1, against what step 8 measured (working set per container, MiB, at idle with 2 gateway pods, and with 4):
 
-| Component | Memory |
-|---|---|
-| kind node (control plane, kubelet, system pods) | ~700 MB |
-| gateway, 2 replicas | ~300 MB |
-| PostgreSQL | ~150 MB |
-| llama-server, Qwen2.5-0.5B Q8_0 (836 MB peak, measured in step 6) | ~850 MB |
-| classifier, ONNX 8-bit weight-only (1.46 GB peak measured in step 6, including about 180 MB of Python) | ~1.4 GB |
-| OpenTelemetry collector | ~100 MB |
-| Prometheus + Grafana (plain charts, not the full kube-prometheus stack; measured in step 7: about 130 + 320 MB) | ~450 MB |
-| **Total** | **~3.95 GB: over the 3.8 GB** |
+| Component | Estimated | Measured in step 8 |
+|---|---|---|
+| kind node: control plane and system pods | ~700 MB | 680-695 MiB in its pods, plus about 400 MiB outside any pod (kubelet, containerd) |
+| gateway | ~300 MB for 2 | 263 MiB for 2, 540 MiB for 4 (about 135 each) |
+| PostgreSQL | ~150 MB | 51-58 MiB |
+| llama-server, Qwen2.5-0.5B Q8_0 | ~850 MB (836 MB peak in step 6) | 162 MiB idle, 466-527 MiB after load: the model is memory-mapped, so unused pages count as page cache (see below) |
+| classifier, ONNX 8-bit weight-only | ~1.4 GB | left out (decided 2026-11-04): it didn't fit and isn't a service yet |
+| OpenTelemetry collector | ~100 MB | not run: Jaeger v2 is built on the collector and receives OTLP itself, 77-80 MiB |
+| Prometheus + Grafana | ~450 MB | 83-91 + 441-470 MiB |
+| metrics-server (for the autoscaler) | not in the estimate | 48-54 MiB |
+| **The whole node** (Docker's count) | ~3.95 GB with the classifier, ~2.55 GB without | **2.19 GiB with 2 gateway pods, 2.46 GiB with 4**, at idle; with the model resident under load, about 2.8 GiB with 4 |
 
-- It fits only with the smallest model variants, so the fp32 and F16 measurements in step 6 run outside the cluster, one at a time.
-- Every pod sets memory requests and limits; a pod over its limit is killed and restarted rather than starving the node. The autoscaler (HPA) scales the gateway on CPU between 2 and 4 replicas; the model servers stay at one replica here (on a real cluster they would scale on queue depth).
+- **It fits, with about 1 GiB to spare,** only because the classifier is out. With it, the estimate was over, and that held.
+- **A memory-mapped model hides part of its size.** Unused pages count as page cache, which the kernel drops under pressure without charging the pod. With Docker at 2.84 GiB (step 8 stage 4), that is what happened: the model's pages were evicted and re-read from the Windows mount for every token, and a short prompt took over 60 s. Budget it at the size it needs resident (836 MB), not at the working set it reports.
+- **The pieces came in under estimate, except Grafana and the node's own processes.** Grafana's cold start needed its limit raised to 640 MiB.
+- The fp32 and F16 measurements in step 6 run outside the cluster, one at a time.
+- Every pod sets memory requests and limits; a pod over its limit is killed and restarted rather than starving the node. Limits protect pods from each other, not the node from being over-full (step 8 stage 4). The autoscaler (HPA) scales the gateway on CPU between 2 and 4 replicas, at 50% of a 200m request; the model servers stay at one replica here (on a real cluster they would scale on queue depth).
 - Secrets (Anthropic key, AWS credentials) come from the local environment into Kubernetes Secrets at deploy time; nothing secret is in the chart or the repo. AWS credentials in the cluster are short-lived ones exported from the `agent-toolkit` login.
 
 ## 10. Quality over time (step 9)
@@ -206,6 +210,7 @@ Decisions 1-15 were made in step 1; later ones say which step added them.
 | 16 | `temperature` and `top_p` only on routes whose every candidate accepts them | The Claude API removed them in version 2026-10-21; dropping them silently would change the request (added in step 2) |
 | 17 | A team's guardrail settings can only tighten its routes' (each setting at the stricter of the two; only settings the team chose count) | The route is the platform's floor; a team handling untrusted text can raise it, no team can lower it (added in step 5) |
 | 18 | Guardrails run after admission, personal data before injection; with the judge on, the judge decides and patterns are the fallback | Admission first, so nobody can make the gateway pay for unlimited judge calls; redaction first, so the judge never sees what was redacted; the judge decides because on held-out cases it caught everything the patterns did plus the data-shaped attacks, and cleared the patterns' false alarm (added in step 5) |
+| 19 | Readiness answers from a background database check on its own connection, not a query through the request pool | Under load every pool connection was lent out, so busy pods failed readiness and left the Service just when their capacity was needed: 5.5% of requests failed during a scale-up. Being busy isn't being broken (added in step 8) |
 
 ## 14. Open questions
 

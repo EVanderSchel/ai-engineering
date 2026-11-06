@@ -1,0 +1,112 @@
+{{- if .Values.llm.enabled }}
+# llama-server: the `local` route's self-hosted model (step 6), now in the cluster (step 8 stage 3). The model file
+# isn't in the image: it's read from the node's /models, which kind mounts from this PC's ai-gateway/models
+# (k8s/kind.yaml), so a 676 MB file isn't copied into an image or a volume.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-llm
+  labels:
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+    {{- include "ai-gateway.llmSelector" . | nindent 4 }}
+spec:
+  # One copy. Its memory is most of this cluster's budget, so an update stops the old pod before starting the new one
+  # (Recreate): two at once wouldn't fit. The `local` route is down for that time (about 10 s: the model loads).
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels:
+      {{- include "ai-gateway.llmSelector" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ai-gateway.labels" . | nindent 8 }}
+        {{- include "ai-gateway.llmSelector" . | nindent 8 }}
+      annotations:
+        # llama-server's own metrics (--metrics): tokens per second, requests waiting for a slot.
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: /metrics
+        prometheus.io/job: llama-server
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: llm
+          image: "{{ .Values.llm.image }}"
+          imagePullPolicy: {{ .Values.llm.pullPolicy }}
+          # The same settings as docker-compose.yml's `llm` service (step 6): 4 answers at once sharing an 8192-token
+          # context, one thread per physical core. The alias is the model name the server reports, which the usage
+          # ledger records.
+          args:
+            - --model
+            - /models/{{ .Values.llm.model }}.gguf
+            - --alias
+            - {{ .Values.llm.model | quote }}
+            - --host
+            - 0.0.0.0
+            - --port
+            - "8080"
+            - --parallel
+            - {{ .Values.llm.parallel | quote }}
+            - --ctx-size
+            - {{ .Values.llm.ctxSize | quote }}
+            - --threads
+            - {{ .Values.llm.threads | quote }}
+            - --metrics
+            - --no-webui
+          ports:
+            - { name: http, containerPort: 8080 }
+          # The image runs as root by default; it needs nothing root can do (it reads one file and listens on 8080).
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            {{- toYaml .Values.llm.resources | nindent 12 }}
+          # /health answers 503 while the model loads and 200 once it can serve. Startup allows 2 minutes for that.
+          startupProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 2
+            failureThreshold: 60
+          # Generation keeps the CPU busy, so these allow slow answers before calling the server dead.
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+          volumeMounts:
+            - { name: models, mountPath: /models, readOnly: true }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        # A directory on the node (kind's extraMount). hostPath is fine on a one-node local cluster; on a real cluster
+        # the model would come from a volume or object storage, or be baked into an image.
+        - name: models
+          hostPath: { path: /models, type: Directory }
+        - name: tmp
+          emptyDir: { sizeLimit: 16Mi }
+---
+# Inside the cluster only (ClusterIP): clients reach the model through the gateway, which checks keys, limits and
+# budgets, never directly.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-llm
+  labels:
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "ai-gateway.llmSelector" . | nindent 4 }}
+  ports:
+    - { name: http, port: 8080, targetPort: http }
+{{- end }}

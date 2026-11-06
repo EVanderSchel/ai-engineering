@@ -2,6 +2,7 @@
 
 import asyncio
 import sys
+import time
 
 import psycopg
 import psycopg_pool
@@ -43,15 +44,72 @@ def test_when_the_database_stops_answering_it_is_not_ready_but_still_alive(datab
     migrated(database_url)
     monkeypatch.setenv("DATABASE_URL", database_url)
 
-    async def no_answer(pool, timeout=2.0):
-        raise psycopg_pool.PoolTimeout("no answer")
+    async def no_answer(self):
+        return False
 
     with TestClient(gateway.create_app(routes(), providers()), backend_options=SELECTOR) as client:
-        monkeypatch.setattr(db, "ping", no_answer)
+        monkeypatch.setattr(db.Health, "check", no_answer)  # the background check now fails every time
+        time.sleep(0.5)  # a real check already under way (milliseconds) finishes first
+        health = client.app.state.health
+        health.last_ok -= health.stale_after + 1  # and its last success is older than it may be
         response = client.get("/readyz")
         assert response.status_code == 503
         assert response.json() == {"status": "not ready", "database": "unreachable"}
         assert client.get("/healthz").status_code == 200  # alive: Kubernetes stops sending traffic, doesn't restart
+
+
+def test_a_busy_pool_does_not_make_it_unready(database_url, monkeypatch):
+    """Stage 5's load test: every pool connection lent out to queued requests made /readyz fail, and Kubernetes took
+    busy pods out of service. Readiness no longer borrows from the pool."""
+    migrated(database_url)
+    monkeypatch.setenv("DATABASE_URL", database_url)
+
+    def pool_exhausted(self, timeout=None):
+        raise psycopg_pool.PoolTimeout("every connection is lent out")
+
+    with TestClient(gateway.create_app(routes(), providers()), backend_options=SELECTOR) as client:
+        monkeypatch.setattr(psycopg_pool.AsyncConnectionPool, "connection", pool_exhausted)
+        assert client.get("/readyz").json() == {"status": "ready", "database": "ok"}
+        # requests themselves still fail fast with a clear error, as before
+        body = {"model": "stub", "messages": [{"role": "user", "content": "hi"}]}
+        assert client.post("/v1/chat/completions", json=body, headers=AUTH).status_code in (401, 503)
+
+
+class FakeClock:
+    def __init__(self):
+        self.now = 1000.0
+
+    def __call__(self):
+        return self.now
+
+
+@pytest.mark.anyio
+async def test_health_is_ready_until_its_last_success_goes_stale(database_url):
+    clock = FakeClock()
+    health = db.Health(database_url, stale_after=6, clock=clock)
+    try:
+        assert not health.ready()  # nothing checked yet
+        assert await health.check()
+        assert health.ready()
+        clock.now += 6
+        assert health.ready()  # exactly at the limit
+        clock.now += 0.1
+        assert not health.ready()
+        assert await health.check()  # the same connection, still open
+        assert health.ready()
+    finally:
+        await health.close()
+
+
+@pytest.mark.anyio
+async def test_health_check_fails_quickly_and_retries_on_an_unreachable_server():
+    health = db.Health("postgresql://nobody@127.0.0.1:1/none", timeout=1)
+    started = asyncio.get_running_loop().time()
+    assert not await health.check()
+    assert not health.ready()
+    assert asyncio.get_running_loop().time() - started < 3
+    assert health._conn is None  # dropped, so the next check reconnects
+    await health.close()
 
 
 @pytest.mark.anyio

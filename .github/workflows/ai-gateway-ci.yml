@@ -153,6 +153,48 @@ jobs:
           promtool check config prometheus.yml
           promtool test rules alerts_test.yml
 
+  # The container image the cluster runs (step 8): built from the Dockerfile on every change, then started without
+  # a database (keys from GATEWAY_KEYS) to show it serves and runs as its non-root user. Built, never pushed.
+  image:
+    name: ai-gateway-image
+    needs: changes
+    if: needs.changes.outputs.project == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-gateway
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build the image
+        run: docker build -t ai-gateway:ci .
+
+      - name: Start it and check it serves
+        run: |
+          docker run -d --name gateway -p 127.0.0.1:8000:8000 -e GATEWAY_KEYS= ai-gateway:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/healthz; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8000/readyz
+          test "$(docker exec gateway id -u)" = "10001"   # not root
+          docker stop gateway   # a clean shutdown on SIGTERM, as Kubernetes sends
+          docker logs gateway 2>&1 | grep -q "Application shutdown complete"
+          docker image inspect ai-gateway:ci --format 'image size: {{.Size}} bytes'
+
+      # The Helm chart that runs the image in Kubernetes (helm is on GitHub's Ubuntu runners): it lints, and it renders
+      # with the repo's routes file, so a template error fails here rather than at install.
+      - name: Lint and render the Helm chart
+        run: |
+          files="--set-file routes=config/routes.yaml --set-file observability.alerts=observability/alerts.yml"
+          files="$files --set-file observability.dashboard=observability/grafana/dashboards/gateway.json"
+          helm lint --strict chart/ai-gateway $files
+          helm template ai-gateway chart/ai-gateway $files > /dev/null
+          helm template ai-gateway chart/ai-gateway --set-file routes=config/routes.yaml \
+            --set llm.enabled=false --set observability.enabled=false --set gateway.autoscaling.enabled=false > /dev/null
+
   # Every locked production dependency is checked for known vulnerabilities. Fails on any that isn't
   # listed, with a reason, in ai-gateway/security/accepted-vulnerabilities.txt.
   audit:

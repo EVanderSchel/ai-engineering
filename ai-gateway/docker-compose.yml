@@ -122,6 +122,7 @@ services:
       GF_ANALYTICS_REPORTING_ENABLED: "false" # no usage reports to Grafana Labs
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
       GF_NEWS_NEWS_FEED_ENABLED: "false"
+      GF_PLUGINS_PREINSTALL_DISABLED: "true" # no plugin downloads and updates from grafana.com at start
     volumes:
       - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro

@@ -1,0 +1,23 @@
+# The local Kubernetes cluster (step 8): one node, which is one Docker container.
+#
+#     kind create cluster --name ai-gateway --config k8s/kind.yaml
+#     kind delete cluster --name ai-gateway        # all of it gone, the gateway's database included
+#
+# The node image is pinned by digest in the command in the README (kind's own default for v0.33.0, Kubernetes 1.37).
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    # The gateway's Service is a NodePort (30080) on the node; this publishes it on this PC, localhost only. 8080 is
+    # taken here by Apache, so 8088.
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 8088
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+    # Model files for llama-server (stage 3), from this PC's ai-gateway/models into the node at /models. Relative to
+    # where `kind create cluster` runs: run it from ai-gateway/.
+    extraMounts:
+      - hostPath: ./models
+        containerPath: /models
+        readOnly: true

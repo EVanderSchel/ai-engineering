@@ -22,7 +22,7 @@ Each step is merged on its own; numbers are measured, not assumed.
 | 5 | Guardrails: PII redaction, prompt-injection screening, output validation, per-route policy (reusing what Projects 3 and 5 measured) *(done; answer `json_schema` validation deferred)* | Reusable safety checks at the platform layer |
 | 6 | Self-hosted inference and optimization: a small instruct model on llama.cpp (quantization levels compared) and the NTEE classifier from Project 4 on ONNX Runtime (int8 vs fp32); accuracy, latency and throughput under concurrency; vLLM on a Colab GPU for comparison *(done)* | Inference optimization: quantization, batching, CPU vs GPU |
 | 7 | Observability: OpenTelemetry traces, Prometheus metrics, a Grafana dashboard, alerts on error rate, latency and cost spikes *(done)* | Seeing a platform's health and cost |
-| 8 | Kubernetes: a local cluster (kind), a Helm chart, resource requests and limits, health probes, secrets, autoscaling (HPA) shown with a k6 load test, a rolling update with no dropped requests | Running services on Kubernetes |
+| 8 | Kubernetes: a local cluster (kind), a Helm chart, resource requests and limits, health probes, secrets, autoscaling (HPA) shown with a k6 load test, a rolling update with no dropped requests *(done; the classifier stays out of the cluster)* | Running services on Kubernetes |
 | 9 | Quality: a versioned prompt registry, an eval canary that gates prompt and model changes on the earlier projects' gold sets, a drift monitor that scores sampled live traffic | Catching prompt regressions and drift |
 | 10 | Build vs. adopt: the same tests and load against LiteLLM's proxy; a LangChain app that uses the gateway unchanged | When to build a platform piece and when to adopt one |
 | 11 | Optional: the chart on Amazon EKS for a short, measured window (infrastructure as code), then torn down | Managed Kubernetes and its cost |
@@ -769,6 +769,333 @@ New files: `src/measure_alerts.py` (the live alerts run), `src/measure_observabi
 - **The first trace found the real cost:** the database takes 30 to 45 ms of every request on this PC; the instrumentation itself, about 1 ms.
 - **What step 8 takes from here:** Prometheus will find pods in the cluster rather than one fixed address, the dashboard and rules move into the Helm chart, and an OpenTelemetry Collector takes Jaeger's place in receiving spans. The memory budget's estimate for Prometheus and Grafana held (about 450 MB measured).
 
+## Step 8: Kubernetes
+
+Plain language: until now, I started every piece by hand: the gateway, the database, the model server. Kubernetes runs them for you. You describe what should be running (two copies of the gateway, one database, one model server, how much memory each may use), and it keeps reality matching the description. It restarts what crashes, sends traffic only to copies that say they're ready, adds copies under load, and swaps in a new version without dropping requests.
+- **kind** is a whole Kubernetes cluster inside one Docker container, enough to learn on and to test against.
+- **Helm** packages the description as a chart that installs, upgrades and rolls back as one unit.
+
+**Decided before starting:** the NTEE classifier stays out of the cluster in this step. It doesn't fit: the memory budget came to about 3.95 GB against Docker's 3.77 GB, and the classifier is its 1.4 GB item. It also isn't a service yet, since only the measurement script runs it. Serving it (`POST /v1/classifications`) is a later piece of work. Without it, the cluster's budget is about 2.55 GB.
+
+### Stage 1: a container image
+
+[Dockerfile](Dockerfile). A Kubernetes cluster runs containers, so the gateway first becomes an image:
+
+```powershell
+docker build -t ai-gateway:dev .       # about 40 s from a cold cache
+```
+
+- **Two stages:** the first installs the locked production packages with uv, exactly as `uv.lock` has them, with checksums verified. The second copies only the finished virtual environment onto a clean Python base. So the image has no uv, no build tools, no tests, no measurement scripts and no dev or classifier packages (`.dockerignore` sends the builder only `pyproject.toml`, `uv.lock`, `src/`, `config/` and `migrations/`).
+- **Pinned by digest:** both base images (`python:3.14.10-slim` and uv 0.12.21's image, for the build stage only) are pinned, so a rebuild gets the same bytes until they're updated on purpose. Dependabot now proposes new digests weekly, as it does for the other projects' images.
+- **Not root:** the process runs as user 10001, with no home or login, so it can't change its own code or the system. Kubernetes can enforce that (`runAsNonRoot`, stage 2).
+- **Ready for Kubernetes's way of stopping things:** on SIGTERM, uvicorn stops accepting connections and gives requests in progress up to 30 s to finish (`--timeout-graceful-shutdown`). The access log is off (the gateway writes its own JSON line), and metrics listen on all interfaces inside the pod (9464), where only Prometheus will reach them.
+- **Size:** 345 MB. That's 178 MB of base Python and a 124 MB virtual environment, half of which is the two cloud SDKs: botocore 31 MB, anthropic 30 MB. `botocore[crt]` stays out: locally it's needed only for `aws login`'s credentials, and in the cluster AWS credentials come from environment variables.
+
+Checked against the compose PostgreSQL, on its Docker network:
+- **Migrations:** `python src/migrate.py` from the image applied nothing new.
+- **Readiness:** the gateway reported ready (`/readyz`, database OK) 4.6 s after starting.
+- **A request:** a stub request got its answer, the JSON request line was written, and the metrics port counted it.
+- **Memory:** 123 MiB, under the design's estimate of 150 MB per replica.
+- **Shutdown:** `docker stop` (SIGTERM) shut it down cleanly in 2 to 4 s.
+
+CI now has an `ai-gateway-image` job that builds the image on every pull request touching the project. It then starts it without a database, checks `/healthz` and `/readyz`, checks it runs as user 10001, and checks it shuts down cleanly. It builds the image but never pushes it.
+
+New files: `Dockerfile` (the gateway's image), `.dockerignore` (what the build may see). Changed: `.github/workflows/ai-gateway-ci.yml` (the image job), `.github/dependabot.yml` (base image digests for ai-gateway).
+
+### Stage 2: a kind cluster and a Helm chart
+
+```powershell
+# from ai-gateway/, with Docker running
+kind create cluster --name ai-gateway --config k8s/kind.yaml --image "kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5"
+kind load docker-image ai-gateway:dev --name ai-gateway
+docker save --platform linux/amd64 -o postgres.tar postgres:17-alpine; kind load image-archive postgres.tar --name ai-gateway; rm postgres.tar
+uv run python k8s/make_secret.py                     # the Secret, from .env (add --with-anthropic for the Claude routes)
+helm upgrade --install ai-gateway chart/ai-gateway --set-file routes=config/routes.yaml --wait
+# the API: http://127.0.0.1:8088
+kind delete cluster --name ai-gateway                # when done: everything, the cluster's database included
+```
+
+**The cluster** ([k8s/kind.yaml](k8s/kind.yaml)) is one node: one Docker container running Kubernetes 1.37. It publishes the gateway's port on 127.0.0.1:8088 (8080 is Apache's here) and mounts `models/` for stage 3. Empty, it uses 800 MiB, a little over the design's estimate of 700 MB. Images are loaded into the node, never pulled from a registry. PostgreSQL's needs a detour through `docker save --platform linux/amd64`: `kind load docker-image` fails on multi-platform images under Docker Desktop's containerd image store (`content digest ... not found`).
+
+**The chart** ([chart/ai-gateway](chart/ai-gateway)):
+
+| Object | What it does |
+|---|---|
+| Deployment `gateway` (2 replicas) | the gateway's pods: identical and stateless, replaced one at a time on upgrade (`maxSurge: 1, maxUnavailable: 0`) |
+| Service `gateway` (NodePort 30080) | spreads connections over the ready pods; only the API port, never metrics |
+| PodDisruptionBudget | at least one gateway pod stays up when a node is drained |
+| ConfigMap `routes` | `config/routes.yaml`, passed at install (`--set-file`) and mounted over the image's copy; a change rolls the pods |
+| StatefulSet `postgres` (1) and its Service | the database, with a 1 GB volume that outlives its pod |
+| Secret `ai-gateway-secrets` (not in the chart) | the database password and URL, and optionally the Anthropic key, made by [k8s/make_secret.py](k8s/make_secret.py) from `.env` |
+
+- **Secrets never pass through the chart or a command line.** `make_secret.py` reads `.env`, and the Anthropic key from the environment only with `--with-anthropic`. It builds the Secret and gives it to `kubectl apply` on standard input. The chart only names the Secret.
+- **Migrations run as an init container,** before each gateway pod starts. `migrate.py` takes an advisory lock, so two pods starting together don't race, and it's a no-op when the schema is current. On the first install, both init containers failed twice while PostgreSQL was still starting. Kubernetes retried them with a growing delay (the "wait for the database"); then one applied all 5 migrations and the other found nothing to do. A Helm hook Job is the usual alternative, but a pre-install hook would run before the chart's own database exists. It fits better when the database lives outside the chart.
+- **Three probes, three questions.**
+  - *Startup* allows up to 60 s to start; it took about 6.
+  - *Liveness* (`/healthz`) asks whether the process is answering at all. Three misses, and it's restarted.
+  - *Readiness* (`/readyz`, which pings the database; from stage 5, a background check does) asks whether it can serve right now. If not, the Service stops sending it requests, but it isn't restarted: a database outage isn't fixed by restarting the gateway.
+- **Requests and limits:**
+  - The gateway requests 100m CPU and 160 MiB, with limits of one core and 256 MiB. It used 127 and 163 MiB.
+  - PostgreSQL requests 128 MiB, limited to 256 MiB. It used 55 MiB.
+  - The request is what the scheduler reserves for the pod; past its memory limit a pod is killed and restarted, rather than starving the node. The whole node, gateway pods and database included, used 1.4 GiB.
+- **Locked down:** the gateway runs as user 10001 on a read-only root filesystem, with every Linux capability dropped, privilege escalation off, the runtime's default seccomp profile, and no Kubernetes API token mounted, since it never calls the API. PostgreSQL's official image starts as root to prepare its data directory, so it's left as the image expects.
+
+Checked live through 127.0.0.1:8088, with a key issued inside the cluster (`kubectl exec … admin.py`; the key was never printed, and was revoked afterwards):
+
+| Check | Result |
+|---|---|
+| 40 requests, one connection kept open (keep-alive) | all 200, **all 40 to one pod** |
+| 40 requests, a new connection each | all 200, **20 and 20** |
+| a gateway pod deleted under traffic | replacement ready in 9 to 11 s; **1 of 111 requests failed** (`RemoteProtocolError`), the rest 200 |
+| the database stopped | both gateway pods not ready within 10 s; no restarts; requests refused (no ready pod) |
+| the database back | both ready again within 9 s; still no restarts |
+
+- **A Service balances connections, not requests.** A client that keeps one connection open sticks to one pod, which is why all 40 went to one place. Real traffic comes from many clients, and the load test in stage 5 opens many connections. A per-request balancer (an ingress or a service mesh) would spread a single keep-alive client too.
+- **One request lost when a pod is deleted, even with fresh connections.** Kubernetes sends the pod SIGTERM at the same moment it starts removing it from the Service. For a moment, new connections can still be routed to a pod that has stopped accepting them. Stage 6 closes that gap (a short pause before shutdown) and measures it under a rolling update.
+- **The first run's 429s were the gateway working:** the test key's default limit is 60 requests a minute. The rerun raised it for that key.
+
+CI now lints the chart (`helm lint --strict`) and renders it with the repo's routes file in the `ai-gateway-image` job.
+
+New files: `k8s/kind.yaml` (the cluster), `k8s/make_secret.py` (the Secret, from local settings), `chart/ai-gateway/` (`Chart.yaml`, `values.yaml`, and templates for the gateway, PostgreSQL, the routes ConfigMap and shared helpers). Changed: `.github/workflows/ai-gateway-ci.yml` (chart lint and render).
+
+### Stage 3: the self-hosted model in the cluster
+
+```powershell
+# once: the compose image into the node (same detour as PostgreSQL's), then the chart as before
+docker save --platform linux/amd64 -o llama.tar ghcr.io/ggml-org/llama.cpp:server; kind load image-archive llama.tar --name ai-gateway; rm llama.tar
+helm upgrade --install ai-gateway chart/ai-gateway --set-file routes=config/routes.yaml --wait
+```
+
+The `local` route now works in the cluster. llama-server runs as its own Deployment ([templates/llm.yaml](chart/ai-gateway/templates/llm.yaml)), with the same settings as compose's `llm` service: Q8_0, 4 slots sharing an 8192-token context, 4 threads. The gateway pods find it at `http://ai-gateway-llm:8080/v1`, the Service's name in the cluster's DNS (`GATEWAY_LOCAL_URL`, set by the chart).
+
+- **The model file isn't in an image.** kind mounts `models/` into the node at `/models` (stage 2's `kind.yaml`), and the pod mounts that read-only (`hostPath`). So the 676 MB file is never copied into an image layer or a volume. That works only on a one-node local cluster. On a real cluster, the model would come from a shared volume, be downloaded from object storage by an init container, or be baked into an image.
+- **One copy, replaced by stopping it first** (`strategy: Recreate`). Its memory is the cluster's largest item, so an update can't run two at once the way the gateway's does. The `local` route is down while the model loads: about 20 s.
+- **Reachable only through the gateway.** Its Service is ClusterIP (inside the cluster only), so every request goes through keys, limits and budgets.
+- **Not root.** The image runs as root by default. Here it runs as user 10001 with a read-only root filesystem and every capability dropped, since all it does is read one file and listen on a port.
+- **Probes on llama-server's `/health`,** which answers 503 while the model loads. Startup allows 2 minutes; loading took 21 s through the mount (the Windows folder, through WSL, into the node). Liveness allows a minute of misses, since generation keeps the CPU busy.
+- **Optional:** `--set llm.enabled=false` leaves it out, for a cluster without the model file. The `local` route then fails, as designed: no fallback.
+
+Checked live through 127.0.0.1:8088, with a key for a team allowed only `local` (revoked afterwards):
+
+| Check | Result |
+|---|---|
+| a plain request | 200 in 3.8 s (the first one, cold), model `qwen2.5-0.5b-instruct-q8_0`, 41 + 24 tokens; a correct one-sentence answer |
+| a streamed request | first text after **0.13 s**, done after 2.2 s |
+| 4 at once (the server's 4 slots) | all 200, 0.9 to 2.7 s each, 2.7 s in all |
+| llama-server scaled to 0 | **503 `all_candidates_failed` in 0.3 s**: the route has no fallback, so nothing is quietly sent to a paid model |
+| scaled back to 1 | ready after 19 s; the next request 200 in 1.1 s |
+
+**Memory after the load:**
+
+| Item | Used | Request / limit |
+|---|---|---|
+| llm | 466 MiB | 900 MiB / 1 GiB |
+| gateway ×2 | 128 and 130 MiB | 160 / 256 MiB each |
+| postgres | 34 MiB | 128 / 256 MiB |
+| the whole node | **1.67 GiB** | |
+
+- **llama-server's 466 MiB is less than compose's 836 MB peak** (step 6 stage 2). The model file is memory-mapped, and pages read from a file count as page cache, which isn't always charged to the container in the same way. The request stays at 900 MiB, so the scheduler reserves what compose measured under load. It's cheap to lower later, and costly to find out it was too low.
+- **Docker had less memory than the design assumed** during this stage: 2.84 GiB (WSL capped at 3 GB in `.wslconfig`), not the 3.77 GB the budget was written against. The node's 1.67 GiB fit, but stage 4 didn't, and the cap was raised to 4 GB there (Docker: 3.83 GiB).
+
+New file: `chart/ai-gateway/templates/llm.yaml` (llama-server's Deployment and Service). Changed: `values.yaml` (the `llm` settings), `templates/gateway.yaml` (`GATEWAY_LOCAL_URL`), `templates/_helpers.tpl` (its selector).
+
+### Stage 4: observability in the cluster
+
+```powershell
+# once: the three compose images into the node (each with the docker save detour), and the Grafana password into the Secret
+foreach ($i in "prom/prometheus:v3.15.1","jaegertracing/jaeger:2.22.0","grafana/grafana:13.3.0") { docker save --platform linux/amd64 -o img.tar $i; kind load image-archive img.tar --name ai-gateway; rm img.tar }
+uv run python k8s/make_secret.py                     # now also copies GRAFANA_ADMIN_PASSWORD from .env
+helm upgrade --install ai-gateway chart/ai-gateway --wait `
+  --set-file routes=config/routes.yaml `
+  --set-file observability.alerts=observability/alerts.yml `
+  --set-file observability.dashboard=observability/grafana/dashboards/gateway.json
+# the UIs, from this PC only, while each command runs:
+kubectl port-forward svc/ai-gateway-grafana 3000:3000        # http://127.0.0.1:3000/d/ai-gateway
+kubectl port-forward svc/ai-gateway-prometheus 9090:9090
+kubectl port-forward svc/ai-gateway-jaeger 16686:16686
+```
+
+Step 7's Prometheus, Jaeger and Grafana now run in the cluster ([templates/observability.yaml](chart/ai-gateway/templates/observability.yaml)). They use the same images, alert rules and dashboard as compose. The rules and dashboard are passed in from the repo's files (`--set-file`), so there's one copy of each. `observability.enabled=false` leaves all three out.
+
+- **Prometheus finds what to scrape by itself.** In compose it had a fixed address. In a cluster, pods are replaced and scaled, and each gets a new name and address. So Prometheus asks the Kubernetes API for pods in its namespace that carry a `prometheus.io/scrape: "true"` annotation, and scrapes each at its own address. The gateway's pod template declares port 9464 and job `gateway`; llama-server's declares 8080, `/metrics` and job `llama-server`. These are the same job names as compose, so the alert rules and dashboard work unchanged. Every series also gets a `pod` label.
+- **Least privilege for that.** Prometheus is the only pod with a Kubernetes API token. Its Role lets it get, list and watch pods in this namespace, and nothing else: no Secrets, no other namespaces, no changes.
+- **Traces carry their pod.** The gateway pods send spans to Jaeger's Service (`OTEL_EXPORTER_OTLP_ENDPOINT`). The downward API passes each pod's own name into `OTEL_RESOURCE_ATTRIBUTES`, so every trace says which replica handled it.
+- **Nothing is published on this PC.** The UIs are ClusterIP Services, reached with `kubectl port-forward` while it runs. Grafana is open to anyone who can reach it, as in compose, so it should stay unpublished.
+- **Data is temporary.** Prometheus keeps a day of history in an emptyDir, which survives a container restart but not a replaced pod. Jaeger keeps traces in memory. That's enough for a demo; a real setup keeps them on volumes or in managed storage.
+- **Grafana no longer downloads plugins.** At every start it fetched and updated its bundled plugins from grafana.com; on the first try here it updated the Jaeger plugin. That's code downloaded without anyone choosing it, and a startup that waits on the network. `GF_PLUGINS_PREINSTALL_DISABLED` turns it off, in the chart and in compose.
+
+**What went wrong first, and why it matters:**
+
+1. **The node ran out of memory, and the self-hosted model slowed to a crawl.** With Grafana added, Docker's 2.84 GiB VM had about 34 MB free, and processes stalled on memory about 44% of the time. A 37-token prompt to the `local` route took over 60 s and timed out (504). The cause is that llama-server memory-maps its model, so the weights are page cache. Under pressure the kernel drops them, without counting them against the pod, and each token reads them again from the slow Windows mount. The pod's working set fell from 466 to 180 MiB. The pod's limit never triggered: the problem was the whole node, not one pod.
+2. **Loading the model into the process's own memory didn't fit either.** This llama.cpp build's `--load-mode none` (the old `--no-mmap`) failed with "Cannot allocate memory": reading the file needs page cache on top of the model's own copy. So it stays memory-mapped.
+3. **The fix was more memory.** WSL's cap in `.wslconfig` went from 3 GB to 4 GB, which gives Docker 3.83 GiB, about what the design's budget assumed.
+4. **Grafana hit its own limit.** A cold start builds its database in an empty data directory. It peaked at the 448 MiB limit (190 MB of it file pages), stalled, and the startup probe killed it. The limit is now 640 MiB, with a startup probe that allows 3 minutes.
+
+The lesson: requests and limits protect pods from each other, not the node from being over-full. A memory-mapped model hides part of its real footprint from both, so its request should be set from what it needs resident (the 836 MB measured in compose), not from the working set the pod reports.
+
+Checked live, through port-forwards and 127.0.0.1:8088 (two runs, with a key for a team allowed `stub` and `local`, revoked afterwards):
+
+| Check | Result |
+|---|---|
+| Prometheus's targets | found by discovery: **both gateway pods and llama-server**, all up |
+| 30 requests (27 stub, 3 local), a new connection each | all 200; counted **per pod**: 26 + 28 stub, 5 + 1 local across the two runs |
+| llama-server's own metrics | tokens predicted, scraped from its pod |
+| alert rules | all 6 loaded, all inactive (nothing wrong) |
+| Grafana | 13.3.0, database OK, the `ai-gateway` dashboard provisioned, a panel's query answered through its Prometheus data source |
+| Jaeger | 60 traces from 60 requests, **31 and 29 by `k8s.pod.name`**, each with the auth, admit, guardrail and settle spans |
+| a gateway pod deleted | its replacement became a target **after 17 s, with no configuration change**; the old one dropped out |
+
+**Memory with everything running:**
+
+| Item | Used | Request / limit |
+|---|---|---|
+| llm | 527 MiB | 900 MiB / 1 GiB |
+| Grafana | 462 MiB | 320 / 640 MiB |
+| gateway ×2 | 128 and 136 MiB | 160 / 256 MiB each |
+| Prometheus | 92 MiB | 160 / 320 MiB |
+| Jaeger | 59 MiB | 48 / 192 MiB |
+| PostgreSQL | 44 MiB | 128 / 256 MiB |
+| the whole node | **2.43 GiB** of Docker's 3.83 GiB | |
+
+Memory pressure afterwards: about 2% (it was 44% before the change). The node leaves about 1.4 GiB for stage 5's extra gateway replicas (about 130 MiB each) and for the compose database used by the tests.
+
+New file: `chart/ai-gateway/templates/observability.yaml` (Prometheus with its ServiceAccount, Role and config; Jaeger; Grafana with its provisioning; their Services). Changed: `values.yaml` (the `observability` settings), `templates/gateway.yaml` (scrape annotations, the OTLP endpoint and pod name), `templates/llm.yaml` (scrape annotations), `templates/_helpers.tpl` (a shared lock-down), `k8s/make_secret.py` (the Grafana password), `docker-compose.yml` (no plugin downloads), `.github/workflows/ai-gateway-ci.yml` (the chart rendered with the rules and dashboard, and with everything optional turned off).
+
+### Stage 5: autoscaling, shown under load
+
+```powershell
+# once: metrics-server (v0.9.1, 22.5 MB image) into the node, then its manifest
+docker pull --platform linux/amd64 registry.k8s.io/metrics-server/metrics-server:v0.9.1
+docker save --platform linux/amd64 -o ms.tar registry.k8s.io/metrics-server/metrics-server:v0.9.1; kind load image-archive ms.tar --name ai-gateway; rm ms.tar
+kubectl apply -f k8s/metrics-server.yaml
+kubectl top pods                                   # CPU and memory per pod: what the autoscaler reads
+# then the chart as in stage 4; the load test (k6, against the free stub route):
+$env:GATEWAY_KEYS = "<key1>,<key2>,..."            # keys for teams allowed `stub`
+k6 run -e PEAK=60 load/chat.js
+```
+
+Plain language: the autoscaler is a thermostat for pods. Every 15 s it reads how busy the gateway pods are and adds or removes pods to keep them near a target. Busy here means CPU, as a share of the CPU each pod requested. It adds pods at once when load rises, but waits until load has stayed low for a while before removing any, so a short lull doesn't remove pods the next burst needs.
+
+**Pieces:**
+- **metrics-server** ([k8s/metrics-server.yaml](k8s/metrics-server.yaml)) collects each pod's CPU and memory from the kubelet. It's upstream's manifest, checksum-verified, with two changes:
+  - `--kubelet-insecure-tls`, because kind's kubelets have self-signed certificates. That's fine locally and never right on a real cluster.
+  - `imagePullPolicy: Never`, since the image is loaded into the node. It's referenced by tag: a digest doesn't work after `docker save --platform` and `kind load image-archive`, because the node knows the image only by tag and a digest made locally. The registry digests checked at pull time are in the file.
+- **The HorizontalPodAutoscaler** (in [templates/gateway.yaml](chart/ai-gateway/templates/gateway.yaml)) keeps the gateway between 2 and 4 pods at a 50% CPU target. It scales up at once and scales down after 2 minutes of low load (Kubernetes's default is 5). With it on, the Deployment no longer sets `replicas`, which would otherwise reset the count on every `helm upgrade`.
+- **The gateway's CPU request is now 200m, set from a measurement:** about 250m at 19 requests a second per pod. The autoscaler measures against the request, so a request that's too low makes it scale at a whisper, and one that's too high makes it never scale.
+- **[load/chat.js](load/chat.js)**, the k6 load test, against the free stub route:
+  - it sends a fixed rate of requests, so a slower gateway gets more requests in flight, not fewer requests;
+  - every request opens a new connection, since a Service balances connections (stage 2);
+  - its default profile ramps from 10 to `PEAK` requests a second, holds there, then drops back to 10.
+
+**Finding 1: one busy team is limited by its own database rows, and more pods don't help.** The calibration run, at 40 requests a second from a single team's key, gave p95 2.2 to 4.3 s, and the pods used only a fraction of their CPU. The traces from stage 4 showed where the time went:
+
+| Span | Slow requests (median) | Fast requests (median) |
+|---|---|---|
+| `gateway.auth` | 332 ms | 0.9 ms |
+| `gateway.admit` | 789 ms | 21 ms |
+| `gateway.settle` | 966 ms | 13 ms |
+
+PostgreSQL showed up to 13 connections waiting on `Lock transactionid`. Every request updates the same key's rate-bucket row and the same team's budget row, PostgreSQL serializes updates to one row, and each holds its lock until its commit is on disk (`WalSync`). The same 40 a second spread over 20 teams gave p95 66 ms. So the gateway scales across teams, but one team's throughput is capped by its rows, not by pods. The load tests below use 20 teams. Fixing the single-team limit (fewer round trips per request, or relaxed durability for rate buckets) is left for later.
+
+**Finding 2: during a scale-up, busy pods failed their health checks and dropped out.** The first full run (target 70%, readiness from a database query):
+1. The ramp outran the autoscaler: it decided to scale at t=103 s, with the 2 pods at 127% of their request, and new pods need about 20 s to start.
+2. Requests queued meanwhile, up to 300 in flight, and each pod's 10 database connections became the queue. 258 requests waited over 5 s for a connection and got 503 (`auth_unavailable`, `accounting_unavailable`).
+3. `/readyz` borrowed a connection from that same pool, so it failed too. On two pods even `/healthz` timed out, waiting behind queued requests on the event loop.
+4. Pods that failed readiness left the Service, so the others got even more load: ready pods fell to 1 of 4, right when capacity was needed most.
+
+Two fixes:
+- **Readiness from a background check** (`db.Health`, design decision 19). A task checks the database every 2 s on its own connection, and `/readyz` answers from the last result: ready if a check succeeded within 6 s. A busy pod stays ready; a database that's really down still turns pods not ready, a few seconds later than before. Both probes now allow 5 s per try and 3 tries.
+- **Scale earlier:** the CPU target went from 70% to 50%, for headroom while new pods start.
+
+**Measured, same profile** (20 teams; 10 → 60 requests a second over a minute, held for 3 minutes, then back to 10):
+
+| | 70% target, readiness by query | 50% target, background readiness |
+|---|---|---|
+| requests | 14,916 | 15,808 |
+| failed | **5.5%** | **0%** |
+| p50 / p95 / max | 35 ms / 8.9 s / 10.0 s | 36 ms / 865 ms / 8.8 s |
+| not started (k6 had no free virtual user) | 1,058 | 166 |
+| scale-up decided | t=103 s | t=79 s |
+| ready pods during the scale-up | fell to **1 of 4** | never below the pods running; 1 readiness miss in all |
+| scale-down | 4 → 3 → 2 about 2 min after the load dropped | the same |
+
+- **The remaining slow requests are the ramp itself:** about 30 s from the moment the autoscaler decides until new pods serve. A higher floor (3 pods) or a slower ramp would absorb that. Shedding load fast when a pod's queue is full (a 503 with `Retry-After` instead of queueing) was considered and not built.
+- **At 60 a second, 4 pods ran at about 100% of their request**, so the autoscaler wanted more than its maximum of 4. The pods still had room, since each may use up to one core, but on a larger cluster `maxReplicas` would be the setting to raise.
+- **The test's own setup is load too.** Creating 20 teams and keys runs `admin.py` 40 times in a gateway pod (`kubectl exec`), and that alone scaled the gateway to 4 before the first attempt even started. The driver now waits for the autoscaler to settle back to 2. On a real cluster, admin work would run in its own short-lived pod (a Job).
+- **The test keys were revoked with SQL directly** when a run was stopped partway (its cleanup didn't run). Those revocations have no audit-log row.
+
+New files: `k8s/metrics-server.yaml` (metrics-server v0.9.1, upstream's manifest changed for kind), `load/chat.js` (the k6 load test). Changed: `src/db.py` (`Health`), `src/app.py` (`/readyz` answers from it), `tests/test_readiness.py` (3 new tests: a busy pool doesn't make the gateway unready, readiness goes stale, a quick give-up on an unreachable server), `templates/gateway.yaml` (the autoscaler, looser probes), `values.yaml` (CPU request 200m, `gateway.autoscaling`), `docs/design.md` (decision 19), CI (the minimal render with autoscaling off too).
+
+### Stage 6: a rolling update with no dropped requests
+
+```powershell
+kubectl rollout restart deploy/ai-gateway-gateway     # every gateway pod replaced, one at a time
+kubectl rollout status deploy/ai-gateway-gateway
+```
+
+Plain language: a new version goes out one pod at a time. A new pod starts and must be ready before an old one stops (stage 2's `maxSurge: 1, maxUnavailable: 0`). The hard part is the old pod's last moments. Kubernetes does two things at once when it stops a pod: it starts removing the pod from the Service, and it tells the pod to shut down. Removal takes a moment to reach the routing rules, so for that moment new connections can still be sent to a pod that has just stopped accepting them. It's like a shop locking its door while the sign still says open.
+
+**The fix is a pause before shutdown.** The gateway's pod has a `preStop` hook, Kubernetes's built-in sleep action (`gateway.preStopSeconds`, 5 s). Kubernetes runs it as soon as it decides to stop the pod, and sends SIGTERM only when it ends. During those 5 s the pod is leaving the Service but still serving normally. Then uvicorn's graceful shutdown finishes requests in progress (up to 30 s). The 40 s grace period covers both.
+
+**Measured:** 4 minutes at a steady 12 requests a second, from 20 teams with a new connection per request, and two rolling updates during it (each replaces both pods). Identical runs, before and after:
+
+| | without the pause | with `preStop: sleep 5` |
+|---|---|---|
+| requests | 2,964 | 2,964 |
+| failed | **16 (0.54%)**, every one `EOF` | **0** |
+| p95 / max | 176 ms / 2.5 s | 45 ms / 796 ms |
+| one rolling update took | 43 s and 35 s | 23 s and 20 s |
+
+- **The failures happened at the exact seconds old pods were told to stop** (07:30:18, :26 and :43 against the `Killing` events at 13:30:18, :26 and :43 UTC). `EOF` means the connection was accepted and then closed without an answer: it reached a pod already shutting down.
+- **Without the pause, the autoscaler also added pods during the updates.** The starting pods' CPU looked like load, so there were more pods to replace and the updates took longer. That's partly why the before column is slower overall, not only the failures.
+- **One run each.** 16 failures against 0, at the same rate and count, is far outside chance. It also explains stage 2's single lost request when a pod was deleted: a deletion goes through the same shutdown.
+- **Why 5 s.** It's long enough for the Service change to reach the node's rules (well under a second on one node), with a wide margin for a busy cluster. Every second is also a second longer per pod for each update, and a slower scale-down.
+
+New: the `preStop` hook in `templates/gateway.yaml`, `gateway.preStopSeconds` in `values.yaml`. `load/chat.js` now logs any answer that isn't 200, so a run's failures can be told apart, not only counted.
+
+### Stage 7: memory against the budget
+
+Every container's working set in the node at idle, with 2 gateway pods and with 4 (the autoscaler's maximum, forced for the measurement):
+
+| Component | Step 1's estimate | Measured |
+|---|---|---|
+| kind node: control plane and system pods | ~700 MB | 680-695 MiB in pods, plus about 400 MiB outside them (kubelet, containerd) |
+| gateway | ~300 MB for 2 | 263 MiB for 2, 540 MiB for 4 |
+| PostgreSQL | ~150 MB | 51-58 MiB |
+| llama-server (Q8_0) | ~850 MB | 162 MiB idle, 466-527 MiB after load (memory-mapped: see stage 4) |
+| OpenTelemetry collector | ~100 MB | not run: Jaeger receives OTLP itself, 77-80 MiB |
+| Prometheus + Grafana | ~450 MB | 83-91 + 441-470 MiB |
+| metrics-server | not estimated | 48-54 MiB |
+| classifier | ~1.4 GB | left out |
+| **the whole node** | ~2.55 GB without the classifier | **2.19 GiB (2 pods), 2.46 GiB (4 pods)**; about 2.8 GiB with 4 pods and the model resident |
+
+Docker has 3.83 GiB, so about 1 GiB is left at the worst case measured. [docs/design.md](docs/design.md) section 9 now has these numbers in place of the estimates.
+
+### Step 8 in short
+
+- **The gateway runs on Kubernetes as it ran on this PC,** from one Helm chart:
+  - 2 to 4 replicas behind a Service, with PostgreSQL in a StatefulSet and llama-server serving the `local` route;
+  - Prometheus, Jaeger and Grafana watching it all;
+  - secrets created outside the chart, and every container non-root with its limits set.
+- **Most of the work was what Kubernetes exposes, not the YAML.** Every lesson came from measuring under load or failure, and none showed in a passing `helm install`:
+  - **A Service balances connections, not requests** (stage 2).
+  - **A memory-mapped model can be evicted without the pod noticing** (stage 4).
+  - **A readiness check that borrows from the request pool takes busy pods out of service** just when they're needed (stage 5).
+  - **One busy team is limited by its own database rows,** however many pods there are (stage 5).
+  - **Shutting a pod down races with removing it from the Service** (stage 6).
+- **The numbers:**
+  - the autoscaler went from 2 to 4 pods and back under a k6 load, with 0 failed requests (5.5% before the readiness fix);
+  - rolling updates under load lost 0 requests (16 of 2,964 before the `preStop` pause);
+  - the node uses 2.2 to 2.8 GiB of Docker's 3.83 GiB.
+- **Different from the plan:**
+  - the classifier stays out (it didn't fit);
+  - Jaeger receives spans directly, with no separate OpenTelemetry Collector: Jaeger v2 is one, and a second would add memory for no gain here;
+  - the `.wslconfig` cap was raised from 3 to 4 GB to fit the plan's budget.
+- **Still open:**
+  - **the single-team database limit;**
+  - **shedding load quickly** instead of queueing when a pod is overwhelmed;
+  - **admin commands in their own Job pod.** Running them in a gateway pod counts as load and moves the autoscaler.
+
 ## Setup
 
 ```powershell
@@ -781,7 +1108,7 @@ bash security/audit.sh   # known vulnerabilities in locked dependencies (Git Bas
 
 `.env` (gitignored, local only) holds `POSTGRES_PASSWORD` and `DATABASE_URL` for the database (step 4), and `GRAFANA_ADMIN_PASSWORD` for the monitoring stack (step 7); any long random values will do.
 
-Local tools for the later steps: Docker Desktop, kubectl, [kind](https://kind.sigs.k8s.io/) (local Kubernetes clusters), [Helm](https://helm.sh/) (packaging the services for Kubernetes) and [k6](https://k6.io/) (load tests).
+Local tools for the later steps: Docker Desktop, kubectl, [kind](https://kind.sigs.k8s.io/) (local Kubernetes clusters), [Helm](https://helm.sh/) (packaging the services for Kubernetes) and [k6](https://k6.io/) (load tests). The cluster, from scratch: step 8 stages 2 to 5, in order (the node, the images, the Secret, metrics-server, then `helm upgrade --install` with the three `--set-file` options from stage 4). It needs Docker with about 3.8 GB: WSL capped at 4 GB or more.
 
 ## Constraints
 

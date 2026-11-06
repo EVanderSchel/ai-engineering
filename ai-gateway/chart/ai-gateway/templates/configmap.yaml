@@ -1,0 +1,10 @@
+# The routes file, mounted into each gateway pod at /app/config/routes.yaml (where the image keeps its own copy).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-routes
+  labels:
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+data:
+  routes.yaml: |
+    {{- required "pass the routes file: --set-file routes=config/routes.yaml" .Values.routes | nindent 4 }}

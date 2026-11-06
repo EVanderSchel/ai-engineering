@@ -1,0 +1,334 @@
+{{- if .Values.observability.enabled }}
+{{- $o := .Values.observability }}
+# Step 7's observability, in the cluster (step 8 stage 4): Prometheus, Jaeger and Grafana, the same images as
+# docker-compose.yml. The difference is how Prometheus finds what to scrape. In compose it was a fixed address; here
+# pods come and go (replaced, scaled), so Prometheus asks the Kubernetes API for the pods that carry a
+# `prometheus.io/scrape` annotation, and scrapes each one by its own address.
+#
+# Nothing here is published on this PC: the UIs are reached with `kubectl port-forward` (README).
+
+# --- Prometheus: permission to list pods, and nothing else ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Release.Name }}-prometheus
+  labels:
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+---
+# A Role (this namespace only), not a ClusterRole: it may read pods here, and can't see or change anything else.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Release.Name }}-prometheus
+  labels:
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Release.Name }}-prometheus
+  labels:
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Release.Name }}-prometheus
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Release.Name }}-prometheus
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-prometheus
+  labels:
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+data:
+  # The repo's alert rules, unchanged (--set-file observability.alerts=observability/alerts.yml): they sum across
+  # replicas, so they work the same with 2 pods or 4.
+  alerts.yml: |
+    {{- required "pass --set-file observability.alerts=observability/alerts.yml" $o.alerts | nindent 4 }}
+  prometheus.yml: |
+    global:
+      scrape_interval: 5s # as in compose: short, for a demo
+      evaluation_interval: 5s
+    rule_files: [alerts.yml]
+    scrape_configs:
+      # Every pod in this namespace annotated prometheus.io/scrape: "true", at its own IP and the annotated port and
+      # path. The job name comes from prometheus.io/job (gateway, llama-server: the same as compose, so the alerts and
+      # dashboard need no change), and each series gets the pod's name.
+      - job_name: pods
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces: { names: [{{ .Release.Namespace }}] }
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            regex: "true"
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_phase] # not pods still starting or already finished
+            regex: Running
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_ip, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            regex: (.+);(.+)
+            replacement: $1:$2
+            target_label: __address__
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            regex: (.+)
+            target_label: __metrics_path__
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_job]
+            target_label: job
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-prometheus
+  labels:
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+    app.kubernetes.io/name: prometheus
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app.kubernetes.io/name: prometheus, app.kubernetes.io/instance: {{ .Release.Name }} }
+  template:
+    metadata:
+      labels:
+        {{- include "ai-gateway.labels" . | nindent 8 }}
+        app.kubernetes.io/name: prometheus
+      annotations:
+        checksum/alerts: {{ $o.alerts | sha256sum }} # changed rules restart Prometheus with them
+    spec:
+      serviceAccountName: {{ .Release.Name }}-prometheus # the one pod here that does call the Kubernetes API
+      securityContext:
+        seccompProfile: { type: RuntimeDefault }
+        fsGroup: 65534
+      containers:
+        - name: prometheus
+          image: {{ $o.prometheus.image | quote }}
+          imagePullPolicy: Never
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time={{ $o.prometheus.retention }}
+          ports:
+            - { name: http, containerPort: 9090 }
+          {{- include "ai-gateway.lockedDown" (dict "uid" 65534) | nindent 10 }}
+          resources:
+            {{- toYaml $o.prometheus.resources | nindent 12 }}
+          readinessProbe:
+            httpGet: { path: /-/ready, port: http }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /-/healthy, port: http }
+            periodSeconds: 10
+            failureThreshold: 6
+          volumeMounts:
+            - { name: config, mountPath: /etc/prometheus, readOnly: true }
+            - { name: data, mountPath: /prometheus }
+      volumes:
+        - name: config
+          configMap: { name: {{ .Release.Name }}-prometheus }
+        # History lives in an emptyDir: it survives a container restart, not the pod's replacement. Enough for a demo;
+        # a real setup keeps it on a volume or sends it to long-term storage.
+        - name: data
+          emptyDir: { sizeLimit: 1Gi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-prometheus
+  labels:
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+spec:
+  selector: { app.kubernetes.io/name: prometheus, app.kubernetes.io/instance: {{ .Release.Name }} }
+  ports:
+    - { name: http, port: 9090, targetPort: http }
+---
+# --- Jaeger: receives the gateway pods' spans over OTLP (4318) and shows them (16686). In memory only. ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-jaeger
+  labels:
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+    app.kubernetes.io/name: jaeger
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app.kubernetes.io/name: jaeger, app.kubernetes.io/instance: {{ .Release.Name }} }
+  template:
+    metadata:
+      labels:
+        {{- include "ai-gateway.labels" . | nindent 8 }}
+        app.kubernetes.io/name: jaeger
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: jaeger
+          image: {{ $o.jaeger.image | quote }}
+          imagePullPolicy: Never
+          ports:
+            - { name: ui, containerPort: 16686 }
+            - { name: otlp-http, containerPort: 4318 }
+          {{- include "ai-gateway.lockedDown" (dict "uid" 10001) | nindent 10 }}
+          resources:
+            {{- toYaml $o.jaeger.resources | nindent 12 }}
+          readinessProbe:
+            httpGet: { path: /, port: ui }
+            periodSeconds: 5
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: { sizeLimit: 16Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-jaeger
+  labels:
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+spec:
+  selector: { app.kubernetes.io/name: jaeger, app.kubernetes.io/instance: {{ .Release.Name }} }
+  ports:
+    - { name: ui, port: 16686, targetPort: ui }
+    - { name: otlp-http, port: 4318, targetPort: otlp-http }
+---
+# --- Grafana: the repo's dashboard, with Prometheus and Jaeger as data sources, all from files as in compose ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-grafana
+  labels:
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+data:
+  datasources.yml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        uid: prometheus # the dashboard refers to it by this id
+        type: prometheus
+        access: proxy
+        url: http://{{ .Release.Name }}-prometheus:9090
+        isDefault: true
+        jsonData: { timeInterval: 5s }
+      - name: Jaeger
+        uid: jaeger
+        type: jaeger
+        access: proxy
+        url: http://{{ .Release.Name }}-jaeger:16686
+  dashboards.yml: |
+    apiVersion: 1
+    providers:
+      - name: gateway
+        folder: ai-gateway
+        type: file
+        allowUiUpdates: false
+        options: { path: /var/lib/grafana/dashboards }
+  # --set-file observability.dashboard=observability/grafana/dashboards/gateway.json (made by make_dashboard.py)
+  gateway.json: |
+    {{- required "pass --set-file observability.dashboard=observability/grafana/dashboards/gateway.json" $o.dashboard | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-grafana
+  labels:
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+    app.kubernetes.io/name: grafana
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app.kubernetes.io/name: grafana, app.kubernetes.io/instance: {{ .Release.Name }} }
+  template:
+    metadata:
+      labels:
+        {{- include "ai-gateway.labels" . | nindent 8 }}
+        app.kubernetes.io/name: grafana
+      annotations:
+        checksum/dashboard: {{ $o.dashboard | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile: { type: RuntimeDefault }
+        fsGroup: 472
+      containers:
+        - name: grafana
+          image: {{ $o.grafana.image | quote }}
+          imagePullPolicy: Never
+          env:
+            # The admin password, from the Secret (k8s/make_secret.py copies GRAFANA_ADMIN_PASSWORD from .env).
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ .Values.secretName }}, key: GRAFANA_ADMIN_PASSWORD } }
+            # As in compose: anyone who can reach it (only through port-forward, on this PC) is an editor, to try
+            # queries in Explore without logging in.
+            - { name: GF_AUTH_ANONYMOUS_ENABLED, value: "true" }
+            - { name: GF_AUTH_ANONYMOUS_ORG_ROLE, value: Editor }
+            - { name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH, value: /var/lib/grafana/dashboards/gateway.json }
+            - { name: GF_ANALYTICS_REPORTING_ENABLED, value: "false" }
+            - { name: GF_ANALYTICS_CHECK_FOR_UPDATES, value: "false" }
+            - { name: GF_NEWS_NEWS_FEED_ENABLED, value: "false" }
+            # Otherwise Grafana fetches and updates its bundled plugins from grafana.com at every start: code
+            # downloaded without anyone choosing it, and a startup that waits on the network.
+            - { name: GF_PLUGINS_PREINSTALL_DISABLED, value: "true" }
+          ports:
+            - { name: http, containerPort: 3000 }
+          {{- include "ai-gateway.lockedDown" (dict "uid" 472) | nindent 10 }}
+          resources:
+            {{- toYaml $o.grafana.resources | nindent 12 }}
+          # Its data directory starts empty in every new pod, so it builds its own database first: over a minute on
+          # this PC. Startup allows 3 minutes before liveness takes over (which killed it at 60 s on the first try).
+          startupProbe:
+            httpGet: { path: /api/health, port: http }
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 36
+          readinessProbe:
+            httpGet: { path: /api/health, port: http }
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet: { path: /api/health, port: http }
+            timeoutSeconds: 3
+            periodSeconds: 10
+            failureThreshold: 6
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/grafana } # its own small database (sessions, settings)
+            - { name: dashboards, mountPath: /var/lib/grafana/dashboards, readOnly: true }
+            - { name: provisioning, mountPath: /etc/grafana/provisioning/datasources/datasources.yml, subPath: datasources.yml, readOnly: true }
+            - { name: provisioning, mountPath: /etc/grafana/provisioning/dashboards/dashboards.yml, subPath: dashboards.yml, readOnly: true }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: data
+          emptyDir: { sizeLimit: 256Mi }
+        - name: dashboards
+          configMap:
+            name: {{ .Release.Name }}-grafana
+            items: [{ key: gateway.json, path: gateway.json }]
+        - name: provisioning
+          configMap: { name: {{ .Release.Name }}-grafana }
+        - name: tmp
+          emptyDir: { sizeLimit: 64Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-grafana
+  labels:
+    {{- include "ai-gateway.labels" . | nindent 4 }}
+spec:
+  selector: { app.kubernetes.io/name: grafana, app.kubernetes.io/instance: {{ .Release.Name }} }
+  ports:
+    - { name: http, port: 3000, targetPort: http }
+{{- end }}

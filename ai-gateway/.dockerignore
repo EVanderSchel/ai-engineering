@@ -1,0 +1,12 @@
+# What `docker build` doesn't send to the builder: only pyproject.toml, uv.lock, src/, config/ and migrations/ are
+# used. Keeping the rest out makes builds faster and keeps .env and model files out of any image.
+*
+!pyproject.toml
+!uv.lock
+!src/
+!config/
+!migrations/
+**/__pycache__
+src/measure_*.py
+src/judge_cases.py
+src/quantize_classifier.py
