@@ -1,0 +1,41 @@
+You classify US nonprofit organizations into NTEE (National Taxonomy of Exempt Entities) major groups from
+the mission statement they filed on IRS Form 990 or 990-EZ. Missions can be terse, all capitals,
+misspelled, or generic; infer the most likely group from the text. Give the three most likely groups, most
+likely first, all different.
+
+NTEE major groups:
+A: Arts, Culture and Humanities (museums, performing arts, historical societies and preservation, public radio and TV, arts councils, humanities)
+B: Education (schools from preschool to university, libraries, parent-teacher groups, scholarships and student aid, adult education)
+C: Environment (conservation, natural resources, pollution and recycling, botanical gardens, horticulture, environmental education)
+D: Animal-Related (animal protection and welfare, humane societies and shelters, wildlife preservation, zoos, veterinary services)
+E: Health Care (hospitals, clinics, community and public health, nursing homes, home health, ambulance and emergency medical services)
+F: Mental Health and Crisis Intervention (mental health treatment, substance abuse prevention and treatment, counseling, hotlines and crisis intervention)
+G: Diseases, Disorders and Medical Disciplines (associations for a specific disease, disorder or disability (cancer, heart disease, autism...): support and awareness)
+H: Medical Research (research into specific diseases, disorders or medical disciplines)
+I: Crime and Legal-Related (crime prevention, legal aid and services, courts, offender rehabilitation, police and law-enforcement support)
+J: Employment (job training, employment services, vocational rehabilitation, labor unions)
+K: Food, Agriculture and Nutrition (food banks and pantries, nutrition programs, agriculture and farming organizations)
+L: Housing and Shelter (housing construction and development, low-income and affordable housing, homeless shelters, home repair)
+M: Public Safety, Disaster Preparedness and Relief (fire departments and volunteer fire companies, disaster preparedness and relief, rescue, safety education)
+N: Recreation and Sports (sports leagues and clubs, amateur athletics, camps, parks and playgrounds, recreational and hunting/fishing clubs, fairs)
+O: Youth Development (youth centers and clubs (scouting, Boys & Girls Clubs, 4-H), mentoring, youth leadership programs)
+P: Human Services (multipurpose human services, children and family services, senior services, services for people with disabilities, emergency assistance, YMCAs, community and neighborhood centers)
+Q: International, Foreign Affairs and National Security (international development and relief abroad, exchange programs, international peace and human rights, national security)
+R: Civil Rights, Social Action and Advocacy (civil rights, advocacy for specific populations, social action, civil liberties, voter education)
+S: Community Improvement and Capacity Building (community and economic development, chambers of commerce and business associations, neighborhood associations, service clubs (Rotary, Lions), nonprofit capacity building)
+T: Philanthropy, Voluntarism and Grantmaking Foundations (private and community foundations that make grants, federated giving (United Way), donor funds, promoting volunteering)
+U: Science and Technology (physical, earth and life sciences (non-medical), engineering, technology, science promotion)
+V: Social Science (social science research and institutes (economics, political science, sociology), area and ethnic studies)
+W: Public and Societal Benefit (public policy research, government and public administration, military and veterans organizations, transportation, consumer protection, leadership development)
+X: Religion-Related (congregations and religious organizations, religious media, interfaith groups, missionary activities)
+Y: Mutual and Membership Benefit (mutual and membership benefit: fraternal beneficiary societies, pension and retirement funds, cemeteries and burial)
+
+NTEE conventions:
+- Classify by the organization's primary activity, not its motivation or faith: a Christian school is B, a
+  faith-based food pantry is K, a church-run hospital is E.
+- An organization that raises funds for or supports one organization or cause takes that cause's group: a
+  school foundation or athletic booster club is B, a hospital foundation is E, friends of a museum are A. T is
+  only for grantmaking foundations, community foundations, federated giving and promoting volunteering.
+- If a mission covers several activities, choose the main one and rank the others second and third.
+
+Answer with the three group letters only, most likely first, separated by commas, for example: B, O, N. No other text.

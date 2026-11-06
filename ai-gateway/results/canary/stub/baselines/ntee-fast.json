@@ -1,0 +1,832 @@
+{
+  "check": "ntee-fast",
+  "suite": "ntee",
+  "date": "2026-11-06T16:55:54+00:00",
+  "subject": {
+    "route": "fast",
+    "candidates": [
+      {
+        "provider": "bedrock",
+        "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+        "effort": null,
+        "refusal_fallback": false
+      },
+      {
+        "provider": "anthropic",
+        "model": "claude-haiku-4-5",
+        "effort": null,
+        "refusal_fallback": false
+      }
+    ],
+    "prompt": {
+      "ref": "ntee-classify@v1",
+      "sha256": "c210a4a866acc9148869a41846512704ba5fb56dcd21c1641547ac586b80fb17"
+    }
+  },
+  "summary": {
+    "rows": 60,
+    "answered": 60,
+    "errors": 0,
+    "accuracy": 0.85,
+    "unparseable": 0,
+    "input_tokens": 6000,
+    "output_tokens": 60,
+    "models": {
+      "us.anthropic.claude-haiku-4-5-20251001-v1:0": 60
+    },
+    "top3": 0.85
+  },
+  "items": [
+    {
+      "id": "223901156",
+      "gold": "X",
+      "answer": "A",
+      "predicted": [
+        "A"
+      ],
+      "correct": false,
+      "top3": false,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "412011402",
+      "gold": "X",
+      "answer": "X",
+      "predicted": [
+        "X"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "591805535",
+      "gold": "K",
+      "answer": "K",
+      "predicted": [
+        "K"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "593607032",
+      "gold": "B",
+      "answer": "B",
+      "predicted": [
+        "B"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "823136572",
+      "gold": "B",
+      "answer": "B",
+      "predicted": [
+        "B"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "943263110",
+      "gold": "C",
+      "answer": "C",
+      "predicted": [
+        "C"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "208809060",
+      "gold": "V",
+      "answer": "A",
+      "predicted": [
+        "A"
+      ],
+      "correct": false,
+      "top3": false,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "300277253",
+      "gold": "Q",
+      "answer": "Q",
+      "predicted": [
+        "Q"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "810586795",
+      "gold": "B",
+      "answer": "B",
+      "predicted": [
+        "B"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "814245018",
+      "gold": "N",
+      "answer": "N",
+      "predicted": [
+        "N"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "742429518",
+      "gold": "G",
+      "answer": "G",
+      "predicted": [
+        "G"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "472719636",
+      "gold": "A",
+      "answer": "B",
+      "predicted": [
+        "B"
+      ],
+      "correct": false,
+      "top3": false,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "880687841",
+      "gold": "C",
+      "answer": "C",
+      "predicted": [
+        "C"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "751535746",
+      "gold": "W",
+      "answer": "W",
+      "predicted": [
+        "W"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "710891704",
+      "gold": "L",
+      "answer": "L",
+      "predicted": [
+        "L"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "930478660",
+      "gold": "P",
+      "answer": "P",
+      "predicted": [
+        "P"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "851598684",
+      "gold": "O",
+      "answer": "O",
+      "predicted": [
+        "O"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "873397818",
+      "gold": "X",
+      "answer": "A",
+      "predicted": [
+        "A"
+      ],
+      "correct": false,
+      "top3": false,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "872146640",
+      "gold": "D",
+      "answer": "D",
+      "predicted": [
+        "D"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "570314417",
+      "gold": "P",
+      "answer": "P",
+      "predicted": [
+        "P"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "862138211",
+      "gold": "C",
+      "answer": "A",
+      "predicted": [
+        "A"
+      ],
+      "correct": false,
+      "top3": false,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "872835686",
+      "gold": "P",
+      "answer": "P",
+      "predicted": [
+        "P"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "770331230",
+      "gold": "B",
+      "answer": "B",
+      "predicted": [
+        "B"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "474978384",
+      "gold": "E",
+      "answer": "E",
+      "predicted": [
+        "E"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "320138163",
+      "gold": "O",
+      "answer": "O",
+      "predicted": [
+        "O"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "010533179",
+      "gold": "L",
+      "answer": "L",
+      "predicted": [
+        "L"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "812706775",
+      "gold": "B",
+      "answer": "B",
+      "predicted": [
+        "B"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "203222424",
+      "gold": "R",
+      "answer": "R",
+      "predicted": [
+        "R"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "222477781",
+      "gold": "A",
+      "answer": "A",
+      "predicted": [
+        "A"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "371092066",
+      "gold": "P",
+      "answer": "P",
+      "predicted": [
+        "P"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "912162264",
+      "gold": "T",
+      "answer": "T",
+      "predicted": [
+        "T"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "205983258",
+      "gold": "S",
+      "answer": "A",
+      "predicted": [
+        "A"
+      ],
+      "correct": false,
+      "top3": false,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "481200834",
+      "gold": "N",
+      "answer": "N",
+      "predicted": [
+        "N"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "020634996",
+      "gold": "N",
+      "answer": "N",
+      "predicted": [
+        "N"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "911992410",
+      "gold": "K",
+      "answer": "K",
+      "predicted": [
+        "K"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "833289582",
+      "gold": "B",
+      "answer": "A",
+      "predicted": [
+        "A"
+      ],
+      "correct": false,
+      "top3": false,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "566067763",
+      "gold": "P",
+      "answer": "P",
+      "predicted": [
+        "P"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "832179227",
+      "gold": "O",
+      "answer": "O",
+      "predicted": [
+        "O"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "411523054",
+      "gold": "X",
+      "answer": "X",
+      "predicted": [
+        "X"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "273702294",
+      "gold": "B",
+      "answer": "B",
+      "predicted": [
+        "B"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "465278201",
+      "gold": "P",
+      "answer": "P",
+      "predicted": [
+        "P"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "331164224",
+      "gold": "Q",
+      "answer": "Q",
+      "predicted": [
+        "Q"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "453771750",
+      "gold": "Q",
+      "answer": "Q",
+      "predicted": [
+        "Q"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "454711737",
+      "gold": "B",
+      "answer": "B",
+      "predicted": [
+        "B"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "900627162",
+      "gold": "S",
+      "answer": "S",
+      "predicted": [
+        "S"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "462464012",
+      "gold": "G",
+      "answer": "G",
+      "predicted": [
+        "G"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "860981116",
+      "gold": "K",
+      "answer": "A",
+      "predicted": [
+        "A"
+      ],
+      "correct": false,
+      "top3": false,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "593685521",
+      "gold": "J",
+      "answer": "J",
+      "predicted": [
+        "J"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "821751840",
+      "gold": "P",
+      "answer": "P",
+      "predicted": [
+        "P"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "202432696",
+      "gold": "B",
+      "answer": "B",
+      "predicted": [
+        "B"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "845011967",
+      "gold": "R",
+      "answer": "R",
+      "predicted": [
+        "R"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "452756854",
+      "gold": "O",
+      "answer": "O",
+      "predicted": [
+        "O"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "204510475",
+      "gold": "E",
+      "answer": "A",
+      "predicted": [
+        "A"
+      ],
+      "correct": false,
+      "top3": false,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "742466095",
+      "gold": "L",
+      "answer": "L",
+      "predicted": [
+        "L"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "650888015",
+      "gold": "S",
+      "answer": "S",
+      "predicted": [
+        "S"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "371830636",
+      "gold": "P",
+      "answer": "P",
+      "predicted": [
+        "P"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "371128706",
+      "gold": "E",
+      "answer": "E",
+      "predicted": [
+        "E"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "510661383",
+      "gold": "T",
+      "answer": "T",
+      "predicted": [
+        "T"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "251331716",
+      "gold": "A",
+      "answer": "A",
+      "predicted": [
+        "A"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    },
+    {
+      "id": "822947687",
+      "gold": "C",
+      "answer": "C",
+      "predicted": [
+        "C"
+      ],
+      "correct": true,
+      "top3": true,
+      "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "input_tokens": 100,
+      "output_tokens": 1
+    }
+  ],
+  "comparison": {
+    "verdict": "pass",
+    "items_compared": 60,
+    "baseline_accuracy": 0.85,
+    "accuracy": 0.85,
+    "change": 0.0,
+    "margin": 0.05,
+    "broken": 0,
+    "fixed": 0,
+    "same_subject": true
+  }
+}

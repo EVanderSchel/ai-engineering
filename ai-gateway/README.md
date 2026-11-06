@@ -1096,6 +1096,123 @@ Docker has 3.83 GiB, so about 1 GiB is left at the worst case measured. [docs/de
   - **shedding load quickly** instead of queueing when a pod is overwhelmed;
   - **admin commands in their own Job pod.** Running them in a gateway pod counts as load and moves the autoscaler.
 
+## Step 9: quality over time
+
+Plain language: a gateway makes it easy to change what answers. Swap a route's model for a cheaper one, edit a prompt, and every app using it changes at once. That's the point, and also the risk: nothing in steps 1 to 8 would notice that answers got worse. This step adds the checks:
+- **a prompt registry,** so a prompt is a versioned, fingerprinted file rather than text pasted into each app;
+- **an eval canary,** which scores a change on questions with known answers before it ships;
+- **a drift monitor,** which scores a sample of live traffic.
+
+**Decided before starting:**
+- **The canary runs in CI** on pull requests that change `config/routes.yaml` or a prompt, with real models: about $0.05 to $0.10 per such PR. Every other PR runs it on the stub, for free.
+- **It uses two eval sets that already have exact answers,** scored in code with no judge: the NTEE dev missions (Project 4's dev split, never its test split) for the Claude routes, and the ARC-Easy questions (step 6) for the self-hosted route.
+- **Apps name a prompt in the `gateway` object** of the request.
+
+### Stage 1: a prompt registry
+
+```powershell
+uv run python src/prompts.py list                          # ntee-classify: active v1; versions v1
+uv run python src/prompts.py register ntee-classify v2 --notes "what changed and why"
+uv run python src/prompts.py activate ntee-classify v2     # only after the canary has scored it (stage 3)
+```
+
+A registered prompt is a file, `prompts/<name>/<version>.txt`, plus a `manifest.json` per prompt. The manifest names the active version and records each version's SHA-256 fingerprint, creation date and a note on why it exists. The pattern comes from the rag project ([src/prompts.py](src/prompts.py)).
+- **Published versions never change.** A version whose text doesn't match its fingerprint, or a file the manifest doesn't list, stops the gateway at startup, and a test fails before that. To change a prompt, you add `v2`.
+- **Apps name it:** `{"gateway": {"prompt": "ntee-classify"}}` gets the active version, and `"ntee-classify@v1"` pins one. With the OpenAI SDK, it goes in `extra_body`. `$name` placeholders are filled from `"variables"`. They use `string.Template`, not `{name}`, so a prompt can contain JSON examples without escaping.
+- **The registry's text is the whole system prompt.** A request that names a prompt and also sends a system message is refused (400 `prompt_conflicts_with_system_message`). That way the text that runs is exactly the text the canary scored.
+- **Mistakes fail before any accounting:** an unknown prompt or version is a 404; a missing or unknown variable, or a malformed reference, is a 400 that names the problem. `GET /v1/prompts` lists what's registered.
+- **Every answer points at its prompt:**
+  - the response carries `x-gateway-prompt: ntee-classify@v1` and `x-gateway-prompt-sha256`;
+  - the log line and the trace (`gateway.prompt`) record the version;
+  - so does the usage ledger (migration 006, a `prompt` column).
+  - Variable values are never logged.
+- **Variables are screened like user messages.** They come from the caller but end up in the system prompt, and before this the injection screen read only user messages. Now personal data in a variable is found (and redacted when the policy says so) before the prompt is built, and an injection hidden in a variable is blocked. Both are tested.
+
+**The first prompt, `ntee-classify@v1`,** is Project 4's best prompt: the "guided" variant, generated from that project's own code, with the task, the 25 groups with descriptions, and the NTEE conventions. Project 4 got its answer through structured output, which the gateway doesn't have (answer-schema validation was deferred in step 5). So v1 adds one paragraph asking for a plain answer, three letters separated by commas, which the canary will parse. The mission goes in the user message as `<mission>…</mission>`, as in Project 4. Because of that answer-format change, v1's accuracy needs its own baseline (stage 3) rather than Project 4's 62.5%.
+
+New files:
+- `src/prompts.py`: the registry, rendering, and the `register`, `activate` and `list` commands.
+- `prompts/ntee-classify/v1.txt` and `manifest.json`: the first prompt.
+- `migrations/006_usage_prompt.sql`: the usage ledger's `prompt` column.
+- `tests/test_prompts.py`: 29 tests.
+
+Changed:
+- `src/schemas.py`: `gateway.prompt` and `gateway.variables`.
+- `src/app.py`: rendering, the headers, `GET /v1/prompts`.
+- `src/guardrails.py`: variables screened.
+- `src/accounting.py`, `src/tracing.py`: the prompt recorded.
+- `Dockerfile`, `.dockerignore`: `prompts/` is in the image.
+
+### Stage 2: the eval canary
+
+```powershell
+uv run python src/canary.py --stub                      # every check on a scripted model: free, no network
+uv run python src/canary.py ntee-fast                   # real models (paid), compared with its baseline
+uv run python src/canary.py ntee-fast --save-baseline   # record this run as the baseline
+uv run python src/canary.py --changed                   # only checks whose route or prompt has changed
+```
+
+Plain language: before a new prompt version or a different model goes live, it sits the same exam the current one sat, and it has to score about as well. The questions have exact answers, so marking is a string comparison in code. No judge model is paid or trusted to mark.
+
+The checks are in [config/canary.yaml](config/canary.yaml):
+
+| Check | Route | Prompt | Questions |
+|---|---|---|---|
+| `ntee-fast` | `fast` | `ntee-classify` | the first 60 NTEE dev missions (Project 4's dev split, never its test split) |
+| `ntee-smart` | `smart` | `ntee-classify` | the same 60 |
+| `arc-local` | `local` | none | the first 100 ARC-Easy questions (step 6), at temperature 0 |
+
+How it works:
+- **Through the gateway itself.** The canary runs the gateway in its own process (`create_app` over an in-memory transport), with the repo's `routes.yaml` and prompt registry. So it tests what an app gets: the rendered prompt, guardrails, translation and fallback, not a direct call to a model.
+- **Scored item by item.** An NTEE answer like `B, O, N` is parsed into letters: the first is scored (top 1), and the first three give top 3. An ARC answer is one letter, parsed as in step 6.
+- **Compared with a baseline.** A run fails if its accuracy is more than the margin below the baseline's. It's compared on the questions both runs answered, so a timed-out request doesn't count as a wrong answer. It also reports which answers broke and which were fixed, because an unchanged score can hide a swap.
+- **An outage isn't a regression.** If more than 5% of requests fail, the verdict is `incomplete`, not `fail`.
+- **Only what changed runs.** A check's *subject* is what it tests: the route's candidates (provider, model, settings) and the prompt's version and fingerprint. `--changed` skips checks whose subject matches their baseline's. A pull request that only edits the `local` route then pays for nothing; one that adds `ntee-classify@v2` and points the check at it runs both NTEE checks.
+- **The margin is 0.05.** Claude takes no temperature here (design decision 16), so two runs of an unchanged route can differ a little. Stage 3 measured how much and set the margin from that. With 60 questions one answer is 1.7 points, so 0.05 is 3 answers.
+
+Checked with a scripted model (`--stub`, `ScriptedProvider`). It stands in for every provider and answers a fixed share correctly, chosen by a hash, so a run repeats exactly:
+- the same model against its own baseline passes;
+- a model at 70% against an 80% baseline fails all three checks (6 to 14 answers broke);
+- `--changed` with nothing changed runs nothing;
+- every provider down gives `incomplete`.
+
+
+New files:
+- `src/canary.py`: the runner, scoring, the comparison, and the scripted model.
+- `config/canary.yaml`: the checks and the margin.
+- `results/canary/stub/baselines/*.json`: the scripted model's baselines, which `--stub` compares with.
+- `tests/test_canary.py`: 30 tests.
+
+Changed: `.gitignore` (the latest runs, `results/canary/runs/` and `results/canary/stub/runs/`).
+
+### Stage 3: live baselines and the CI gate
+
+The baselines are real runs, made the way CI runs them: Claude API key only, no AWS credentials, so `fast` falls back from Bedrock to Haiku 4.5 on the Claude API (the same model). Each check ran three times unchanged, to see how much an unchanged route moves:
+
+| Check | Model | Accuracy (top 1), 3 runs | Top 3 | Top-1 results that changed between two runs | Answers that changed at all |
+|---|---|---|---|---|---|
+| `ntee-fast` | Haiku 4.5 | 50.0 / 53.3 / 53.3% | 80-82% | 2 of 60 | 21-26 of 60 |
+| `ntee-smart` | Sonnet 5.5 | 68.3% each time | 83-85% | 0 | 7-10 |
+| `arc-local` | Qwen2.5-0.5B Q8_0, temperature 0 | 69.0% each time | | 0 | 0 |
+
+What this shows:
+- **The first answer barely moves; the rest of the answer does.** Most changes were in the second and third letters, which only top 3 scores. The largest top-1 swing was 2 answers (3.3 points, `ntee-fast`), so the margin is 0.05 (3 answers). Three runs is a small sample, so it may need widening if an unchanged route ever fails.
+- **Greedy decoding on one server is repeatable.** `arc-local` gave the same 100 answers three times, even with 4 requests at once. Step 6 found that a different engine (vLLM) doesn't give the same answers, so a change of engine is a change of subject.
+- **The first live run found a bug in the canary.** Answers were capped at 20 tokens, and Sonnet 5.5 spent all 20 thinking on 3 of 60 missions, so it returned no text. Two others began with a sentence despite "No other text", and the cap cut them off before any letter. The cap is now 256 tokens, and each item records its finish reason (one Sonnet answer still hit 256 in run 3). That run ($0.27) is kept as `results/canary/noise/*-cap20.json` but isn't a baseline.
+- **`ntee-classify@v1` suits Sonnet better than Haiku.** It's Project 4's best prompt for Sonnet. In Project 4, Haiku did best with a few-shot prompt (61.5% on 400 dev rows, against 50-53% here). A `fast`-specific prompt is the obvious next version. It should be tuned on other dev rows, not the canary's 60, or the canary would stop being a fair test.
+- **Cost:** a run of both NTEE checks is about $0.27 (Haiku 63k input tokens, $0.07; Sonnet 99k, because its tokenizer counts the same text as about 1.6 times as many tokens, $0.21). Stage 3 cost $1.09 in all: four runs, including the capped one.
+
+**The CI gate** is a new job, `ai-gateway-canary`, on pull requests that touch `ai-gateway/`:
+1. Every check runs on the scripted model (free), to catch a broken canary.
+2. `canary.py --changed --baseline-ref HEAD^1 ntee-fast ntee-smart` runs the NTEE checks on real models only if their subject differs from the baseline on main. It compares with main's baselines, not with any the pull request commits. So a PR can't pass by committing a new baseline, and it pays (about $0.27 per push) only when a route's candidates or a prompt version changed. A check with no baseline on main (a new check, or this first PR) isn't run, since a run could only report `no_baseline`, which can't fail.
+3. The runs are uploaded as an artifact (`canary-runs`). The PR commits them to `results/canary/baselines/`. A test fails until it does, because every committed baseline must test what its check tests now.
+
+`arc-local` isn't run in CI, because it needs llama-server and the model file. Run it locally before changing the `local` route.
+
+**Before this job can run real models,** add a repository secret `AI_GATEWAY_CANARY_ANTHROPIC_API_KEY` (Settings, then Secrets and variables, then Actions): an Anthropic key used only for this, with a spending limit. Without it, a PR that changes a checked route or prompt fails with a message naming the secret. Every other PR passes, since nothing needs to run.
+
+New files: `results/canary/baselines/*.json` (the three live baselines, each item's answer), `results/canary/noise/*.json` (the four runs of each check). Changed: `src/canary.py` (`--baseline-ref`, the 256-token cap, finish reasons, a clear error without a key; `no_baseline` no longer fails, since a new check has nothing to fall below), `config/canary.yaml` (the measured margin), `tests/test_canary.py` (32 tests), `.github/workflows/ai-gateway-ci.yml` (the canary job).
+
 ## Setup
 
 ```powershell

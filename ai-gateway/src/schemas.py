@@ -8,7 +8,7 @@ import time
 import uuid
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class Strict(BaseModel):
@@ -40,6 +40,16 @@ class GatewayOptions(Strict):
 
     # Off unless asked: a cache write costs more than plain input, and only pays off when the prompt repeats.
     cache_system_prompt: bool = False
+    # A registered prompt as the system prompt (prompts.py, step 9): "name" for its active version, "name@v2" for
+    # that one. `variables` fill its $placeholders; they're screened by the guardrails like a user message.
+    prompt: str | None = Field(default=None, max_length=80)
+    variables: dict[str, str] = Field(default_factory=dict, max_length=50)
+
+    @model_validator(mode="after")
+    def variables_need_a_prompt(self):
+        if self.variables and self.prompt is None:
+            raise ValueError("gateway.variables only applies with gateway.prompt")
+        return self
 
 
 class ChatRequest(Strict):

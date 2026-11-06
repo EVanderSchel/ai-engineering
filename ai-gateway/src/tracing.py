@@ -65,7 +65,7 @@ ATTRIBUTES = {
     "provider": "gen_ai.provider.name", "model": "gen_ai.response.model", "fallback": "gateway.fallback",
     "input_tokens": "gen_ai.usage.input_tokens", "output_tokens": "gen_ai.usage.output_tokens",
     "cost_usd": "gateway.cost_usd", "screen_cost_usd": "gateway.judge_cost_usd", "guardrails": "gateway.guardrails",
-    "first_token_ms": "gateway.first_token_ms",
+    "first_token_ms": "gateway.first_token_ms", "prompt": "gateway.prompt",
 }  # fmt: skip
 
 

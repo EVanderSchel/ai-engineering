@@ -153,6 +153,76 @@ jobs:
           promtool check config prometheus.yml
           promtool test rules alerts_test.yml
 
+  # The eval canary (step 9, ai-gateway/src/canary.py). On every pull request that touches ai-gateway/, it first runs
+  # each check on a scripted model (free), then runs the NTEE checks on real models only if their subject changed:
+  # a route's candidates in config/routes.yaml, or the prompt version they use. Those runs are compared with the
+  # baselines on main (HEAD^1), not with any the pull request commits, and fail if accuracy falls more than the
+  # margin. About $0.27 per push when both NTEE checks run; nothing when neither changed. arc-local isn't run here: it
+  # needs llama-server and the model file. The runs are uploaded, to commit as the new baselines.
+  #
+  # Needs a repository secret AI_GATEWAY_CANARY_ANTHROPIC_API_KEY: an Anthropic key used only for this, with a
+  # spending limit. There are no AWS credentials here, so the `fast` route's Bedrock candidate fails and it falls
+  # back to Haiku 4.5 on the Claude API, the same model, as when the baselines were made.
+  canary:
+    name: ai-gateway-canary
+    needs: changes
+    if: needs.changes.outputs.project == 'true' && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-gateway
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2 # HEAD^1 is main's tip, where the baselines to compare with are
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.12.21"
+
+      - name: Restore Python environment
+        id: venv-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ai-gateway/.venv
+          key: ai-gateway-venv-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('ai-gateway/uv.lock') }}
+
+      - name: Install dependencies (only when uv.lock changed)
+        if: steps.venv-cache.outputs.cache-hit != 'true'
+        env:
+          UV_PYTHON_DOWNLOADS: never
+        run: uv sync --frozen --python "${{ steps.setup-python.outputs.python-path }}"
+
+      - name: Use the environment
+        run: echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+
+      - name: Run the canary on the scripted model
+        run: python src/canary.py --stub
+
+      # Fails with a message naming the secret if a check must run and the key isn't set (a fork's pull request
+      # gets no secrets).
+      - name: Run the canary on real models where a route or prompt changed
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.AI_GATEWAY_CANARY_ANTHROPIC_API_KEY }}
+        run: python src/canary.py --changed --baseline-ref HEAD^1 ntee-fast ntee-smart
+
+      - name: Upload the runs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: canary-runs
+          path: ai-gateway/results/canary/runs/
+          if-no-files-found: ignore
+
   # The container image the cluster runs (step 8): built from the Dockerfile on every change, then started without
   # a database (keys from GATEWAY_KEYS) to show it serves and runs as its non-root user. Built, never pushed.
   image:

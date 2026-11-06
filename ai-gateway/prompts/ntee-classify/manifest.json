@@ -1,0 +1,10 @@
+{
+  "active": "v1",
+  "versions": {
+    "v1": {
+      "sha256": "c210a4a866acc9148869a41846512704ba5fb56dcd21c1641547ac586b80fb17",
+      "created": "2026-11-06",
+      "notes": "Project 4's best prompt (ntee-classification src/prompts.py, variant guided: task, 25 groups with descriptions, NTEE conventions) plus a plain-text answer format, three letters separated by commas, since the gateway has no structured output. The mission goes in the user message as <mission>...</mission>."
+    }
+  }
+}
