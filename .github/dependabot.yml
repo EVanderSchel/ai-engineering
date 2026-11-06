@@ -204,6 +204,15 @@ updates:
       timezone: America/Chicago
     cooldown:
       default-days: 7
+    # A new Python version is a decision, not a routine update: every project pins requires-python to 3.14, its
+    # uv.lock is resolved for 3.14, and some packages have no wheels for a new version yet (PR #157: Python 3.15
+    # images failed both builds, uv found no 3.14 interpreter and zstandard needed a compiler). So only patch
+    # releases (3.14.x) and rebuilt digests of the same tag come from here; moving to 3.15 is done by hand.
+    ignore:
+      - dependency-name: python
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: lambda/python
+        update-types: [version-update:semver-major, version-update:semver-minor]
     groups:
       docker-images:
         update-types: [minor, patch]
