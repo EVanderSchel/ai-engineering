@@ -171,7 +171,7 @@ The cluster has to fit in Docker's 3.8 GB (WSL capped at 4 GB in `.wslconfig`: D
 - Every pod sets memory requests and limits; a pod over its limit is killed and restarted rather than starving the node. Limits protect pods from each other, not the node from being over-full (step 8 stage 4). The autoscaler (HPA) scales the gateway on CPU between 2 and 4 replicas, at 50% of a 200m request; the model servers stay at one replica here (on a real cluster they would scale on queue depth).
 - Secrets (Anthropic key, AWS credentials) come from the local environment into Kubernetes Secrets at deploy time; nothing secret is in the chart or the repo. AWS credentials in the cluster are short-lived ones exported from the `agent-toolkit` login.
 
-## 10. Quality over time (step 9)
+## 10. Quality over time (step 9, complete)
 
 - **Prompt registry** (built in step 9 stage 1): named prompts as versioned, immutable files with fingerprints, the pattern from the rag project. Requests name one in `gateway.prompt` (`name` or `name@version`); its rendered text is the whole system prompt, and variable values are screened like user messages. The usage ledger, log line, trace and response headers record `name@version`.
 - **Eval canary** (built in step 9 stages 2-3: `src/canary.py`, `config/canary.yaml`, CI job `ai-gateway-canary`, which compares with the baselines on main and runs real models only when a check's route or prompt changed): a change to a route's candidates or a prompt runs a fixed eval set (drawn from the earlier projects' dev data with known answers) through the gateway and is rejected if accuracy drops beyond a set margin; it runs in CI on changes to `config/routes.yaml` and the prompt files.

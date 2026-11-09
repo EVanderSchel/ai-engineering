@@ -23,7 +23,7 @@ Each step is merged on its own; numbers are measured, not assumed.
 | 6 | Self-hosted inference and optimization: a small instruct model on llama.cpp (quantization levels compared) and the NTEE classifier from Project 4 on ONNX Runtime (int8 vs fp32); accuracy, latency and throughput under concurrency; vLLM on a Colab GPU for comparison *(done)* | Inference optimization: quantization, batching, CPU vs GPU |
 | 7 | Observability: OpenTelemetry traces, Prometheus metrics, a Grafana dashboard, alerts on error rate, latency and cost spikes *(done)* | Seeing a platform's health and cost |
 | 8 | Kubernetes: a local cluster (kind), a Helm chart, resource requests and limits, health probes, secrets, autoscaling (HPA) shown with a k6 load test, a rolling update with no dropped requests *(done; the classifier stays out of the cluster)* | Running services on Kubernetes |
-| 9 | Quality: a versioned prompt registry, an eval canary that gates prompt and model changes on the earlier projects' gold sets, a drift monitor that scores sampled live traffic | Catching prompt regressions and drift |
+| 9 | Quality: a versioned prompt registry, an eval canary that gates prompt and model changes on the earlier projects' gold sets, a drift monitor that scores sampled live traffic *(done; the judge is opt-in per route)* | Catching prompt regressions and drift |
 | 10 | Build vs. adopt: the same tests and load against LiteLLM's proxy; a LangChain app that uses the gateway unchanged | When to build a platform piece and when to adopt one |
 | 11 | Optional: the chart on Amazon EKS for a short, measured window (infrastructure as code), then torn down | Managed Kubernetes and its cost |
 | Final | Write-up, cost report, release `ai-gateway-v1.0.0` | |
@@ -1302,6 +1302,37 @@ Changed:
 - `src/drift.py`: the judge's reference and alert.
 - `observability/drift.yml` and `drift_test.yml`: the judge's alert and its tests.
 - The dashboard: a mean-grade chart.
+
+### Step 9 in short
+
+Plain language: the gateway makes it easy to change what answers, so step 9 adds three checks.
+- **The registry** is like a recipe binder: every version of a prompt is kept and dated.
+- **The canary** is a taste test before a new recipe goes on the menu.
+- **The drift monitor** samples dishes during service, because the supplier can change an ingredient without telling anyone.
+
+- **What was built:**
+  - **prompts as versioned, fingerprinted files** that apps name, with every answer traceable to the exact text that produced it (stage 1);
+  - **an eval canary** that runs a fixed exam through the gateway itself and fails a pull request whose route or prompt change costs accuracy (stages 2-3);
+  - **a drift monitor:** free format and cut-off checks on every answer, alerted on against the rates the canary measured, plus an opt-in sampled judge (stage 4).
+- **The lessons, each found by running it, not by planning it:**
+  - **The eval harness needs testing as much as what it tests.** The first live run found that a 20-token cap left Sonnet 5.5 no room to answer after thinking (stage 3). Stage 4 found that the parser was reading letters from the model's reasoning. Both looked like model quality until the raw answers were read.
+  - **Measure the noise before setting the margin.** Three unchanged runs: the first letter of an answer changed on at most 2 of 60, while some other part of the answer changed on up to 26. Greedy decoding on one llama-server gave identical answers. The 0.05 margin comes from that, not from a guess.
+  - **Exact answers beat a judge wherever they exist.** Without the answer key, the Haiku 5.5 judge gave right and wrong NTEE answers grades only 0.4 apart, so it can't see a quiet slide into plausible wrong answers. It does enforce instructions (every prose-first answer got a 2). So the judge watches for gross failures, and accuracy stays the canary's job.
+  - **Compare with what's merged, not with what the change brings.** CI scores a pull request against main's baselines, so committing a new baseline can't make a change pass. A check with no baseline on main is skipped, not paid for; the canary's own first PR failed until that rule existed.
+  - **A prompt fits a model.** `ntee-classify@v1` is Project 4's best prompt for Sonnet: 66.7 to 68.3% here. Haiku 4.5 scores 50 to 53% with it, against 61.5% with Project 4's few-shot prompt.
+- **The numbers:**
+  - Paid runs cost about $1.12 in all: the canary baselines and noise runs $1.09, the judge's reference $0.034.
+  - In CI, the canary costs about $0.27 per push to a pull request that changes a checked route or prompt, and nothing otherwise.
+  - A judged answer costs about $0.0003.
+- **Different from the plan:**
+  - The drift monitor isn't only a judge. Most of its signal is free (format and cut-off rates against the canary's), and the judge is off on every route until one opts in, because it sends that route's text to the Claude API.
+  - `arc-local` isn't in CI, since it needs llama-server and the model file.
+- **Still open:**
+  - **a `fast`-specific prompt version,** tuned on dev rows outside the canary's 60;
+  - **turning the judge on for a route:** a data-flow decision, not a code change;
+  - **the canary's size:** 60 questions can only see a drop of about 5 points or more;
+  - **answer-schema validation,** still deferred from step 5;
+  - **the repository secret** `AI_GATEWAY_CANARY_ANTHROPIC_API_KEY`, which a route or prompt change needs before CI can run real models.
 
 ## Setup
 
