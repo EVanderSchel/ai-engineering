@@ -27,7 +27,7 @@
     "rows": 60,
     "answered": 60,
     "errors": 0,
-    "accuracy": 0.6833,
+    "accuracy": 0.6667,
     "unparseable": 0,
     "cut_off": 0,
     "input_tokens": 98894,
@@ -572,8 +572,8 @@
       "answer": "The mission describes a Christian college fraternity. NTEE would likely place it under Y (fraternal societies) or B (college student groups), with X as a religious alternative.\n\nY, X, B",
       "predicted": [
         "Y",
-        "B",
-        "X"
+        "X",
+        "B"
       ],
       "correct": false,
       "top3": false,
@@ -795,11 +795,11 @@
       "gold": "J",
       "answer": "This reads like the Florida Education Association, a teachers' union. NTEE would classify it under J (labor unions) or B (education). Its stated mission centers on advocating for public education, so B is a strong candidate. Union activity points to J, and R fits the advocacy side.\n\nB, J, R",
       "predicted": [
-        "J",
         "B",
+        "J",
         "R"
       ],
-      "correct": true,
+      "correct": false,
       "top3": true,
       "finish": "stop",
       "model": "claude-sonnet-5-5",
@@ -1003,11 +1003,11 @@
     "verdict": "pass",
     "items_compared": 60,
     "baseline_accuracy": 0.6667,
-    "accuracy": 0.6833,
-    "change": 0.0167,
+    "accuracy": 0.6667,
+    "change": 0.0,
     "margin": 0.05,
     "broken": 0,
-    "fixed": 1,
+    "fixed": 0,
     "same_subject": true
   }
 }

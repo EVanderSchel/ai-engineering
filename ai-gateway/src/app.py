@@ -30,6 +30,8 @@ import anthropic_provider
 import bedrock_provider
 import config
 import db
+import drift
+import drift_judge
 import guardrails
 import injection
 import keys
@@ -94,6 +96,7 @@ def create_app(
     judge: injection.Judge | None = None,
     metrics_port: int | None = None,
     prompt_registry: prompts.Registry | None = None,
+    drift_monitor: drift_judge.Monitor | None = None,
 ) -> FastAPI:
     """Everything the app depends on can be passed in, so tests run with the stub provider and test keys.
 
@@ -103,12 +106,15 @@ def create_app(
     `metrics_port`: where to serve Prometheus metrics while the app runs. Left out, GATEWAY_METRICS_PORT; neither
     set (tests), they're kept but not served (app.state.metrics.render() reads them).
     `prompt_registry`: the registered prompts. Left out, prompts/ in the repo (or the image), checked at startup.
+    `drift_monitor`: samples answers for the drift judge (routes' `drift.judge_rate`). Left out, one on the Claude
+    API client, made on first use.
     """
     logs.configure(os.environ.get("GATEWAY_LOG_LEVEL", "INFO"))
     tracing.configure()  # exports spans only if OTEL_EXPORTER_OTLP_ENDPOINT is set
     routes = routes if routes is not None else config.load_routes()
     judge = judge or injection.Judge()  # its Claude client is made on first use
     registry = prompt_registry if prompt_registry is not None else prompts.Registry()
+    monitor = drift_monitor or drift_judge.Monitor()
     if providers is None:
         claude = anthropic_provider.make_client()
         providers = {
@@ -138,6 +144,7 @@ def create_app(
     policy = policy or router.Policy()
     ledger = accounting.Accounting(pool) if pool is not None else accounting.NoAccounting()
     gauges = metrics.Metrics(routes, breakers)
+    monitor.metrics = gauges  # the drift judge counts its grades here
     if metrics_port is None and os.environ.get("GATEWAY_METRICS_PORT"):
         metrics_port = int(os.environ["GATEWAY_METRICS_PORT"])
     metrics_addr = os.environ.get("GATEWAY_METRICS_ADDR", "127.0.0.1")
@@ -401,6 +408,14 @@ def create_app(
 
         noted["attempts"] = attempt_fields(result.attempts)
         noted["fallback"] = result.candidate != route.candidates[0]
+
+        def answered(text: str, finish: str) -> None:
+            """The drift checks on the finished answer: free ones always, the judge on a sample, after the response."""
+            noted.update(drift.answer_signals(text, finish, prompt))
+            if finish in ("stop", "length") and monitor.wants(route.drift.judge_rate):
+                noted["judged"] = True
+                spawn(monitor.grade(body.model, prompt.ref if prompt else "", build(result.candidate), text))
+
         if body.stream:  # the router waited for the first event: the provider's time to first token, as we saw it
             noted["first_token_ms"] = round((time.perf_counter() - request.state.started) * 1000)
             request.state.span.add_event("first token")
@@ -426,6 +441,7 @@ def create_app(
                 findings += output.findings
                 finish = "content_filter" if output.withheld else completion.finish_reason
                 completion = dataclasses.replace(completion, text=output.text, finish_reason=finish)
+            answered(completion.text, completion.finish_reason)
             await settle(outcome="ok", model=completion.model, usage=completion.usage,
                          guardrails=guardrails.header(findings))  # fmt: skip
             await ledger.audit_guardrails(hold, findings)
@@ -457,7 +473,17 @@ def create_app(
             spawn(ledger.audit_guardrails(hold, list(findings)))
         include_usage = bool(body.stream_options and body.stream_options.include_usage)
         return StreamingResponse(
-            sse(first, events, deadline, result.candidate.model, include_usage, hold, settle, review),
+            sse(
+                first,
+                events,
+                deadline,
+                result.candidate.model,
+                include_usage,
+                hold,
+                settle,
+                review,
+                note=answered,
+            ),
             media_type="text/event-stream",
             headers={**headers, "cache-control": "no-cache"},
         )
@@ -486,6 +512,8 @@ def request_fields(request: Request, status: int) -> dict:
         "error": noted.get("error"), "team": noted.get("team"), "route": noted.get("route"),
         "stream": noted.get("stream"), "first_token_ms": noted.get("first_token_ms"),
         "attempts": noted.get("attempts"), "fallback": noted.get("fallback"), "prompt": noted.get("prompt"),
+        "finish": noted.get("finish"), "answer_format": noted.get("answer_format"),  # the drift checks (step 9)
+        "judged": noted.get("judged"),
     }  # fmt: skip
     if (hold := noted.get("hold")) is not None:
         usage = hold.usage
@@ -596,9 +624,11 @@ async def sse(
     hold: accounting.Hold,
     settle,
     review=None,
+    note=None,
 ) -> AsyncIterator[str]:
     """Server-sent events in OpenAI's chunk format, ending with `data: [DONE]`. Settles the request's hold when the
-    stream finishes, breaks, or the client goes away. `review`, if given, sees the whole text at the end."""
+    stream finishes, breaks, or the client goes away. `review`, if given, sees the whole text at the end, and so
+    does `note` (the drift checks), with the finish reason."""
     cid, created = schemas.completion_id(), int(time.time())
 
     def data(body: dict) -> str:
@@ -612,6 +642,8 @@ async def sse(
                 sent.append(event.text)
                 yield data(schemas.chunk_body(cid, created, model, {"content": event.text}))
             elif isinstance(event, Finish):
+                if note:
+                    note("".join(sent), event.finish_reason)
                 extra = {"guardrails": await review("".join(sent))} if review else {}
                 await settle(outcome="ok", model=event.model, usage=event.usage, **extra)
                 yield data(schemas.chunk_body(cid, created, event.model, {}, event.finish_reason))

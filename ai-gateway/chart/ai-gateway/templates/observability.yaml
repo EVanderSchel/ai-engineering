@@ -53,11 +53,15 @@ data:
   # replicas, so they work the same with 2 pods or 4.
   alerts.yml: |
     {{- required "pass --set-file observability.alerts=observability/alerts.yml" $o.alerts | nindent 4 }}
+  # The drift monitor's rules (step 9), generated from the canary baselines by src/drift.py
+  # (--set-file observability.drift=observability/drift.yml).
+  drift.yml: |
+    {{- required "pass --set-file observability.drift=observability/drift.yml" $o.drift | nindent 4 }}
   prometheus.yml: |
     global:
       scrape_interval: 5s # as in compose: short, for a demo
       evaluation_interval: 5s
-    rule_files: [alerts.yml]
+    rule_files: [alerts.yml, drift.yml]
     scrape_configs:
       # Every pod in this namespace annotated prometheus.io/scrape: "true", at its own IP and the annotated port and
       # path. The job name comes from prometheus.io/job (gateway, llama-server: the same as compose, so the alerts and
@@ -103,7 +107,7 @@ spec:
         {{- include "ai-gateway.labels" . | nindent 8 }}
         app.kubernetes.io/name: prometheus
       annotations:
-        checksum/alerts: {{ $o.alerts | sha256sum }} # changed rules restart Prometheus with them
+        checksum/alerts: {{ print $o.alerts $o.drift | sha256sum }} # changed rules restart Prometheus with them
     spec:
       serviceAccountName: {{ .Release.Name }}-prometheus # the one pod here that does call the Kubernetes API
       securityContext:

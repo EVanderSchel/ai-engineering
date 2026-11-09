@@ -825,6 +825,117 @@
    "id": 17
   },
   {
+   "type": "timeseries",
+   "title": "Answers off format or cut off, against the canary",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (route, prompt) (rate(gateway_answers_total{format=\"bad\"}[15m])) / sum by (route, prompt) (rate(gateway_answers_total{format!=\"\"}[15m]))",
+     "legendFormat": "{{route}} {{prompt}} off format",
+     "refId": "A"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (route, prompt) (rate(gateway_answers_total{format!=\"\",finish=\"length\"}[15m])) / sum by (route, prompt) (rate(gateway_answers_total{format!=\"\"}[15m]))",
+     "legendFormat": "{{route}} {{prompt}} cut off",
+     "refId": "B"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "gateway:answer_bad_format_ratio:canary",
+     "legendFormat": "{{route}} {{prompt}} off format, canary",
+     "refId": "C"
+    }
+   ],
+   "gridPos": {
+    "w": 12,
+    "h": 8,
+    "x": 12,
+    "y": 36
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit"
+    },
+    "overrides": []
+   },
+   "description": "Answers to registered prompts that declare a format. Alerts (observability/drift.yml): over an hour, 10 points above the canary's rate.",
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "id": 18
+  },
+  {
+   "type": "timeseries",
+   "title": "Drift judge: mean grade (1-5) of sampled answers, against the canary",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (route, prompt) (rate(gateway_judge_scores_sum[1h])) / sum by (route, prompt) (rate(gateway_judge_scores_count[1h]))",
+     "legendFormat": "{{route}} {{prompt}}",
+     "refId": "A"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "gateway:judge_score_mean:canary",
+     "legendFormat": "{{route}} {{prompt}}, canary",
+     "refId": "B"
+    }
+   ],
+   "gridPos": {
+    "w": 12,
+    "h": 8,
+    "x": 0,
+    "y": 44
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "description": "Routes with drift.judge_rate above 0. The judge has no answer key: it catches broken formats, refusals and off-task answers better than plausible wrong ones. Alert: 0.5 below the canary over 6 hours.",
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "id": 19
+  },
+  {
    "type": "table",
    "title": "Alerts firing now",
    "datasource": {
@@ -849,7 +960,7 @@
     "w": 12,
     "h": 8,
     "x": 12,
-    "y": 36
+    "y": 44
    },
    "fieldConfig": {
     "defaults": {
@@ -857,7 +968,7 @@
     },
     "overrides": []
    },
-   "description": "From Prometheus, which evaluates observability/alerts.yml. Empty is good.",
+   "description": "From Prometheus, which evaluates observability/alerts.yml and drift.yml. Empty is good.",
    "transformations": [
     {
      "id": "organize",
@@ -870,7 +981,7 @@
      }
     }
    ],
-   "id": 18
+   "id": 20
   }
  ]
 }

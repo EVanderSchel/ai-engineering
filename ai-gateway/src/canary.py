@@ -106,12 +106,28 @@ def load_items(suite: str, rows: int) -> list[Item]:
 
 
 def parse(suite: str, answer: str, labels: str) -> list[str]:
-    """The letters an answer gives, most likely first: up to three for NTEE ("B, O, N"), one for ARC ("B")."""
+    """The letters an answer gives, most likely first: up to three for NTEE ("B, O, N"), one for ARC ("B").
+
+    NTEE reads the last non-empty line only. Sonnet 5.5 sometimes reasons first and ends with the letters; reading
+    the whole text took letters from the reasoning ("under Y (fraternal societies) or B ...")."""
     if suite == "arc":
         label = parse_label(answer, labels)
         return [label] if label else []
-    letters = [x for x in re.findall(r"\b([A-Z])\b", answer) if x in labels]
+    lines = [line for line in answer.splitlines() if line.strip()]
+    letters = [x for x in re.findall(r"\b([A-Z])\b", lines[-1] if lines else "") if x in labels]
     return list(dict.fromkeys(letters))[:3]
+
+
+def rescore(run: dict, labels: str) -> dict:
+    """A saved run scored again from its stored answers, with no new calls: for when parsing changes."""
+    items = []
+    for item in run["items"]:
+        if "error" not in item:
+            predicted = parse(run["suite"], item["answer"], labels)
+            item = item | {"predicted": predicted, "correct": predicted[:1] == [item["gold"]],
+                           "top3": item["gold"] in predicted}  # fmt: skip
+        items.append(item)
+    return run | {"items": items, "summary": summarize(items, run["suite"])}
 
 
 def subject(check: Check, routes: dict[str, config.Route], registry: prompts.Registry) -> dict:

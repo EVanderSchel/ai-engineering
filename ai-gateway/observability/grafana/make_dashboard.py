@@ -185,6 +185,39 @@ PANELS = [
         "Guardrail findings (per 5 minutes)",
         [target("sum by (check, action) (increase(gateway_guardrail_findings_total[5m]))", "{{check}} {{action}}")],
     ),
+    # Drift (step 9): live answers against what the eval canary measured.
+    series(
+        "Answers off format or cut off, against the canary",
+        [
+            target(
+                'sum by (route, prompt) (rate(gateway_answers_total{format="bad"}[15m]))'
+                ' / sum by (route, prompt) (rate(gateway_answers_total{format!=""}[15m]))',
+                "{{route}} {{prompt}} off format",
+            ),
+            target(
+                'sum by (route, prompt) (rate(gateway_answers_total{format!="",finish="length"}[15m]))'
+                ' / sum by (route, prompt) (rate(gateway_answers_total{format!=""}[15m]))',
+                "{{route}} {{prompt}} cut off",
+            ),
+            target("gateway:answer_bad_format_ratio:canary", "{{route}} {{prompt}} off format, canary"),
+        ],
+        "percentunit",
+        description="Answers to registered prompts that declare a format. Alerts (observability/drift.yml): over an "
+        "hour, 10 points above the canary's rate.",
+    ),
+    series(
+        "Drift judge: mean grade (1-5) of sampled answers, against the canary",
+        [
+            target(
+                "sum by (route, prompt) (rate(gateway_judge_scores_sum[1h]))"
+                " / sum by (route, prompt) (rate(gateway_judge_scores_count[1h]))",
+                "{{route}} {{prompt}}",
+            ),
+            target("gateway:judge_score_mean:canary", "{{route}} {{prompt}}, canary"),
+        ],
+        description="Routes with drift.judge_rate above 0. The judge has no answer key: it catches broken formats, "
+        "refusals and off-task answers better than plausible wrong ones. Alert: 0.5 below the canary over 6 hours.",
+    ),
     {
         **panel(
             "table",
@@ -192,7 +225,7 @@ PANELS = [
             [target('ALERTS{alertstate="firing"}', instant=True)],
             w=12,
             h=8,
-            description="From Prometheus, which evaluates observability/alerts.yml. Empty is good.",
+            description="From Prometheus, which evaluates observability/alerts.yml and drift.yml. Empty is good.",
         ),
         "transformations": [
             {"id": "organize", "options": {"excludeByName": {"Time": True, "Value": True, "__name__": True}}}

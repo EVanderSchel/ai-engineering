@@ -27,7 +27,7 @@
     "rows": 60,
     "answered": 60,
     "errors": 0,
-    "accuracy": 0.6833,
+    "accuracy": 0.6667,
     "unparseable": 0,
     "cut_off": 0,
     "input_tokens": 98894,
@@ -795,11 +795,11 @@
       "gold": "J",
       "answer": "This reads like the Florida Education Association, a teachers' union. NTEE would likely place a union under J (labor unions), though the mission is education advocacy, so B is also a strong candidate. R is a plausible third for advocacy.\n\nB, J, R",
       "predicted": [
-        "J",
         "B",
+        "J",
         "R"
       ],
-      "correct": true,
+      "correct": false,
       "top3": true,
       "finish": "stop",
       "model": "claude-sonnet-5-5",
@@ -1002,8 +1002,8 @@
   "comparison": {
     "verdict": "pass",
     "items_compared": 60,
-    "baseline_accuracy": 0.6833,
-    "accuracy": 0.6833,
+    "baseline_accuracy": 0.6667,
+    "accuracy": 0.6667,
     "change": 0.0,
     "margin": 0.05,
     "broken": 0,

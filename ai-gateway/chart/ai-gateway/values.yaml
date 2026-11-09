@@ -66,12 +66,14 @@ llm:
 # Prometheus, Jaeger and Grafana in the cluster (stage 4), the images docker-compose.yml pins, loaded into the node.
 # Needs the repo's alert rules and dashboard passed in:
 #     --set-file observability.alerts=observability/alerts.yml
+#     --set-file observability.drift=observability/drift.yml
 #     --set-file observability.dashboard=observability/grafana/dashboards/gateway.json
 # and GRAFANA_ADMIN_PASSWORD in the Secret (make_secret.py copies it from .env). enabled=false leaves all three out
 # (about 0.5 GB less); the gateway then sends no traces.
 observability:
   enabled: true
   alerts: ""
+  drift: ""
   dashboard: ""
   # Memory measured in compose (step 7): Prometheus about 130 MB, Jaeger about 25 MB, Grafana about 320 MB.
   prometheus:

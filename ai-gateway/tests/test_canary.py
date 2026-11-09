@@ -68,6 +68,7 @@ def test_asking_for_more_rows_than_a_suite_has_fails():
         ("Z, B", ["B"]),  # Z isn't an NTEE major group
         ("I'm not sure.", ["I"]),  # a lone capital I reads as group I: kept, as Project 4 would score it
         ("", []),
+        ("Fraternities are Y (mutual benefit) or B (student groups).\n\nB, Y, X", ["B", "Y", "X"]),  # the last line
     ],
 )
 def test_ntee_answers_are_parsed_most_likely_first(answer, expected):
@@ -261,3 +262,15 @@ def test_the_live_baselines_match_the_current_checks():
 )
 def test_changed_runs_only_checks_that_can_be_compared_and_have_changed(baseline, changed, ref, runs):
     assert (canary.skip_reason({"route": "fast"}, baseline, changed, ref) is None) == runs
+
+
+def test_a_saved_run_can_be_scored_again_from_its_answers():
+    labels = canary.load_items("ntee", 1)[0].labels
+    run = {"suite": "ntee", "items": [
+        {"id": "a", "gold": "B", "answer": "Under Y or B.\nB, Y", "predicted": ["Y", "B"], "correct": False,
+         "top3": True, "finish": "stop", "model": "m", "input_tokens": 1, "output_tokens": 1},
+        {"id": "b", "gold": "B", "error": "timeout"},
+    ]}  # fmt: skip
+    again = canary.rescore(run, labels)
+    assert again["items"][0]["predicted"] == ["B", "Y"] and again["items"][0]["correct"] is True
+    assert again["summary"]["accuracy"] == 1.0 and again["summary"]["errors"] == 1
