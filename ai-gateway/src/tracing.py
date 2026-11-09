@@ -66,6 +66,7 @@ ATTRIBUTES = {
     "input_tokens": "gen_ai.usage.input_tokens", "output_tokens": "gen_ai.usage.output_tokens",
     "cost_usd": "gateway.cost_usd", "screen_cost_usd": "gateway.judge_cost_usd", "guardrails": "gateway.guardrails",
     "first_token_ms": "gateway.first_token_ms", "prompt": "gateway.prompt",
+    "finish": "gateway.finish", "answer_format": "gateway.answer_format",
 }  # fmt: skip
 
 

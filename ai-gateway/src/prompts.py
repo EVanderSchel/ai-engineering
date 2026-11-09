@@ -1,7 +1,8 @@
 """The prompt registry (step 9): named system prompts as versioned, immutable files, used by reference.
 
     prompts/<name>/<version>.txt     the template; once registered, never edited
-    prompts/<name>/manifest.json     {"active": "v2", "versions": {"v1": {"sha256": ..., "created": ..., "notes": ...}}}
+    prompts/<name>/manifest.json     {"active": "v2", "versions": {"v1": {"sha256": ..., "created": ..., "notes": ...,
+                                     "answer_format": optional regex a well-formed answer matches}}}
 
     uv run python src/prompts.py register ntee-classify v2 --notes "what changed and why"   # records the fingerprint
     uv run python src/prompts.py activate ntee-classify v2     # after the eval canary has scored it
@@ -47,6 +48,16 @@ class Prompt:
     version: str
     template: str
     sha256: str
+    # What a well-formed answer looks like (a regular expression the whole answer, stripped, must match), from the
+    # manifest's optional "answer_format". The drift monitor counts answers that don't (step 9 stage 4). It's
+    # metadata about the version, not part of its text, so it isn't in the fingerprint.
+    answer_format: str | None = None
+
+    def well_formed(self, answer: str) -> bool | None:
+        """Whether an answer matches the format; None if this prompt declares none."""
+        if self.answer_format is None:
+            return None
+        return re.fullmatch(self.answer_format, answer.strip()) is not None
 
     @property
     def ref(self) -> str:
@@ -109,7 +120,15 @@ class Registry:
                         f"prompt {name}@{version} doesn't match its registered fingerprint: published versions are "
                         "never edited (add a new version instead)"
                     )
-                self.prompts[(name, version)] = Prompt(name, version, template, entry["sha256"])
+                answer_format = entry.get("answer_format")
+                if answer_format is not None:
+                    try:
+                        re.compile(answer_format)
+                    except re.error as error:
+                        raise RuntimeError(
+                            f"prompt {name}@{version}: answer_format isn't a valid pattern: {error}"
+                        ) from None
+                self.prompts[(name, version)] = Prompt(name, version, template, entry["sha256"], answer_format)
             unregistered = {p.stem for p in folder.glob("*.txt")} - manifest["versions"].keys()
             if unregistered:
                 raise RuntimeError(f"prompt {name}: files not in its manifest: {sorted(unregistered)}")

@@ -1,0 +1,376 @@
+{
+  "check": "ntee-smart",
+  "route": "smart",
+  "prompt": "ntee-classify@v1",
+  "model": "claude-haiku-5-5",
+  "rubric": "v1",
+  "date": "2026-11-06T19:52:49+00:00",
+  "graded": 60,
+  "declined": 0,
+  "mean": 4.3,
+  "mean_when_correct": 4.45,
+  "mean_when_wrong": 4.0,
+  "cost_usd": 0.01662,
+  "items": [
+    {
+      "id": "223901156",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.00027270000000000007
+    },
+    {
+      "id": "412011402",
+      "score": 5,
+      "correct": true,
+      "cost_usd": 0.0002734
+    },
+    {
+      "id": "591805535",
+      "score": 5,
+      "correct": true,
+      "cost_usd": 0.00028970000000000005
+    },
+    {
+      "id": "593607032",
+      "score": 5,
+      "correct": true,
+      "cost_usd": 0.0002899
+    },
+    {
+      "id": "823136572",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.00027270000000000007
+    },
+    {
+      "id": "943263110",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.00027610000000000004
+    },
+    {
+      "id": "208809060",
+      "score": 4,
+      "correct": false,
+      "cost_usd": 0.000274
+    },
+    {
+      "id": "300277253",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.00028320000000000005
+    },
+    {
+      "id": "810586795",
+      "score": 5,
+      "correct": false,
+      "cost_usd": 0.00026770000000000006
+    },
+    {
+      "id": "814245018",
+      "score": 5,
+      "correct": true,
+      "cost_usd": 0.00027120000000000003
+    },
+    {
+      "id": "742429518",
+      "score": 5,
+      "correct": false,
+      "cost_usd": 0.00028320000000000005
+    },
+    {
+      "id": "472719636",
+      "score": 5,
+      "correct": true,
+      "cost_usd": 0.000267
+    },
+    {
+      "id": "880687841",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.00028470000000000004
+    },
+    {
+      "id": "751535746",
+      "score": 2,
+      "correct": false,
+      "cost_usd": 0.000261
+    },
+    {
+      "id": "710891704",
+      "score": 4,
+      "correct": false,
+      "cost_usd": 0.0002828
+    },
+    {
+      "id": "930478660",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.000267
+    },
+    {
+      "id": "851598684",
+      "score": 5,
+      "correct": false,
+      "cost_usd": 0.0002991
+    },
+    {
+      "id": "873397818",
+      "score": 5,
+      "correct": false,
+      "cost_usd": 0.0002809
+    },
+    {
+      "id": "872146640",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.00029470000000000006
+    },
+    {
+      "id": "570314417",
+      "score": 5,
+      "correct": true,
+      "cost_usd": 0.0002721
+    },
+    {
+      "id": "862138211",
+      "score": 5,
+      "correct": true,
+      "cost_usd": 0.0002745
+    },
+    {
+      "id": "872835686",
+      "score": 4,
+      "correct": false,
+      "cost_usd": 0.0002766
+    },
+    {
+      "id": "770331230",
+      "score": 5,
+      "correct": true,
+      "cost_usd": 0.00026660000000000003
+    },
+    {
+      "id": "474978384",
+      "score": 4,
+      "correct": false,
+      "cost_usd": 0.00029720000000000007
+    },
+    {
+      "id": "320138163",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.00028770000000000005
+    },
+    {
+      "id": "010533179",
+      "score": 5,
+      "correct": true,
+      "cost_usd": 0.0002746
+    },
+    {
+      "id": "812706775",
+      "score": 5,
+      "correct": true,
+      "cost_usd": 0.0002766
+    },
+    {
+      "id": "203222424",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.00028189999999999997
+    },
+    {
+      "id": "222477781",
+      "score": 5,
+      "correct": true,
+      "cost_usd": 0.0002752
+    },
+    {
+      "id": "371092066",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.0002658
+    },
+    {
+      "id": "912162264",
+      "score": 4,
+      "correct": false,
+      "cost_usd": 0.0002783
+    },
+    {
+      "id": "205983258",
+      "score": 5,
+      "correct": true,
+      "cost_usd": 0.00026960000000000005
+    },
+    {
+      "id": "481200834",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.00026210000000000003
+    },
+    {
+      "id": "020634996",
+      "score": 2,
+      "correct": false,
+      "cost_usd": 0.00026710000000000004
+    },
+    {
+      "id": "911992410",
+      "score": 5,
+      "correct": true,
+      "cost_usd": 0.00027770000000000003
+    },
+    {
+      "id": "833289582",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.00026920000000000004
+    },
+    {
+      "id": "566067763",
+      "score": 5,
+      "correct": true,
+      "cost_usd": 0.0002873
+    },
+    {
+      "id": "832179227",
+      "score": 4,
+      "correct": false,
+      "cost_usd": 0.00026460000000000003
+    },
+    {
+      "id": "411523054",
+      "score": 4,
+      "correct": false,
+      "cost_usd": 0.0002685
+    },
+    {
+      "id": "273702294",
+      "score": 5,
+      "correct": false,
+      "cost_usd": 0.00027780000000000003
+    },
+    {
+      "id": "465278201",
+      "score": 5,
+      "correct": false,
+      "cost_usd": 0.0002939
+    },
+    {
+      "id": "331164224",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.0002885
+    },
+    {
+      "id": "453771750",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.0002946
+    },
+    {
+      "id": "454711737",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.0002869
+    },
+    {
+      "id": "900627162",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.00028920000000000004
+    },
+    {
+      "id": "462464012",
+      "score": 5,
+      "correct": true,
+      "cost_usd": 0.0002591
+    },
+    {
+      "id": "860981116",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.0002703
+    },
+    {
+      "id": "593685521",
+      "score": 2,
+      "correct": false,
+      "cost_usd": 0.0002873
+    },
+    {
+      "id": "821751840",
+      "score": 3,
+      "correct": false,
+      "cost_usd": 0.0002738
+    },
+    {
+      "id": "202432696",
+      "score": 5,
+      "correct": true,
+      "cost_usd": 0.0002586
+    },
+    {
+      "id": "845011967",
+      "score": 4,
+      "correct": false,
+      "cost_usd": 0.00026970000000000005
+    },
+    {
+      "id": "452756854",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.0002631
+    },
+    {
+      "id": "204510475",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.0002779
+    },
+    {
+      "id": "742466095",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.0002894
+    },
+    {
+      "id": "650888015",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.0003309
+    },
+    {
+      "id": "371830636",
+      "score": 4,
+      "correct": true,
+      "cost_usd": 0.000255
+    },
+    {
+      "id": "371128706",
+      "score": 5,
+      "correct": true,
+      "cost_usd": 0.0002739
+    },
+    {
+      "id": "510661383",
+      "score": 4,
+      "correct": false,
+      "cost_usd": 0.00026070000000000005
+    },
+    {
+      "id": "251331716",
+      "score": 5,
+      "correct": false,
+      "cost_usd": 0.0002597
+    },
+    {
+      "id": "822947687",
+      "score": 5,
+      "correct": true,
+      "cost_usd": 0.00027360000000000004
+    }
+  ]
+}

@@ -568,8 +568,8 @@
       "answer": "Likely a Christian college fraternity: could be Y (fraternal membership benefit) or B (college student groups), or X (religion).\n\nY, X, B",
       "predicted": [
         "Y",
-        "B",
-        "X"
+        "X",
+        "B"
       ],
       "correct": false,
       "top3": false,
@@ -998,12 +998,12 @@
   "comparison": {
     "verdict": "pass",
     "items_compared": 60,
-    "baseline_accuracy": 0.6833,
+    "baseline_accuracy": 0.6667,
     "accuracy": 0.6833,
-    "change": 0.0,
+    "change": 0.0167,
     "margin": 0.05,
     "broken": 0,
-    "fixed": 0,
+    "fixed": 1,
     "same_subject": true
   }
 }

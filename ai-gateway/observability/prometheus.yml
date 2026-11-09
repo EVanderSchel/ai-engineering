@@ -10,6 +10,7 @@ global:
 
 rule_files:
   - alerts.yml
+  - drift.yml # generated from the canary baselines by src/drift.py (step 9)
 
 scrape_configs:
   - job_name: gateway

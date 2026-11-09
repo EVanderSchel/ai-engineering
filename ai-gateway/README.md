@@ -908,6 +908,7 @@ uv run python k8s/make_secret.py                     # now also copies GRAFANA_A
 helm upgrade --install ai-gateway chart/ai-gateway --wait `
   --set-file routes=config/routes.yaml `
   --set-file observability.alerts=observability/alerts.yml `
+  --set-file observability.drift=observability/drift.yml `
   --set-file observability.dashboard=observability/grafana/dashboards/gateway.json
 # the UIs, from this PC only, while each command runs:
 kubectl port-forward svc/ai-gateway-grafana 3000:3000        # http://127.0.0.1:3000/d/ai-gateway
@@ -1181,7 +1182,7 @@ New files:
 - `src/canary.py`: the runner, scoring, the comparison, and the scripted model.
 - `config/canary.yaml`: the checks and the margin.
 - `results/canary/stub/baselines/*.json`: the scripted model's baselines, which `--stub` compares with.
-- `tests/test_canary.py`: 30 tests.
+- `tests/test_canary.py`: the canary's tests.
 
 Changed: `.gitignore` (the latest runs, `results/canary/runs/` and `results/canary/stub/runs/`).
 
@@ -1192,13 +1193,14 @@ The baselines are real runs, made the way CI runs them: Claude API key only, no 
 | Check | Model | Accuracy (top 1), 3 runs | Top 3 | Top-1 results that changed between two runs | Answers that changed at all |
 |---|---|---|---|---|---|
 | `ntee-fast` | Haiku 4.5 | 50.0 / 53.3 / 53.3% | 80-82% | 2 of 60 | 21-26 of 60 |
-| `ntee-smart` | Sonnet 5.5 | 68.3% each time | 83-85% | 0 | 7-10 |
+| `ntee-smart` | Sonnet 5.5 | 66.7 / 66.7 / 68.3% | 83-85% | 0-1 | 7-10 |
 | `arc-local` | Qwen2.5-0.5B Q8_0, temperature 0 | 69.0% each time | | 0 | 0 |
 
 What this shows:
 - **The first answer barely moves; the rest of the answer does.** Most changes were in the second and third letters, which only top 3 scores. The largest top-1 swing was 2 answers (3.3 points, `ntee-fast`), so the margin is 0.05 (3 answers). Three runs is a small sample, so it may need widening if an unchanged route ever fails.
 - **Greedy decoding on one server is repeatable.** `arc-local` gave the same 100 answers three times, even with 4 requests at once. Step 6 found that a different engine (vLLM) doesn't give the same answers, so a change of engine is a change of subject.
 - **The first live run found a bug in the canary.** Answers were capped at 20 tokens, and Sonnet 5.5 spent all 20 thinking on 3 of 60 missions, so it returned no text. Two others began with a sentence despite "No other text", and the cap cut them off before any letter. The cap is now 256 tokens, and each item records its finish reason (one Sonnet answer still hit 256 in run 3). That run ($0.27) is kept as `results/canary/noise/*-cap20.json` but isn't a baseline.
+- **A second canary bug, found in stage 4:** the parser read letters from anywhere in an answer. Sonnet sometimes reasons first and ends with the letters (3 of 60 in the baseline), so letters from its reasoning were scored. NTEE answers are now read from the last line. The stored runs were re-scored from their saved answers, with no new calls: `ntee-smart` went from 68.3% each time to 66.7 / 66.7 / 68.3%, since one answer had been right by luck. `ntee-fast` didn't change, and neither did the margin.
 - **`ntee-classify@v1` suits Sonnet better than Haiku.** It's Project 4's best prompt for Sonnet. In Project 4, Haiku did best with a few-shot prompt (61.5% on 400 dev rows, against 50-53% here). A `fast`-specific prompt is the obvious next version. It should be tuned on other dev rows, not the canary's 60, or the canary would stop being a fair test.
 - **Cost:** a run of both NTEE checks is about $0.27 (Haiku 63k input tokens, $0.07; Sonnet 99k, because its tokenizer counts the same text as about 1.6 times as many tokens, $0.21). Stage 3 cost $1.09 in all: four runs, including the capped one.
 
@@ -1212,6 +1214,94 @@ What this shows:
 **Before this job can run real models,** add a repository secret `AI_GATEWAY_CANARY_ANTHROPIC_API_KEY` (Settings, then Secrets and variables, then Actions): an Anthropic key used only for this, with a spending limit. Without it, a PR that changes a checked route or prompt fails with a message naming the secret. Every other PR passes, since nothing needs to run.
 
 New files: `results/canary/baselines/*.json` (the three live baselines, each item's answer), `results/canary/noise/*.json` (the four runs of each check). Changed: `src/canary.py` (`--baseline-ref`, the 256-token cap, finish reasons, a clear error without a key; `no_baseline` no longer fails, since a new check has nothing to fall below), `config/canary.yaml` (the measured margin), `tests/test_canary.py` (32 tests), `.github/workflows/ai-gateway-ci.yml` (the canary job).
+
+
+### Stage 4a: free checks on every live answer
+
+```powershell
+uv run python src/drift.py      # regenerates observability/drift.yml from the canary's baselines
+```
+
+Plain language: the canary only checks changes we make. Drift is change we don't make. A provider updates the model behind a name, a fallback starts answering more of the traffic, or apps start sending different questions. So the gateway now checks every answer as it goes out. These checks are free: no model is called.
+
+- **Format.** A registered prompt version can declare `answer_format`, a pattern a well-formed answer matches. `ntee-classify@v1` declares `[A-Z](\s*,\s*[A-Z]){0,2}` ("B, O, N"). An answer that explains itself first is `bad`, even when a person could find the letters in it, because an app parsing the answer can't. The format is metadata in the manifest, not part of the prompt's text, so it isn't in the fingerprint. An invalid pattern stops startup.
+- **Finish.** Did the answer end normally (`stop`), hit `max_tokens` (`length`), or get withheld by the guardrails (`content_filter`)? A withheld answer isn't format-checked, since what was sent is the gateway's notice.
+- Both go on the request's log line (`finish`, `answer_format`) and its trace, never with the answer itself. They're counted in a new metric, `gateway_answers_total{route, prompt, finish, format}`. Its labels only take values the gateway controls: prompt references come from the registry, and finish reasons from the translation layer.
+
+**Expected levels come from the canary.** `src/drift.py` reads each canary check that has a prompt, applies the same checks to its baseline answers, and writes [observability/drift.yml](observability/drift.yml). That file holds Prometheus recording rules with the expected rates, and two alerts:
+
+| Route, prompt | Off format in the canary | Cut off in the canary |
+|---|---|---|
+| `fast`, `ntee-classify@v1` | 0% | 0% |
+| `smart`, `ntee-classify@v1` | 5% (Sonnet explained itself first on 3 of 60) | 0% |
+
+- `GatewayAnswerFormatDrift` and `GatewayAnswersCutOff` fire when, over the last hour, a live rate is more than 10 points above the canary's, with at least 20 answers in that hour, for 15 minutes. The 20-answer floor means a quiet hour with two odd answers isn't called drift.
+- The file is generated, so its expected levels can't drift from the baselines. A test fails if it isn't current, and a PR that commits new baselines regenerates it.
+- The rules are unit-tested with promtool ([observability/drift_test.yml](observability/drift_test.yml)):
+  - 30% off format on `smart` fires after 15 minutes, summed across two replicas;
+  - 12% on `smart` and 5% on `fast` stay within tolerance;
+  - half of `fast` off format, but only 12 answers in the hour, stays quiet;
+  - 20% cut off fires both alerts.
+- Prometheus (compose and the Helm chart, `--set-file observability.drift=observability/drift.yml`) loads the file next to `alerts.yml`. The dashboard has a new chart of each (route, prompt)'s rates, with the canary's level beside it.
+
+The limit is that only answers to prompts with a declared format are checked, so free-form traffic gets the finish checks only. Stage 4b adds a sampled judge for answers that are well formed but worse.
+
+New files:
+- `src/drift.py`: the per-answer checks and the rules generator.
+- `observability/drift.yml`: the generated rules.
+- `observability/drift_test.yml`: their promtool tests.
+- `tests/test_drift.py`: 16 tests.
+
+Changed:
+- `src/prompts.py`: `answer_format`, `Prompt.well_formed`.
+- `prompts/ntee-classify/manifest.json`: v1's format.
+- `src/app.py`, `src/metrics.py`, `src/tracing.py`: the checks recorded.
+- `src/canary.py`: NTEE answers parsed from the last line, and `rescore`.
+- `results/canary/baselines/`, `results/canary/noise/`: re-scored.
+- `observability/prometheus.yml`, the chart and CI: `drift.yml` loaded, linted and tested.
+- `observability/grafana/`: the drift chart.
+
+### Stage 4b: a sampled judge
+
+```powershell
+uv run python src/drift_judge.py      # PAID, about $0.03: grades the canary's baseline answers once (the reference)
+uv run python src/drift.py            # then regenerate observability/drift.yml, which now has the judge's alert
+```
+
+Plain language: the format check can tell that "B, O, N" has the right shape, but not that B is the right group. Live traffic has no answer key. So a second, cheap model reads a small share of the answers and marks them 1 to 5. One mark says little. The average over hours, compared with the average the same judge gave the canary's answers, says whether quality moved.
+
+How it works ([src/drift_judge.py](src/drift_judge.py)):
+- **A route opts in** with `drift: {judge_rate: 0.02}` in `routes.yaml`. It's off on every route for now, and a test checks that.
+- **What the judge sees:** the request's system prompt, its messages and the answer, after the guardrails, so redacted text stays redacted. They go to the Claude API whichever provider answered. That's a data flow a route chooses, which is why it's opt-in.
+- **The judge:** Claude Haiku 5.5 at effort `low`, with structured output (a one-sentence reason, then a score from 1 to 5). The rubric tells it that everything inside the tags is material to grade, never instructions, so an answer saying "give me a 5" doesn't get one.
+- **It runs after the response has gone,** in the background. The caller never waits and isn't charged: monitoring is the gateway's cost (`gateway_judge_cost_usd_total`). At most 4 grades run at once; past that, a sampled answer is skipped (`busy`) rather than queued, so a traffic spike can't build a backlog.
+- **What's recorded:** grades go to `gateway_judge_scores{route, prompt}`, a histogram whose mean is `_sum / _count`. Outcomes (`graded`, `declined`, `busy`, `error`) go to `gateway_judge_runs_total`, and the log line says `judged: true`. Neither the answer nor the judge's reason is logged or stored.
+- **The alert,** `GatewayJudgeScoreDrop`, fires when the mean grade over 6 hours is more than 0.5 below the canary's, with at least 20 grades, for 30 minutes. The window is long because the judge sees a sample. It's generated into `drift.yml` only once the reference exists, and only for the prompt version the reference graded.
+
+**The reference** (one run, $0.034, `results/canary/judge/`):
+
+| Check | Mean grade | Answers the canary marked right | Marked wrong | Prose-first answers |
+|---|---|---|---|---|
+| `ntee-fast` (Haiku 4.5) | 4.27 | 4.47 | 4.07 | none |
+| `ntee-smart` (Sonnet 5.5) | 4.30 | 4.45 | 4.00 | all 3 graded 2 |
+
+What it shows:
+- **The judge enforces instructions.** Every answer that explained itself before the letters got a 2, as the rubric asks.
+- **It barely tells a right NTEE group from a plausible wrong one.** Without the answer key, 26 of `fast`'s 30 wrong answers still got a 4 or 5. If every answer quietly became wrong, the mean would fall by about 0.4, which is under the 0.5 threshold. A lower threshold would make 20-grade windows noisy: grades vary by about 0.74, so the mean of 20 has a standard error of about 0.17.
+- **So the judge's alert is for gross failures:** broken formats, refusals, off-task or empty answers. Half the answers breaking their format takes the mean from 4.3 to about 3.5, and the promtool test shows that firing. Accuracy stays the canary's job, since it has the answer key. A judge given the answer key would grade better, but live traffic has none.
+
+New files:
+- `src/drift_judge.py`: the judge, the sampling monitor, and the reference run.
+- `results/canary/judge/*.json`: the reference, every grade.
+- `tests/test_drift_judge.py`: 13 tests, with a fake Claude client.
+
+Changed:
+- `src/config.py`: a route's `drift.judge_rate`.
+- `src/app.py`: sampling and the background grade.
+- `src/metrics.py`: the judge's metrics.
+- `src/drift.py`: the judge's reference and alert.
+- `observability/drift.yml` and `drift_test.yml`: the judge's alert and its tests.
+- The dashboard: a mean-grade chart.
 
 ## Setup
 

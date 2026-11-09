@@ -151,7 +151,7 @@ jobs:
               prom/prometheus:v3.15.1@sha256:fa3302279710be2f21a8301ec17a8b4f2301fd829bd113839b3b6b02b6f191a2 "$@"
           }
           promtool check config prometheus.yml
-          promtool test rules alerts_test.yml
+          promtool test rules alerts_test.yml drift_test.yml
 
   # The eval canary (step 9, ai-gateway/src/canary.py). On every pull request that touches ai-gateway/, it first runs
   # each check on a scripted model (free), then runs the NTEE checks on real models only if their subject changed:
@@ -259,6 +259,7 @@ jobs:
       - name: Lint and render the Helm chart
         run: |
           files="--set-file routes=config/routes.yaml --set-file observability.alerts=observability/alerts.yml"
+          files="$files --set-file observability.drift=observability/drift.yml"
           files="$files --set-file observability.dashboard=observability/grafana/dashboards/gateway.json"
           helm lint --strict chart/ai-gateway $files
           helm template ai-gateway chart/ai-gateway $files > /dev/null

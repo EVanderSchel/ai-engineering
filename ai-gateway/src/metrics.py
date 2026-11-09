@@ -68,6 +68,23 @@ class Metrics:
             "gateway_guardrail_findings", "Guardrail findings, by check and action",
             ["check", "action"], registry=registry,
         )  # fmt: skip
+        self.answers = Counter(
+            "gateway_answers", "Answers sent, by route, registered prompt (name@version), finish reason and format "
+            "(ok, bad, or empty if the prompt declares none): the drift monitor's free checks",
+            ["route", "prompt", "finish", "format"], registry=registry,
+        )  # fmt: skip
+        self.judge_scores = Histogram(
+            "gateway_judge_scores", "The drift judge's grades (1-5) of sampled answers: mean = _sum / _count",
+            ["route", "prompt"], buckets=(1, 2, 3, 4, 5), registry=registry,
+        )  # fmt: skip
+        self.judge_runs = Counter(
+            "gateway_judge_runs", "Sampled answers sent to the drift judge, by outcome (graded, declined, busy, error)",
+            ["route", "outcome"], registry=registry,
+        )  # fmt: skip
+        self.judge_cost = Counter(
+            "gateway_judge_cost_usd", "The drift judge's spend in USD: the gateway's, not charged to teams",
+            ["route"], registry=registry,
+        )  # fmt: skip
         self.in_flight = Gauge("gateway_requests_in_flight", "Requests being handled now", registry=registry)
         self.budgets: list[tuple[str, float, float | None]] = []  # (team, spent, limit), refreshed from the database
         registry.register(_Breakers(breakers))
@@ -99,9 +116,19 @@ class Metrics:
             for kind, key in (("model", "cost_usd"), ("judge", "screen_cost_usd")):
                 if cost := fields.get(key):
                     self.cost.labels(team, route, kind).inc(float(cost))
+        if finish := fields.get("finish"):  # prompt refs come from the registry, finish reasons from translate.py
+            self.answers.labels(route, fields.get("prompt") or "", finish, fields.get("answer_format") or "").inc()
         for finding in filter(None, (fields.get("guardrails") or "").split(";")):
             check, _, rest = finding.partition("=")  # "pii_input=flagged:card": kinds aren't labels, to stay bounded
             self.guardrails.labels(check, rest.partition(":")[0]).inc()
+
+    def observe_grade(self, route: str, prompt: str, outcome: str, score: int | None, cost: float) -> None:
+        route = self.route_label(route)
+        self.judge_runs.labels(route, outcome).inc()
+        if score is not None:
+            self.judge_scores.labels(route, prompt).observe(score)
+        if cost:
+            self.judge_cost.labels(route).inc(cost)
 
     def render(self) -> bytes:
         return generate_latest(self.registry)

@@ -106,11 +106,19 @@ class Guardrails(Strict):
         return self
 
 
+class Drift(Strict):
+    """The drift monitor (step 9 stage 4b). judge_rate: the share of answers a judge model grades in the background
+    (paid, by the gateway, and the request's text goes to the Claude API whichever provider answered). 0: off."""
+
+    judge_rate: float = Field(default=0.0, ge=0, le=1)
+
+
 class Route(Strict):
     candidates: list[Candidate] = Field(min_length=1)
     max_tokens_ceiling: int = Field(gt=0)
     timeout: Timeouts = Field(default_factory=Timeouts)
     guardrails: Guardrails = Field(default_factory=Guardrails)
+    drift: Drift = Field(default_factory=Drift)
 
 
 def load_routes(path: pathlib.Path = DEFAULT_ROUTES) -> dict[str, Route]:

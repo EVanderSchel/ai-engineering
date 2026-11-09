@@ -29,6 +29,7 @@
     "errors": 0,
     "accuracy": 0.4833,
     "unparseable": 0,
+    "cut_off": 0,
     "input_tokens": 63208,
     "output_tokens": 480,
     "models": {
