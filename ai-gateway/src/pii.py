@@ -31,10 +31,16 @@ KINDS = IDENTIFIERS + CONTACT
 SSN = re.compile(r"(?<![\d-])(\d{3})[- ](\d{2})[- ](\d{4})(?![\d-])")
 CARD = re.compile(r"(?<!\d)\d(?:[ -]?\d){12,18}(?!\d)")
 BANK = re.compile(r"\b(routing|account)\b(?:\s+(?:number|no\.?|#))?[\s:#]*(\d[\d -]{4,20}\d)", re.IGNORECASE)
-# The lookbehind holds every character the local part can hold, so a match can only start where a run of them begins.
-# Without `%` in it, each `%` in a long run was a new start that rescanned the rest: quadratic time, 10 s for 80,000
-# of them (code scanning alert 16, py/polynomial-redos). Now it's linear.
-EMAIL = re.compile(r"(?<![\w.%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}(?![\w-])")
+# Email addresses are found by scanning out from each "@" (_emails below), not by a regular expression. The pattern
+# they follow, as a regex for reference:
+#     (?<![\w.%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}(?![\w-])
+# Searched for with that regex, a long run of local-part characters with no "@" was rescanned from every position in
+# it: quadratic time, 10 s for 80,000 "%" (code scanning alert 16, py/polynomial-redos). The scan reads each character
+# a bounded number of times, and finds exactly what the regex found (tests/test_pii.py compares them).
+LOCAL_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._%+-")
+LABEL_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-")
+NOT_BEFORE = re.compile(r"[\w.%+-]")  # one character: what can't come right before an address
+NOT_AFTER = re.compile(r"[\w-]")  # one character: what can't come right after one
 # (515) 555-0134, 515-555-0134, 515.555.0134, +1 515 555 0134. Separators are required: a bare 10-digit number is
 # as likely an order or account number. Area codes and exchanges start 2-9, as in the North American plan.
 PHONE = re.compile(
@@ -61,6 +67,46 @@ def _luhn(digits: str) -> bool:
     return total % 10 == 0
 
 
+def _domain_end(text: str, i: int) -> int | None:
+    """Where the domain starting at text[i] ends: dot-separated labels, the last at least two letters and not followed
+    by a word character or "-". The longest such domain, as the regex's greedy repetition would take; None if none."""
+    labels, pos = [], i
+    while True:
+        end = pos
+        while end < len(text) and text[end] in LABEL_CHARS:
+            end += 1
+        if end == pos:
+            break
+        labels.append((pos, end))
+        if end < len(text) and text[end] == ".":
+            pos = end + 1
+        else:
+            break
+    for start, end in reversed(labels[1:]):  # a domain has at least two labels
+        label = text[start:end]
+        if len(label) >= 2 and label.isascii() and label.isalpha() and not NOT_AFTER.match(text, end):
+            return end
+    return None
+
+
+def _emails(text: str) -> list[tuple[int, int]]:
+    """(start, end) of each email address, left to right and not overlapping, as the regex above finds them."""
+    spans: list[tuple[int, int]] = []
+    last_end, at = 0, text.find("@")
+    while at != -1:
+        start = at
+        while start > last_end and text[start - 1] in LOCAL_CHARS:
+            start -= 1
+        before_ok = start == 0 or not NOT_BEFORE.match(text, start - 1)
+        if start < at and before_ok:  # a local part, starting where its run starts
+            end = _domain_end(text, at + 1)
+            if end is not None:
+                spans.append((start, end))
+                last_end = end
+        at = text.find("@", max(at + 1, last_end))
+    return spans
+
+
 def find(text: str, kinds: tuple[str, ...] = KINDS) -> list[Finding]:
     """Every piece of personal data of the given kinds, in order, without overlaps (the earlier, longer one wins)."""
     found: list[Finding] = []
@@ -73,7 +119,7 @@ def find(text: str, kinds: tuple[str, ...] = KINDS) -> list[Finding]:
     if "bank" in kinds:
         found += [Finding("bank", m.start(2), m.end(2)) for m in BANK.finditer(text)]
     if "email" in kinds:
-        found += [Finding("email", m.start(), m.end()) for m in EMAIL.finditer(text)]
+        found += [Finding("email", start, end) for start, end in _emails(text)]
     if "phone" in kinds:
         found += [Finding("phone", m.start(), m.end()) for m in PHONE.finditer(text)]
     found.sort(key=lambda f: (f.start, -(f.end - f.start)))
