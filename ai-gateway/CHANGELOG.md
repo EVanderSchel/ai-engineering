@@ -59,3 +59,7 @@ All notable changes to this project are documented here, following [Keep a Chang
   - The chart: the gateway as a Deployment of 2 with a rolling update, a NodePort Service and a disruption budget; PostgreSQL as a StatefulSet with a volume; routes from a ConfigMap; migrations in an init container.
   - Startup, liveness and readiness probes; requests and limits; a locked-down security context. The Secret comes from `k8s/make_secret.py`, outside the chart. CI lints and renders the chart.
   - Measured live: the node uses 1.4 GiB. Connections, not requests, are balanced. Deleting a pod under traffic lost 1 request in 111 (for stage 6). A database outage marks the pods not ready without restarting them.
+
+### Security
+
+- The email pattern in `src/pii.py` ran in quadratic time on long runs of `%` (code scanning alert 16, `py/polynomial-redos`): 80,000 of them took 10 s, on the event loop, stalling every request in the process. Its lookbehind now holds every character the local part can, so a match starts only where a run begins: 2 ms for the same input. The 35 labelled cases match exactly as before; a regression test covers four adversarial inputs.

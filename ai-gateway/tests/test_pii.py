@@ -1,6 +1,7 @@
 """The personal-data detector and redactor, against the labelled cases in data/guardrails/pii_cases.json."""
 
 import json
+import time
 
 import pytest
 
@@ -53,3 +54,12 @@ def test_findings_never_overlap():
 def test_text_without_personal_data_is_unchanged():
     text = "Summarise the attached minutes in three bullet points."
     assert pii.redact(text) == (text, [])
+
+
+@pytest.mark.parametrize("text", ["%" * 100_000, "%a" * 50_000, "x@" + "a." * 50_000 + "1", "a@" * 50_000])
+def test_long_adversarial_text_is_scanned_in_linear_time(text):
+    # code scanning alert 16: 100,000 '%' took over 10 s in the email pattern before its lookbehind included '%'.
+    # The checks run on the event loop, so a slow pattern stalls every request in the process.
+    started = time.perf_counter()
+    pii.find(text)
+    assert time.perf_counter() - started < 1.0

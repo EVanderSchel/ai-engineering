@@ -31,7 +31,10 @@ KINDS = IDENTIFIERS + CONTACT
 SSN = re.compile(r"(?<![\d-])(\d{3})[- ](\d{2})[- ](\d{4})(?![\d-])")
 CARD = re.compile(r"(?<!\d)\d(?:[ -]?\d){12,18}(?!\d)")
 BANK = re.compile(r"\b(routing|account)\b(?:\s+(?:number|no\.?|#))?[\s:#]*(\d[\d -]{4,20}\d)", re.IGNORECASE)
-EMAIL = re.compile(r"(?<![\w.+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}(?![\w-])")
+# The lookbehind holds every character the local part can hold, so a match can only start where a run of them begins.
+# Without `%` in it, each `%` in a long run was a new start that rescanned the rest: quadratic time, 10 s for 80,000
+# of them (code scanning alert 16, py/polynomial-redos). Now it's linear.
+EMAIL = re.compile(r"(?<![\w.%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}(?![\w-])")
 # (515) 555-0134, 515-555-0134, 515.555.0134, +1 515 555 0134. Separators are required: a bare 10-digit number is
 # as likely an order or account number. Area codes and exchanges start 2-9, as in the North American plan.
 PHONE = re.compile(
