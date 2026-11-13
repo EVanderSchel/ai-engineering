@@ -132,6 +132,97 @@ services:
     # Measured: about 320 MB in use with the dashboard open (Prometheus about 130 MB, Jaeger about 25 MB).
     mem_limit: 512m
 
+  # Step 10: the gateway and LiteLLM's proxy side by side, both calling the same fake upstream, so they can be given
+  # the same tests and load. Built and started only when asked for:
+  #
+  #     docker compose --profile compare up -d --build --wait      # gateway on 127.0.0.1:8101, LiteLLM on :8102
+  #
+  # Each gateway gets one CPU and runs one process, so neither wins on resources. The keys come from .env
+  # (LITELLM_MASTER_KEY; the gateway's keys are issued in its database by the parity suite). Before the first start:
+  #
+  #     uv run python src/compare_db.py      # makes and migrates both gateways' databases
+  fake-upstream:
+    profiles: [compare]
+    image: ai-gateway:compare
+    build: .
+    command: ["uvicorn", "fake_upstream:app", "--app-dir", "src", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
+    ports:
+      - "127.0.0.1:8103:8000" # the parity suite reads /stats: how many calls each case made
+    environment:
+      FAKE_WORDS: ${FAKE_WORDS:-20}
+      FAKE_FIRST_TOKEN_MS: ${FAKE_FIRST_TOKEN_MS:-100}
+      FAKE_WORD_MS: ${FAKE_WORD_MS:-5}
+    cpus: 1.0
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      # Every 2 s while starting, then once a minute: each check starts a Python interpreter, which inside a one-CPU
+      # container showed up in the load test as stalls (stage 3).
+      interval: 60s
+      start_period: 60s
+      start_interval: 2s
+      timeout: 3s
+      retries: 3
+
+  gateway:
+    profiles: [compare]
+    image: ai-gateway:compare
+    build: .
+    depends_on:
+      fake-upstream: { condition: service_healthy }
+      db: { condition: service_healthy }
+    environment:
+      GATEWAY_ROUTES_FILE: /app/compare/routes.yaml
+      GATEWAY_LOCAL_URL: http://fake-upstream:8000/v1
+      # Its own database in the compose PostgreSQL (made and migrated by src/compare_db.py), for keys, limits and
+      # budgets: the parity suite issues and revokes keys there.
+      DATABASE_URL: postgresql://gateway:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/compare_gateway
+      GATEWAY_LOG_LEVEL: WARNING # a log line per request would cost time under load; LiteLLM's logs are off too
+      GATEWAY_LOG_GC: ${GATEWAY_LOG_GC:-} # set to 1 to log garbage-collection pauses (stage 3's stall hunt)
+    volumes:
+      - ./compare/routes.yaml:/app/compare/routes.yaml:ro
+    ports:
+      - "127.0.0.1:8101:8000"
+    cpus: 1.0
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz')"]
+      # Every 2 s while starting, then once a minute: each check starts a Python interpreter, which inside a one-CPU
+      # container showed up in the load test as stalls (stage 3).
+      interval: 60s
+      start_period: 60s
+      start_interval: 2s
+      timeout: 3s
+      retries: 3
+
+  litellm:
+    profiles: [compare]
+    # LiteLLM's proxy with its database layer built in (Prisma), version 1.106.4 (released 2026-10-25, picked two
+    # weeks old), pinned by digest.
+    image: ghcr.io/berriai/litellm-database:v1.106.4@sha256:db36453d25e76c9eb689d7d51b8e5fa48843243d7a86ed1284cf574ce0107b3f
+    depends_on:
+      fake-upstream: { condition: service_healthy }
+      db: { condition: service_healthy }
+    command: ["--config", "/app/compare.yaml", "--port", "4000", "--num_workers", "1"]
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?set LITELLM_MASTER_KEY in .env}
+      LITELLM_LOG: ERROR
+      # Its own database for its keys, budgets and spend (made by src/compare_db.py; LiteLLM creates its tables).
+      DATABASE_URL: postgresql://gateway:${POSTGRES_PASSWORD}@db:5432/litellm
+    volumes:
+      - ./compare/litellm.yaml:/app/compare.yaml:ro
+    ports:
+      - "127.0.0.1:8102:4000"
+    cpus: 1.0
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/liveliness')"]
+      interval: 60s
+      start_period: 120s
+      start_interval: 3s
+      timeout: 3s
+      retries: 3
+
 volumes:
   gateway-pgdata:
   prometheus-data:

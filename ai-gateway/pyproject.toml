@@ -31,6 +31,7 @@ dev = [
     "pytest>=9.2.0",
     { include-group = "lint" },
     { include-group = "classifier" },
+    { include-group = "compare" },
 ]
 # The NTEE classifier on ONNX Runtime (step 6 stage 3); in step 8 it runs as its own service.
 classifier = [
@@ -38,6 +39,11 @@ classifier = [
     "onnx-ir>=1.1.0",
     "onnxruntime>=1.31.1",
     "tokenizers>=0.23.3",
+]
+# Step 10 stage 4: a LangChain app run against both gateways (src/langchain_app.py); in dev so CI runs its tests.
+compare = [
+    "langchain-core==1.7.6",
+    "langchain-openai==1.7.4",
 ]
 
 [tool.uv]

@@ -1,0 +1,34 @@
+# The gateway's routes for the comparison with LiteLLM (step 10): every candidate is the fake upstream
+# (src/fake_upstream.py), reached as the `local` provider (GATEWAY_LOCAL_URL in docker-compose.yml). The same cases
+# are in compare/litellm.yaml under the same names, so one test or load script can call either gateway.
+# No guardrails: LiteLLM has none switched on by default, and the load test measures the request path itself.
+
+chat:
+  candidates:
+    - {provider: local, model: fake-ok}
+  max_tokens_ceiling: 4096
+  timeout: {first_token: 10, attempt: 30, total: 60}
+
+# The first candidate is overloaded (503): retried once, then the second answers.
+fallback:
+  candidates:
+    - {provider: local, model: fake-503}
+    - {provider: local, model: fake-ok}
+  max_tokens_ceiling: 4096
+  timeout: {first_token: 10, attempt: 30, total: 60}
+
+# The first candidate refuses the request (400). The gateway passes that on rather than trying the next one: a
+# request a provider rejects would be rejected again (design decision 7).
+refused:
+  candidates:
+    - {provider: local, model: fake-400}
+    - {provider: local, model: fake-ok}
+  max_tokens_ceiling: 4096
+  timeout: {first_token: 10, attempt: 30, total: 60}
+
+# The upstream doesn't answer for 60 s: the gateway gives up at its deadline.
+slow:
+  candidates:
+    - {provider: local, model: fake-slow}
+  max_tokens_ceiling: 4096
+  timeout: {first_token: 2, attempt: 3, total: 5}

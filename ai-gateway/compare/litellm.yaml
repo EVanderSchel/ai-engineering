@@ -1,0 +1,50 @@
+# LiteLLM's proxy config for the comparison (step 10): the same four cases as compare/routes.yaml, under the same
+# names, all on the fake upstream (src/fake_upstream.py). Settings are LiteLLM's documented ones; where it has a
+# default that differs from the gateway's (retries), it's set to match, so the comparison is of behaviour, not of
+# defaults.
+#
+# The api_key below is a placeholder the fake upstream ignores: LiteLLM's OpenAI client wants one. model_info prices
+# the fake models as the gateway's database does (src/compare_db.py: $100 per million tokens in and out), so the two
+# budgets count the same spend.
+
+model_list:
+  - model_name: chat
+    litellm_params:
+      model: openai/fake-ok
+      api_base: http://fake-upstream:8000/v1
+      api_key: fake-upstream-ignores-this
+    model_info: {input_cost_per_token: 0.0001, output_cost_per_token: 0.0001}
+  - model_name: fallback
+    litellm_params:
+      model: openai/fake-503
+      api_base: http://fake-upstream:8000/v1
+      api_key: fake-upstream-ignores-this
+    model_info: {input_cost_per_token: 0.0001, output_cost_per_token: 0.0001}
+  - model_name: refused
+    litellm_params:
+      model: openai/fake-400
+      api_base: http://fake-upstream:8000/v1
+      api_key: fake-upstream-ignores-this
+    model_info: {input_cost_per_token: 0.0001, output_cost_per_token: 0.0001}
+  - model_name: slow
+    litellm_params:
+      model: openai/fake-slow
+      api_base: http://fake-upstream:8000/v1
+      api_key: fake-upstream-ignores-this
+      timeout: 5
+      stream_timeout: 2
+    model_info: {input_cost_per_token: 0.0001, output_cost_per_token: 0.0001}
+
+litellm_settings:
+  num_retries: 1 # the gateway retries a temporary error once
+  request_timeout: 60
+
+router_settings:
+  # As in compare/routes.yaml: `fallback` and `refused` go on to the working model. Whether LiteLLM falls back on a
+  # 400 too is one of the things the comparison checks.
+  fallbacks:
+    - fallback: [chat]
+    - refused: [chat]
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
