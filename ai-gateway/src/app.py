@@ -11,6 +11,7 @@ import asyncio
 import contextlib
 import dataclasses
 import functools
+import gc
 import json
 import logging
 import math
@@ -110,6 +111,8 @@ def create_app(
     API client, made on first use.
     """
     logs.configure(os.environ.get("GATEWAY_LOG_LEVEL", "INFO"))
+    if os.environ.get("GATEWAY_LOG_GC"):  # step 10: log garbage-collection pauses over 50 ms (a diagnostic)
+        watch_gc()
     tracing.configure()  # exports spans only if OTEL_EXPORTER_OTLP_ENDPOINT is set
     routes = routes if routes is not None else config.load_routes()
     judge = judge or injection.Judge()  # its Claude client is made on first use
@@ -493,6 +496,26 @@ def create_app(
     app.state.metrics = gauges
     app.state.health = health
     return app
+
+
+_gc_started: list[float] = []
+
+
+def watch_gc(threshold_ms: float = 50.0) -> None:
+    """Logs each garbage collection that pauses the process longer than `threshold_ms`, with its generation and
+    how many objects it went through. Off unless GATEWAY_LOG_GC is set: it's for finding stalls, not for every day."""
+
+    def callback(phase: str, info: dict) -> None:
+        if phase == "start":
+            _gc_started[:] = [time.perf_counter()]
+        elif _gc_started:
+            ms = (time.perf_counter() - _gc_started[0]) * 1000
+            if ms > threshold_ms:
+                log.warning("garbage collection paused the process for %.0f ms (generation %d, %d collected)",
+                            ms, info["generation"], info["collected"])  # fmt: skip
+
+    if not any(getattr(c, "__qualname__", "") == callback.__qualname__ for c in gc.callbacks):  # once per process
+        gc.callbacks.append(callback)
 
 
 QUIET_PATHS = {"/healthz", "/readyz"}  # probed every few seconds by Kubernetes: a line each would bury the rest

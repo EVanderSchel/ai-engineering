@@ -1,0 +1,303 @@
+{
+  "date": "2026-11-09T17:50:15+00:00",
+  "litellm_image": "ghcr.io/berriai/litellm-database:v1.106.4",
+  "cases": [
+    {
+      "name": "plain",
+      "what": "A plain answer",
+      "gateway": {
+        "status": 200,
+        "complete": true,
+        "model": "fake-ok",
+        "usage": true
+      },
+      "litellm": {
+        "status": 200,
+        "complete": true,
+        "model": "chat",
+        "usage": true
+      }
+    },
+    {
+      "name": "streamed",
+      "what": "A streamed answer, with usage",
+      "gateway": {
+        "status": 200,
+        "complete": true,
+        "usage": true
+      },
+      "litellm": {
+        "status": 200,
+        "complete": true,
+        "usage": true
+      }
+    },
+    {
+      "name": "says_who_answered",
+      "what": "What the response says about who answered (after a fallback)",
+      "gateway": {
+        "model": "fake-ok",
+        "headers": [
+          "x-gateway-attempts",
+          "x-gateway-fallback",
+          "x-gateway-provider",
+          "x-gateway-route"
+        ]
+      },
+      "litellm": {
+        "model": "fake-ok",
+        "headers": [
+          "x-litellm-attempted-fallbacks",
+          "x-litellm-attempted-retries",
+          "x-litellm-call-id",
+          "x-litellm-callback-duration-ms",
+          "x-litellm-key-spend",
+          "x-litellm-model-api-base",
+          "x-litellm-model-group",
+          "x-litellm-model-id",
+          "x-litellm-model-name",
+          "x-litellm-overhead-duration-ms",
+          "x-litellm-response-cost",
+          "x-litellm-response-cost-discount-amount",
+          "x-litellm-response-cost-input",
+          "x-litellm-response-cost-margin-amount",
+          "x-litellm-response-cost-margin-percent",
+          "x-litellm-response-cost-original",
+          "x-litellm-response-cost-output",
+          "x-litellm-response-cost-tool-usage",
+          "x-litellm-response-duration-ms",
+          "x-litellm-version"
+        ]
+      }
+    },
+    {
+      "name": "fallback",
+      "what": "Fallback past an overloaded model (503)",
+      "gateway": {
+        "status": 200,
+        "complete": true,
+        "upstream_calls": {
+          "fake-ok": 1,
+          "fake-503": 2
+        },
+        "ms": 266
+      },
+      "litellm": {
+        "status": 200,
+        "complete": true,
+        "upstream_calls": {
+          "fake-ok": 1,
+          "fake-503": 2
+        },
+        "ms": 2401
+      }
+    },
+    {
+      "name": "fallback_streamed",
+      "what": "The same, streamed",
+      "gateway": {
+        "status": 200,
+        "complete": true,
+        "upstream_calls": {
+          "fake-ok": 1,
+          "fake-503": 1
+        },
+        "ms": 251
+      },
+      "litellm": {
+        "status": 200,
+        "complete": true,
+        "upstream_calls": {
+          "fake-ok": 1,
+          "fake-503": 2
+        },
+        "ms": 2190
+      }
+    },
+    {
+      "name": "refused",
+      "what": "The provider refuses the request (400)",
+      "gateway": {
+        "status": 400,
+        "answered": false,
+        "upstream_calls": {
+          "fake-400": 1
+        }
+      },
+      "litellm": {
+        "status": 200,
+        "answered": true,
+        "upstream_calls": {
+          "fake-ok": 1,
+          "fake-400": 1
+        }
+      }
+    },
+    {
+      "name": "hung_provider",
+      "what": "The provider never answers",
+      "gateway": {
+        "status": 504,
+        "seconds": 3.0,
+        "upstream_calls": {
+          "fake-slow": 1
+        }
+      },
+      "litellm": {
+        "status": 408,
+        "seconds": 12.2,
+        "upstream_calls": {
+          "fake-slow": 2
+        }
+      }
+    },
+    {
+      "name": "no_key",
+      "what": "No key",
+      "gateway": {
+        "status": 401
+      },
+      "litellm": {
+        "status": 401
+      }
+    },
+    {
+      "name": "wrong_key",
+      "what": "A wrong key",
+      "gateway": {
+        "status": 401,
+        "status_well_formed_key": 401
+      },
+      "litellm": {
+        "status": 401,
+        "status_well_formed_key": 401
+      }
+    },
+    {
+      "name": "unknown_model",
+      "what": "An unknown model name",
+      "gateway": {
+        "status": 404,
+        "error": "model_not_found"
+      },
+      "litellm": {
+        "status": 400,
+        "error": "400"
+      }
+    },
+    {
+      "name": "malformed_body",
+      "what": "A request with no messages",
+      "gateway": {
+        "status": 400
+      },
+      "litellm": {
+        "status": 400
+      }
+    },
+    {
+      "name": "absurd_max_tokens",
+      "what": "max_tokens of 10 million",
+      "gateway": {
+        "status": 400,
+        "error": "max_tokens_too_large"
+      },
+      "litellm": {
+        "status": 200,
+        "error": null
+      }
+    },
+    {
+      "name": "revoked_key",
+      "what": "A key revoked while in use",
+      "gateway": {
+        "before": 200,
+        "after": 401,
+        "worked_for_s": 0.0,
+        "requests_after_revoking": 0
+      },
+      "litellm": {
+        "before": 200,
+        "after": 401,
+        "worked_for_s": 0.0,
+        "requests_after_revoking": 0
+      }
+    },
+    {
+      "name": "model_scope",
+      "what": "A key allowed only `chat`, asking for another model",
+      "gateway": {
+        "allowed_model": 200,
+        "other_model": 403,
+        "error": "route_not_allowed"
+      },
+      "litellm": {
+        "allowed_model": 200,
+        "other_model": 403,
+        "error": "403"
+      }
+    },
+    {
+      "name": "rate_limit",
+      "what": "A key limited to 5 requests a minute, sent 10",
+      "gateway": {
+        "limit_rpm": 5,
+        "sent": 10,
+        "served": 5,
+        "refused": 5,
+        "other": 0
+      },
+      "litellm": {
+        "limit_rpm": 5,
+        "sent": 10,
+        "served": 5,
+        "refused": 5,
+        "other": 0
+      }
+    },
+    {
+      "name": "budget_one_at_a_time",
+      "what": "A $0.02 budget, requests one at a time",
+      "gateway": {
+        "budget_usd": 0.02,
+        "served": 5,
+        "refused_on_request": 6,
+        "refusal": "429 budget_exceeded",
+        "spent_usd": 0.011
+      },
+      "litellm": {
+        "budget_usd": 0.02,
+        "served": 10,
+        "refused_on_request": 11,
+        "refusal": "422 422",
+        "spent_usd": 0.022
+      }
+    },
+    {
+      "name": "budget_all_at_once",
+      "what": "A $0.02 budget, 30 requests at once",
+      "gateway": {
+        "budget_usd": 0.02,
+        "sent_at_once": 30,
+        "served": 3,
+        "refused": 27,
+        "refusals": [
+          "429 budget_exceeded"
+        ],
+        "spent_usd": 0.0066,
+        "over_budget_usd": 0.0
+      },
+      "litellm": {
+        "budget_usd": 0.02,
+        "sent_at_once": 30,
+        "served": 4,
+        "refused": 26,
+        "refusals": [
+          "422 422"
+        ],
+        "spent_usd": 0.0088,
+        "over_budget_usd": 0.0
+      }
+    }
+  ]
+}

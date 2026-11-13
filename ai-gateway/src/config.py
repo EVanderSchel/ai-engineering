@@ -4,6 +4,7 @@ The file is validated when the gateway starts; a mistake stops it from starting 
 the wrong place. Candidates are tried in order (router.py).
 """
 
+import os
 import pathlib
 from typing import Literal
 
@@ -121,7 +122,10 @@ class Route(Strict):
     drift: Drift = Field(default_factory=Drift)
 
 
-def load_routes(path: pathlib.Path = DEFAULT_ROUTES) -> dict[str, Route]:
+def load_routes(path: pathlib.Path | None = None) -> dict[str, Route]:
+    """The routes file: `path`, else GATEWAY_ROUTES_FILE (step 10's comparison mounts its own), else
+    config/routes.yaml."""
+    path = path or pathlib.Path(os.environ.get("GATEWAY_ROUTES_FILE") or DEFAULT_ROUTES)
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict) or not raw:
         raise ValueError(f"{path}: expected a mapping of route names to routes")

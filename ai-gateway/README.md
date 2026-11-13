@@ -24,7 +24,7 @@ Each step is merged on its own; numbers are measured, not assumed.
 | 7 | Observability: OpenTelemetry traces, Prometheus metrics, a Grafana dashboard, alerts on error rate, latency and cost spikes *(done)* | Seeing a platform's health and cost |
 | 8 | Kubernetes: a local cluster (kind), a Helm chart, resource requests and limits, health probes, secrets, autoscaling (HPA) shown with a k6 load test, a rolling update with no dropped requests *(done; the classifier stays out of the cluster)* | Running services on Kubernetes |
 | 9 | Quality: a versioned prompt registry, an eval canary that gates prompt and model changes on the earlier projects' gold sets, a drift monitor that scores sampled live traffic *(done; the judge is opt-in per route)* | Catching prompt regressions and drift |
-| 10 | Build vs. adopt: the same tests and load against LiteLLM's proxy; a LangChain app that uses the gateway unchanged | When to build a platform piece and when to adopt one |
+| 10 | Build vs. adopt: the same tests and load against LiteLLM's proxy; a LangChain app that uses the gateway unchanged *(done; tools and structured output not supported)* | When to build a platform piece and when to adopt one |
 | 11 | Optional: the chart on Amazon EKS for a short, measured window (infrastructure as code), then torn down | Managed Kubernetes and its cost |
 | Final | Write-up, cost report, release `ai-gateway-v1.0.0` | |
 
@@ -1333,6 +1333,232 @@ Plain language: the gateway makes it easy to change what answers, so step 9 adds
   - **the canary's size:** 60 questions can only see a drop of about 5 points or more;
   - **answer-schema validation,** still deferred from step 5;
   - **the repository secret** `AI_GATEWAY_CANARY_ANTHROPIC_API_KEY`, which a route or prompt change needs before CI can run real models.
+
+## Step 10: build vs. adopt
+
+Plain language: everything in steps 2 to 9 could perhaps have been installed instead of built. LiteLLM's proxy is a widely used open-source gateway with routing, fallbacks, keys, budgets and rate limits. This step gives it and our gateway the same exam:
+- the same black-box tests;
+- the same load;
+- a LangChain app that changes only its base URL between them.
+
+The verdict on when to build and when to adopt then rests on measurements, not on impressions.
+
+**Decided before starting:**
+- **LiteLLM runs from its official Docker image,** `ghcr.io/berriai/litellm-database:v1.106.4`, pinned by digest. It's 403 MB to download and 1.72 GB on disk, with its database layer (Prisma) built in. The version was picked two weeks old, because LiteLLM's PyPI package was compromised earlier in 2026.
+- **Both gateways call one shared fake upstream,** so any difference measured is theirs, not their mocks'. Both run in Docker on the same network, with one CPU and one process each. Our gateway running natively on Windows would have differed from LiteLLM in Docker's VM for reasons that have nothing to do with either.
+- **LangChain** (`langchain-openai`, `langchain-core`) is added in a `compare` dependency group, for stage 4.
+
+### Stage 1: both gateways, one fake upstream
+
+```powershell
+docker compose --profile compare up -d --build --wait     # the gateway on 127.0.0.1:8101, LiteLLM on :8102
+docker compose --profile compare stop fake-upstream gateway litellm
+```
+
+- **The fake upstream** ([src/fake_upstream.py](src/fake_upstream.py)) is an OpenAI-compatible server, built into the gateway's image. The model name picks its behaviour:
+  - `fake-ok` answers 20 words, the first after 100 ms and each next one 5 ms later;
+  - `fake-503` is overloaded, `fake-429` is rate-limited, and `fake-400` refuses the request;
+  - `fake-slow` takes 60 s.
+- **The same four cases, under the same names,** go to each gateway: `chat`, `fallback` (a 503 first, then a working model), `refused` (a 400 first) and `slow`.
+  - Ours: [compare/routes.yaml](compare/routes.yaml), loaded through a new `GATEWAY_ROUTES_FILE` setting.
+  - LiteLLM's: [compare/litellm.yaml](compare/litellm.yaml), with its retries set to the gateway's one.
+  - A test checks that the two files stay in step.
+- **The keys** are local test values in `.env`: the gateway's key and its `GATEWAY_KEYS` line, and LiteLLM's master key. They never appear in the repo.
+- **Memory at rest:** LiteLLM 588 MiB, the gateway 122 MiB, the fake upstream 48 MiB.
+
+A first look, one cold call each with the OpenAI SDK. These aren't measurements yet; that's stage 3. Both gateways answer plain and streamed requests unchanged, and both fall back past the 503. Three cases already differ:
+
+| Case | The gateway | LiteLLM |
+|---|---|---|
+| The provider refuses the request (400) | passes the 400 on (design decision 7: it would be refused again) | falls back to `chat` and answers, so the caller never learns its request was rejected |
+| The provider never answers | 504 at the route's 3 s deadline | 408 after 12.6 s (a 5 s timeout, retried once) |
+| A wrong key (`wrong-key`) | 401 | 400 |
+
+New files:
+- `src/fake_upstream.py`: the shared fake upstream.
+- `compare/routes.yaml` and `compare/litellm.yaml`: the same cases for each gateway.
+- `tests/test_compare_setup.py`: 13 tests. They cover the fake upstream, the two configs, the compose settings, and the gateway against the fake upstream in memory.
+
+Changed:
+- `docker-compose.yml`: the `compare` profile, with the fake upstream, the gateway built from this repo, and LiteLLM.
+- `src/config.py`: `GATEWAY_ROUTES_FILE`.
+
+### Stage 2: the same checks against both
+
+```powershell
+uv run python src/compare_db.py             # once: each gateway's own database in the compose PostgreSQL
+docker compose --profile compare up -d --build --wait
+uv run python src/compare_suite.py          # writes results/compare/parity.{json,md}
+```
+
+[src/compare_suite.py](src/compare_suite.py) runs 17 black-box checks against each gateway, over plain HTTP, and records what each did. Every run issues fresh keys:
+- for the gateway, through `src/admin.py` in its own database (`compare_gateway`);
+- for LiteLLM, through its admin API (`/key/generate`, `/key/delete`) with the master key.
+
+The fake upstream's `/stats` endpoint counts the calls each case made, so retries are visible. Both price the fake models at $100 per million tokens, so a budget of a few cents covers only a handful of requests (about $0.0022 each). The full table is [results/compare/parity.md](results/compare/parity.md).
+
+**Where they behave the same:**
+- plain and streamed answers, with usage;
+- fallback past an overloaded model (both retried the 503 once, then answered from the next model);
+- missing and wrong keys (401) and a malformed body (400);
+- a revoked key, refused on the very next request by both;
+- a key limited to one model (403 for another);
+- a 5-requests-a-minute limit (5 served, 5 refused with 429 by both).
+
+**Where they differ:**
+
+| Check | The gateway | LiteLLM | What it means |
+|---|---|---|---|
+| The provider refuses the request (400) | 400, one upstream call | falls back and answers 200 | LiteLLM treats any error as a reason to try the next model. A request a provider rejects (malformed, too long, against its policy) then gets an answer from another model without the caller knowing. The gateway passes it on (design decision 7). |
+| The provider never answers | 504 after 3.0 s, one call | 408 after 12.2 s, two calls | LiteLLM retries a timeout and has no overall deadline, so a hung provider costs the caller its timeout twice. The gateway's per-route `total` deadline bounds the wait. |
+| Fallback past a 503 | 0.27 s | 2.4 s | LiteLLM waits between retries (its default backoff); the gateway's backoff is 0.25 s at most. A streamed fallback took 0.25 s against 2.2 s. There the gateway made only one call to the 503 model: it was the fifth 503 in 30 s across the suite's cases, which opened that model's circuit breaker, so the retry was skipped (step 3). |
+| An unknown model name | 404 `model_not_found` | 400 | Both refuse; the gateway's status says what's wrong. |
+| `max_tokens` of 10 million | 400 `max_tokens_too_large` | 200, and the request goes to the provider | The gateway enforces a per-route ceiling; LiteLLM leaves it to the provider (the fake one doesn't check). |
+| What the response says | `model` is the model that answered, plus 4 `x-gateway-*` headers (route, provider, attempts, fallback) | `model` is the alias (`chat`), except after a fallback, plus 20 `x-litellm-*` headers, including cost, key spend, durations and version | LiteLLM tells the caller more, notably each request's cost. The gateway keeps cost in its ledger and metrics, not in responses. |
+| A $0.02 budget, one request at a time | 5 served, $0.011 spent, then 429 `budget_exceeded` | 10 served, $0.022 spent (10% over), then 422 | The gateway reserves the worst case (`max_tokens`) before each call, so it stops once less than one worst-case request is left: it never goes over, and here stopped at 55%. LiteLLM checks spend after each call, so the request that crosses the line goes through. |
+| The same budget, 30 requests at once | 3 served, $0.0066 spent | 4 served, $0.0088 spent | Both stay under. LiteLLM's 26 refusals quote a "current cost" of $0.11 to $0.18, far above what it spent, an internal figure not explained here. |
+
+**A finding about the gateway itself:** budgets are stored to the cent (`numeric(12, 2)`). A first attempt with a $0.002 budget became $0.00, and every request was refused. Real budgets are dollars, not tenths of a cent, so this is noted rather than changed.
+
+New files:
+- `src/compare_suite.py`: the 17 checks and the report.
+- `src/compare_db.py`: each gateway's database and the fake models' prices.
+- `results/compare/parity.{json,md}`: the results.
+
+Changed:
+- `src/fake_upstream.py`: `/stats`.
+- `docker-compose.yml`: both gateways on their own databases; the fake upstream published on `127.0.0.1:8103` for `/stats`.
+- `compare/litellm.yaml`: the fake models' prices.
+- `tests/test_compare_setup.py`: 19 tests.
+
+### Stage 3: the same load against both
+
+```powershell
+docker compose --profile compare up -d --build --wait
+uv run python src/compare_load.py        # about 15 minutes; writes results/compare/load.{json,md}
+```
+
+[src/compare_load.py](src/compare_load.py) runs [compare/load.js](compare/load.js) (k6, a fixed arrival rate) for 40 s per row:
+- against the fake upstream directly, the floor;
+- against our gateway and against LiteLLM, each with one CPU, one process and one key;
+- at 10, 20, 30, 40 and 60 requests a second, plus a streamed run at 20, after an unrecorded warm-up.
+
+While each run lasts, it samples `docker stats` for each container's peak CPU and memory. The fake upstream answers 20 words in about 200 ms. Our gateway's key has its rate limits raised out of the way, so every request still goes through admission and the ledger. Full table: [results/compare/load.md](results/compare/load.md).
+
+What each gateway adds over the upstream (p50 / p95, in ms):
+
+| Rate/s | The gateway | LiteLLM |
+|---|---|---|
+| 10 | 31 / 312 | 20 / 39 |
+| 20 | 27 / 54 | 18 / 37 |
+| 30 | 31 / 4,534 (a stall: 69 requests k6 couldn't start) | 22 / 73 |
+| 40 | 36 / 524 | 48 / 207 |
+| 60 | 52 / 367, all 60 served each second | 2,134 / 24,601: it served 36 a second and fell behind |
+| 20, streamed | 28 / 74 | 373 / 810 |
+
+Memory under load: the gateway 130 to 142 MiB, LiteLLM 628 to 721 MiB.
+
+What it shows:
+- **At low and moderate rates LiteLLM is a little faster and steadier:** about 20 ms added against about 30, with tighter tails up to 40 a second.
+- **Our gateway holds up further.** At 60 a second it still served everything (p95 0.57 s). LiteLLM's one process was at its CPU limit and fell 40% behind, with p95 of 24.8 s.
+- **Streaming is where LiteLLM is expensive:** 373 ms added at 20 a second, and its CPU at the limit, against our 28 ms.
+- **Our extra milliseconds, and our stalls, are the database.** Our gateway had occasional stalls of 1 to 6 s, where requests pile up and then finish together. I chased them down:
+  - they weren't the health checks;
+  - they weren't garbage collection: an opt-in `GATEWAY_LOG_GC` log found pauses of 91 ms at most;
+  - they didn't line up reliably with PostgreSQL's autovacuum or checkpoints.
+
+  The same image with no database (keys from `GATEWAY_KEYS`) added about **6 ms** at the median, with p95 211 to 216 ms and no stall in three minutes at 30 a second. So the cost is our per-request admission and settlement against one team's rate-limit and budget rows. That's the price of never overspending a budget (stage 2). LiteLLM keeps spend in memory and writes it in batches, which is faster and is also why it went 10% over budget. What exactly triggers each stall is still open.
+- **The first run had to be thrown away.** Each container's health check started a Python interpreter every 2 to 3 seconds inside its one-CPU limit, so the gateways went up to 92% CPU with no requests at all. The checks now run every 2 to 3 s while a container starts, then once a minute. Idle CPU dropped below 1%.
+
+New files:
+- `compare/load.js`: the k6 script.
+- `src/compare_load.py`: the driver, the overhead and the report.
+- `results/compare/load.{json,md}`: the results.
+- `tests/test_compare_load.py`: 10 tests.
+
+Changed:
+- `docker-compose.yml`: the health checks, and `GATEWAY_LOG_GC`.
+- `src/app.py`: `watch_gc`, the opt-in pause log.
+
+### Stage 4: a LangChain app, unchanged
+
+```powershell
+docker compose --profile compare up -d --build --wait
+uv run python src/langchain_app.py        # writes results/compare/langchain.{json,md}
+```
+
+Plain language: a gateway that speaks OpenAI's API should take an app written for OpenAI with only its address changed. This stage tests that claim with a real framework, not just the raw OpenAI client the earlier tests used.
+
+[src/langchain_app.py](src/langchain_app.py) is a small LangChain app. It summarizes nonprofit missions using LangChain's basic building block: a prompt template, the model and an output parser, chained. Its one gateway-specific line is `chat_model()`, which builds `ChatOpenAI` from a base URL and a key. It runs 13 checks, each a thing LangChain apps commonly do, against both gateways with the same code. Every outcome is recorded as it happened, error or not, and nothing is retried. The fake upstream now answers a request that asks for a tool call or a JSON schema in that shape, filled with placeholder values. That way, a structured feature that reaches it can be followed all the way back into LangChain.
+
+Results ([results/compare/langchain.md](results/compare/langchain.md), langchain-openai 1.7.4):
+
+| What the app does | The gateway | LiteLLM |
+|---|---|---|
+| A chain; the chain streamed; 5 in a batch | works | works |
+| Token counts on an answer | works | works |
+| Token counts on a streamed answer | only with `stream_usage=True` | only with `stream_usage=True` |
+| The gateway's headers (`include_response_headers`) | 4 | 20 |
+| `temperature` | works | works |
+| A route whose first model is overloaded | works; the app doesn't notice | works; the app doesn't notice |
+| `with_structured_output` (sends `response_format`) | **400** `response_format: isn't supported` | works |
+| `bind_tools` (sends `tools`) | **400** `tools: isn't supported` | works |
+| No `max_tokens` (ChatOpenAI's default) | **400** `max_tokens ... is required` | works |
+| A wrong key | 401, `AuthenticationError` | 401, `AuthenticationError` |
+| A model that doesn't exist | 404, `ModelNotFoundError` | 400, `InvalidRequestError` |
+
+What it shows:
+- **The basic app works unchanged on both:** chains, streaming, batching, token counts, sampling and fallback. Errors arrive as the OpenAI SDK's own exception classes, so the app's error handling doesn't depend on which gateway it uses.
+- **Two of LangChain's most used features don't get through our gateway: structured output and tools.** This was a deliberate v1 scope (design decision 6: refuse a field rather than drop it silently). The design doc had planned `response_format` with output validation for step 5, but it wasn't built. The refusal is clear and names the field, but an app that relies on either one can't use our gateway at all. LiteLLM passes both fields through. Supporting them means translating tool definitions and tool calls to and from each provider (the Claude API, Bedrock Converse, llama-server), streaming included. That's real work, and it's exactly the kind LiteLLM has already done for over a hundred providers.
+- **Our gateway also refuses ChatOpenAI's defaults:** it sends no `max_tokens`. The gateway requires one, because without a bound on the answer there is no worst-case cost to hold against the budget (step 4). This is the same trade-off stage 2 found from the other side: LiteLLM accepts the request, and LiteLLM also overspent a budget. An app has to add `max_tokens=...`, which is one argument, but it does mean "unchanged" isn't quite true.
+- **Both gateways need the same small change for streamed token counts.** ChatOpenAI only asks for usage on a stream when its base URL is OpenAI's own, so `stream_usage=True` has to be set. That's LangChain's behaviour, not either gateway's, but it matters to anyone who bills on what streams report.
+- **A missing model is 404 from us and 400 from LiteLLM.** LangChain raises different exception classes for these, so an app catching "model not found" would need to handle both.
+
+New files:
+- `src/langchain_app.py`: the app, its 13 checks and the report.
+- `results/compare/langchain.{json,md}`: the results.
+- `tests/test_langchain_app.py`: 16 tests. They run the app against the gateway in memory, with the fake upstream behind it, and check the fake upstream's shaped answers.
+
+Changed:
+- `src/fake_upstream.py`: a plain request with `tools` gets a call to the first tool; one with a `response_format` JSON schema gets JSON matching it.
+- `docs/design.md`: `response_format` moved to the unsupported fields, where the code has always had it.
+- `pyproject.toml`, `uv.lock`: the `compare` group (langchain-openai 1.7.4, langchain-core 1.7.6), included in `dev` so CI runs the tests. It installs 14 packages, about 15 MB, including langsmith and tiktoken.
+
+### Step 10 in short
+
+Plain language: we built a house, then priced a well-reviewed prefab next to it. Both have the same rooms (routing, fallback, keys, budgets, rate limits), so the question was how each room holds up under the same inspection. The prefab is bigger and was ready on day one. Ours has stronger locks on the money and a smaller footprint, but some doors that a common kind of furniture needs simply aren't there.
+
+- **What was done:** our gateway and LiteLLM's proxy (v1.106.4, its official image) ran side by side in Docker against one fake upstream, each with one CPU and one process. Both took the same exam, all of it offline and free:
+  - 17 black-box checks of behaviour (stage 2);
+  - the same k6 load at 10 to 60 requests a second (stage 3);
+  - one LangChain app with only its base URL and key changed (stage 4).
+- **Where they're the same,** which is most of what a gateway is for: answers and streams with usage, fallback past an overloaded model, keys, revocation, model scoping, rate limits, and LangChain's chains, streaming, batches and error classes.
+- **Where our gateway is better, as measured:**
+  - **Money:** it never went over a budget. It holds the worst case first, so it stopped at 55% of a $0.02 budget, where LiteLLM went 10% over. The price is that our gateway requires `max_tokens`, which LangChain doesn't send by default.
+  - **Failures:** a request the provider refuses (400) comes back as a 400, instead of being answered by another model without the caller knowing. A hung provider costs 3 s and one call, against 12.2 s and two calls. Fallback takes 0.27 s, not 2.4 s.
+  - **Footprint and the high end:** 130 to 142 MiB under load against 628 to 721 MiB. At 60 requests a second it served them all (p95 0.57 s), where LiteLLM's one process fell 40% behind. Streams cost it 28 ms, against LiteLLM's 373 ms.
+- **Where LiteLLM is better, as measured:**
+  - **Breadth:** tool calling and structured output pass straight through it. Our gateway refuses both, so an app that uses either can't use it at all (stage 4). This is the biggest gap found.
+  - **Steady latency at moderate load:** about 20 ms added, with tight tails up to 40 a second. Ours adds about 30 ms, with occasional 1 to 6 s stalls, which come from the per-request budget writes to PostgreSQL (6 ms added, and no stalls, without a database).
+  - **What it tells the caller:** 20 response headers, including each request's cost, against our 4.
+- **Not compared,** so no verdict either way:
+  - LiteLLM's many providers (we have three adapters), its admin UI, and its own guardrail and prompt-management integrations;
+  - our step 5 guardrails, step 7 observability and step 9 canary and drift monitor;
+  - whether LiteLLM's settings can change the behaviours above (falling back on a 400, retrying a timeout, the budget check). These are its defaults, and its settings weren't explored.
+- **The verdict:** adopt by default, and build where a guarantee is the product.
+  - For most teams, LiteLLM is the right start. Provider breadth and tools are what apps hit first, and they're months of adapter work: every provider's tool format, in both directions, streamed. That's the work LiteLLM has already done.
+  - Building paid off here where a guarantee mattered more than a feature: money that's never overspent, a refused request that's never quietly answered by another model, a deadline that's actually kept. Each of those shows up in a test, not in a feature list.
+  - A middle path would keep LiteLLM for provider translation and put a thin layer of our own in front of it, or after it, for the guarantees. That wasn't built or measured.
+- **The lessons:**
+  - **Compare behaviour, not features.** Both feature lists say "budgets" and "fallbacks". Only running the same checks showed that one overspends and the other doesn't, and that one falls back on errors the other passes on.
+  - **Measure the floor, and check the test itself.** Without the fake upstream measured directly, neither gateway's overhead could be stated. The first load run was thrown away: the health checks themselves were using most of each container's CPU.
+  - **"Compatible" has fine print.** An OpenAI-compatible API worked for LangChain's basics, but a strict server meets the framework's defaults (no `max_tokens`) and its most used features (`tools`, `response_format`) at once.
+- **The numbers:** all of step 10 was free; nothing left this PC. The LiteLLM image is 403 MB to download (1.72 GB on disk), and LangChain adds 14 packages, about 15 MB.
+- **Still open:**
+  - **tool calling and structured output** in our gateway, if it's to carry real apps: the largest piece of work this step found;
+  - **the stalls on the database path,** whose exact trigger wasn't found;
+  - **sub-cent budgets,** which round to $0.00;
+  - **LiteLLM's settings:** whether its defaults that differ here can be changed.
 
 ## Setup
 
