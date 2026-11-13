@@ -59,3 +59,7 @@ All notable changes to this project are documented here, following [Keep a Chang
   - The chart: the gateway as a Deployment of 2 with a rolling update, a NodePort Service and a disruption budget; PostgreSQL as a StatefulSet with a volume; routes from a ConfigMap; migrations in an init container.
   - Startup, liveness and readiness probes; requests and limits; a locked-down security context. The Secret comes from `k8s/make_secret.py`, outside the chart. CI lints and renders the chart.
   - Measured live: the node uses 1.4 GiB. Connections, not requests, are balanced. Deleting a pod under traffic lost 1 request in 111 (for stage 6). A database outage marks the pods not ready without restarting them.
+
+### Security
+
+- The email pattern in `src/pii.py` ran in quadratic time on long runs of `%` (code scanning alert 16, `py/polynomial-redos`): 80,000 of them took 10 s, on the event loop, stalling every request in the process. Emails are now found by scanning out from each `@` instead of searching with a regex, which reads each character a bounded number of times: 100,000 adversarial characters take under 0.1 s. A test compares the scan with the old regex on 20,000 random strings (identical; 300,000 checked once), and another times five adversarial inputs. A first fix, adding `%` to the regex's lookbehind, was linear too, but CodeQL can't see through lookbehinds and kept the alert open. Ordinary text costs about 49 µs per KB instead of 34.

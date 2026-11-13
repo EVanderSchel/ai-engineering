@@ -1,6 +1,9 @@
 """The personal-data detector and redactor, against the labelled cases in data/guardrails/pii_cases.json."""
 
 import json
+import random
+import re
+import time
 
 import pytest
 
@@ -53,3 +56,23 @@ def test_findings_never_overlap():
 def test_text_without_personal_data_is_unchanged():
     text = "Summarise the attached minutes in three bullet points."
     assert pii.redact(text) == (text, [])
+
+
+@pytest.mark.parametrize(
+    "text", ["%" * 100_000, "%a" * 50_000, "x@" + "a." * 50_000 + "1", "a@" * 50_000, "a.@" * 33_000]
+)
+def test_long_adversarial_text_is_scanned_in_linear_time(text):
+    # code scanning alert 16: 100,000 '%' took over 10 s with the email regex. The checks run on the event loop, so a
+    # slow pattern stalls every request in the process.
+    started = time.perf_counter()
+    pii.find(text)
+    assert time.perf_counter() - started < 1.0
+
+
+def test_the_email_scan_finds_exactly_what_the_email_regex_found():
+    regex = re.compile(r"(?<![\w.%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}(?![\w-])")
+    rng = random.Random(7)
+    for alphabet in ["ab1.@ %", "abZ9.-_%+@ é\n", "co.m@x-_", "aB.@1é²ß-+ "]:
+        for _ in range(5_000):
+            text = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 28)))
+            assert pii._emails(text) == [m.span() for m in regex.finditer(text)], text
