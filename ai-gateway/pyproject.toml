@@ -6,9 +6,9 @@ requires-python = ">=3.14,<3.15"
 # Direct dependencies; exact versions with checksums live in uv.lock. Install with `uv sync`.
 # Added by the steps that need them (the gateway service in step 2, PostgreSQL in step 4, ...).
 dependencies = [
-    "anthropic>=2.3.0",
-    "boto3>=1.43.123",
-    "fastapi>=0.120",
+    "anthropic>=2.6.0",
+    "boto3>=1.43.126",
+    "fastapi>=0.162.2",
     "httpx2>=2.16",
     "opentelemetry-api>=1.45.2",
     "opentelemetry-exporter-otlp-proto-http>=1.45.2",
@@ -22,12 +22,12 @@ dependencies = [
 
 [dependency-groups]
 lint = [
-    "ruff>=0.16",
+    "ruff>=0.17.4",
 ]
 dev = [
     "botocore[crt]>=1.43.123",
     "httpx>=0.28",
-    "openai>=3.42.1",
+    "openai>=3.46.0",
     "pytest>=9.2.0",
     { include-group = "lint" },
     { include-group = "classifier" },
