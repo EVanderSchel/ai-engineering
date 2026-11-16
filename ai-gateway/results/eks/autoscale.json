@@ -1,0 +1,380 @@
+{
+  "test": "autoscale",
+  "date": "2026-11-16T16:32:38+00:00",
+  "k6_env": {
+    "PEAK": "60"
+  },
+  "summary": {
+    "requests": 15914,
+    "failed_pct": 0,
+    "failed": 0,
+    "not_started": 60,
+    "p50_ms": 14.6,
+    "p95_ms": 70.2,
+    "p99_ms": 1224.5,
+    "max_ms": 2999.7,
+    "error_statuses": {},
+    "transport_errors": 0
+  },
+  "restarts": [],
+  "scale_events": [
+    {
+      "time": "2026-11-16T16:34:06Z",
+      "message": "New size: 3; reason: cpu resource utilization (percentage of request) above target"
+    },
+    {
+      "time": "2026-11-16T16:34:21Z",
+      "message": "New size: 4; reason: cpu resource utilization (percentage of request) above target"
+    },
+    {
+      "time": "2026-11-16T16:39:52Z",
+      "message": "New size: 2; reason: All metrics below target"
+    }
+  ],
+  "timeline": [
+    {
+      "t": 7,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 21,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 18,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 2,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 29,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 2,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 40,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 8,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 51,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 14,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 63,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 24,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 77,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 24,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 90,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 42,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 103,
+      "pods": 2,
+      "desired": 3,
+      "cpu_pct": 68,
+      "ready": 3,
+      "nodes": 2
+    },
+    {
+      "t": 115,
+      "pods": 3,
+      "desired": 4,
+      "cpu_pct": 93,
+      "ready": 3,
+      "nodes": 2
+    },
+    {
+      "t": 127,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 110,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 138,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 78,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 151,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 78,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 162,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 63,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 174,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 63,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 186,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 60,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 198,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 62,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 209,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 62,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 220,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 59,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 232,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 60,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 243,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 59,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 255,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 59,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 267,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 55,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 279,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 52,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 290,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 56,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 302,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 56,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 314,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 54,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 325,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 38,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 336,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 18,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 347,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 13,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 358,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 13,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 369,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 13,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 380,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 12,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 391,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 12,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 402,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 11,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 414,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 12,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 426,
+      "pods": 4,
+      "desired": 4,
+      "cpu_pct": 13,
+      "ready": 4,
+      "nodes": 2
+    },
+    {
+      "t": 438,
+      "pods": 4,
+      "desired": 2,
+      "cpu_pct": 11,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 449,
+      "pods": 4,
+      "desired": 2,
+      "cpu_pct": 11,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 460,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 12,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 472,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 12,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 483,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 19,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 494,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 19,
+      "ready": 2,
+      "nodes": 2
+    }
+  ]
+}

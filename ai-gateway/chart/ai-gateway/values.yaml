@@ -72,6 +72,8 @@ llm:
 # (about 0.5 GB less); the gateway then sends no traces.
 observability:
   enabled: true
+  # Never on kind, where the images are loaded into the node; a cloud cluster pulls them (eks/values.yaml).
+  pullPolicy: Never
   alerts: ""
   drift: ""
   dashboard: ""

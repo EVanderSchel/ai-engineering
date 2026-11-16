@@ -25,7 +25,7 @@ Each step is merged on its own; numbers are measured, not assumed.
 | 8 | Kubernetes: a local cluster (kind), a Helm chart, resource requests and limits, health probes, secrets, autoscaling (HPA) shown with a k6 load test, a rolling update with no dropped requests *(done; the classifier stays out of the cluster)* | Running services on Kubernetes |
 | 9 | Quality: a versioned prompt registry, an eval canary that gates prompt and model changes on the earlier projects' gold sets, a drift monitor that scores sampled live traffic *(done; the judge is opt-in per route)* | Catching prompt regressions and drift |
 | 10 | Build vs. adopt: the same tests and load against LiteLLM's proxy; a LangChain app that uses the gateway unchanged *(done; tools and structured output not supported)* | When to build a platform piece and when to adopt one |
-| 11 | Optional: the chart on Amazon EKS for a short, measured window (infrastructure as code), then torn down | Managed Kubernetes and its cost |
+| 11 | Optional: the chart on Amazon EKS for a short, measured window (infrastructure as code), then torn down *(done: 92 minutes, about $0.42)* | Managed Kubernetes and its cost |
 | Final | Write-up, cost report, release `ai-gateway-v1.0.0` | |
 
 ## Step 1: design
@@ -1559,6 +1559,209 @@ Plain language: we built a house, then priced a well-reviewed prefab next to it.
   - **the stalls on the database path,** whose exact trigger wasn't found;
   - **sub-cent budgets,** which round to $0.00;
   - **LiteLLM's settings:** whether its defaults that differ here can be changed.
+
+## Step 11: the chart on Amazon EKS
+
+Plain language: step 8 ran the gateway on a practice Kubernetes cluster on this PC. This step rents a real one from AWS for a few hours, runs the same chart and the same tests on it, measures what it costs, and then gives it back.
+
+**Decided before starting:**
+- **eksctl defines the cluster:** one YAML file, created and deleted with one command each. It generates CloudFormation underneath, so the teardown removes what the creation made. Terraform (the most common choice in job postings) and CDK in Python were the alternatives. Both need more code and more state to manage for a cluster that lives a few hours. eksctl v0.231.0, 36 MB, from its GitHub release, checked against its checksums file.
+- **EKS Auto Mode provides the nodes,** as AWS recommends for new clusters. It picks and scales the instances, and includes EBS storage and load balancing, so no add-ons are installed by hand. It adds a small management fee per node on top of EC2. A managed node group was the cheaper alternative, at the cost of installing the EBS CSI driver and its IAM permissions.
+- **llama-server stays off EKS** (`llm.enabled=false`). Steps 6 and 8 measured it already, and leaving it out keeps the nodes small. The `local` route returns errors on this cluster.
+- **Nothing is exposed to the internet.** The load tests run as a Kubernetes Job next to the gateway, so they measure the cluster, not a home connection. Checks go through `kubectl port-forward`.
+- **No NAT gateway.** The nodes go in public subnets: a NAT gateway costs more per hour than the nodes themselves.
+- **The window is short and bounded:** about 3 hours, for about $0.70 (the control plane is $0.10 an hour, two small nodes about $0.08, plus a few cents for IP addresses, disks and ECR). A budget alert is set first, and a teardown script removes everything; forgetting it would cost about $5 a day.
+
+### Stage 1: the cluster as code, before anything exists
+
+Nothing on AWS yet: this stage writes what stage 2 creates, and what removes it.
+
+```powershell
+uv run python eks/up.py check       # free: sign-in, plan, Kubernetes versions, Docker, existing clusters
+```
+
+- **[eks/cluster.yaml](eks/cluster.yaml)** is the cluster for eksctl:
+  - Kubernetes 1.37 (to be checked against what EKS offers in standard support before creating);
+  - Auto Mode, keeping only its general-purpose node pool (so eksctl creates the nodes' IAM role) and dropping its `system` pool (so no node starts just for add-ons);
+  - no NAT gateway;
+  - metrics-server as an EKS add-on;
+  - no control-plane logs in CloudWatch.
+- **[eks/nodes.yaml](eks/nodes.yaml)** says where the pods run:
+  - **a NodeClass for the public subnets with public IPs.** Without a NAT gateway, nodes in the private subnets couldn't download any image. Its IAM role and security group are copied from Auto Mode's built-in NodeClass, and its subnets are read from the VPC eksctl made.
+  - **a NodePool,** weighted above the built-in one. It allows only x86 nodes (the image is built on this PC), on demand, `c` or `m` family, size `large` (2 vCPUs), and at most four of them.
+  - **a gp3 StorageClass.** Auto Mode runs the EBS driver but defines no StorageClass, so PostgreSQL's volume claim would wait forever without one. Its volumes are deleted with their claims.
+- **[eks/values.yaml](eks/values.yaml)** is the chart's settings on EKS. On kind every image was loaded into the node; here the nodes pull them. The gateway's comes from ECR, and the others from their public registries, pinned by the same digests as `docker-compose.yml`. llama-server is off. The chart gained one value for this, `observability.pullPolicy` (still `Never` by default, for kind).
+- **[eks/up.py](eks/up.py)** brings it up one stage at a time, so each can be checked before the next costs money: `check`, `cluster`, `nodes`, `image`, `install`.
+  - The ECR address needs the AWS account number. It's read at run time and never written to a file or printed.
+  - kubectl and helm refuse to run unless the current context is this cluster, so nothing lands on the kind cluster by mistake.
+- **[eks/down.py](eks/down.py)** removes it all in an order that leaves nothing behind:
+  1. the chart and the database's volume claim, so the cluster deletes its own EBS volume;
+  2. the node pool, so Auto Mode stops its nodes;
+  3. the cluster and its VPC;
+  4. the ECR repository.
+
+  Then it checks for each kind of thing that costs money and can outlive a cluster: instances, volumes, load balancers, network interfaces, Elastic IPs, NAT gateways, stacks, the repository, and log groups in both us-east-2 and us-east-1. It exits non-zero if anything is left. `--check` only checks.
+
+What was checked, with nothing created yet:
+- `eks/up.py check` on 2026-11-16: the free plan, no clusters in us-east-2, and Kubernetes 1.37 as EKS's default, in standard support alongside 1.34 to 1.36.
+- `eksctl create cluster --dry-run` accepted the file: Auto Mode with only the general-purpose pool, NAT disabled, three zones. The dry run refuses `--profile`, so the scripts set `AWS_PROFILE` instead.
+- The chart renders with the EKS values and passes `helm lint`, and the scripts pass ruff.
+
+**A budget alert first,** created with the AWS CLI rather than in this repo: `ai-gateway-eks-5`, $5 a month for the whole account. It emails at $1 and $5 spent, and when the month's forecast passes $5.
+- It **leaves credits out** (`IncludeCredit: false`). On the free plan, usage is paid from credits, so a budget that counts them shows $0. The account's existing $20 budget showed exactly that, and could never fire.
+- It stays after step 11 as a guard on the account; it can be deleted in the Billing and Cost Management console.
+
+New files:
+- `eks/cluster.yaml`: the cluster definition for eksctl.
+- `eks/nodes.yaml`: the public NodeClass, its NodePool and the gp3 StorageClass.
+- `eks/values.yaml`: the chart's settings on EKS.
+- `eks/up.py`: brings the gateway up on EKS, one stage at a time.
+- `eks/down.py`: the teardown and the check for leftovers.
+
+Changed:
+- `chart/ai-gateway`: `observability.pullPolicy`.
+
+### Stage 2: the cluster, created and running the chart
+
+```powershell
+uv run python eks/up.py cluster     # 13 minutes
+uv run python eks/up.py nodes       # the public pool, the gp3 StorageClass, then metrics-server
+uv run python eks/up.py image       # ECR, then build and push
+uv run python eks/up.py install     # the Secret, then the chart: 80 seconds
+```
+
+Created on 2026-11-16, from 15:43 UTC:
+- **The cluster** was ready in 13 minutes: two CloudFormation stacks, the VPC and the control plane.
+- **The chart** installed in 80 seconds. All six pods ran on one node: two gateway replicas, PostgreSQL, Prometheus, Jaeger and Grafana.
+- **The nodes** are two `c7i-flex.large` (2 vCPUs, 4 GiB each) in the public subnets, with public IPs, running Bottlerocket (Auto Mode's operating system) and Kubernetes 1.37.1.
+- **PostgreSQL's volume** is a 1 GiB gp3 EBS volume, encrypted.
+- **The autoscaler** read CPU from metrics-server straight away (30% of its 50% target at rest).
+
+The smoke test went through `kubectl port-forward`, with a key issued inside the cluster (never printed, revoked afterwards):
+- `/healthz` and `/readyz` (database ok) returned 200;
+- `/v1/models` listed only the key's routes;
+- a `stub` request returned 200 in 91 ms, with the four `x-gateway-*` headers;
+- a wrong key got 401.
+
+**What went wrong, and what changed:**
+- **The first two nodes came up in the private subnets.** eksctl installed metrics-server with the cluster, before the public pool existed. Its pods asked for a node, and Auto Mode's built-in pool launched two in the private subnets. Without a NAT gateway, those can't reach the Kubernetes API or any registry, so they would never have joined, and Auto Mode would have kept replacing them at our cost. The node claims were deleted 5 minutes in, and the public pool's two nodes were ready 38 seconds later. metrics-server now comes from `eks/up.py nodes`, after the public pool.
+- **`docker login` to ECR failed on Windows** with "The stub received bad data": Windows' credential store refuses ECR's long tokens, and Docker picks that store whenever its helper is on the PATH. `eks/up.py image` now logs in, tags and pushes with a throwaway config folder and the helpers off the PATH. The token lives only in that folder, which is deleted after the push.
+- **Auto Mode consolidates by itself.** A few minutes after the install, it tried twice to replace the node holding only a metrics-server pod with a cheaper one (savings under a cent an hour), and gave up. The gateway's PodDisruptionBudget kept the other node from being touched.
+
+**The image scan:** ECR scanned the image when it was pushed. It scanned the x86 manifest inside the multi-platform index Docker pushes; the index itself can't be scanned, so asking by tag returns "no scan".
+- The result: no critical findings, and 4 high, 11 medium and 3 low.
+- The high ones are in the base image's Debian packages (glibc, zlib) from `python:3.14.10-slim`, not in the gateway's Python packages, which the CI audit already covers.
+- Dependabot updates the base image's digest. Nothing here builds a fixed glibc or zlib sooner.
+
+**Cost while running:** about $0.30 an hour:
+- the control plane, $0.10;
+- two `c7i-flex.large` at about $0.085 each, plus Auto Mode's fee;
+- a few cents for public IPs and the volume.
+
+Changed:
+- `eks/cluster.yaml`: no add-ons.
+- `eks/up.py`: metrics-server in the `nodes` stage; the push works around the Windows credential store.
+
+### Stage 3: step 8's tests on EKS
+
+```powershell
+uv run python eks/load.py autoscale     # about 12 minutes; results/eks/autoscale.{json,md}
+uv run python eks/load.py rollout       # about 6 minutes; results/eks/rollout.{json,md}
+```
+
+Plain language: the same two exams step 8 set on the practice cluster. Can the gateway add pods under a rising load and give them back after? Can a new version go out with no request dropped? This time the test traffic starts inside the rented cluster, next to the gateway.
+
+[eks/load.py](eks/load.py) runs `load/chat.js` unchanged, with k6 as a Kubernetes Job (the image of the version installed here, pinned by digest).
+- **The keys:** 20 teams allowed only `stub`, a key each, in one `kubectl exec` of a gateway pod. Step 8 found that 40 separate execs were load enough to scale the gateway. The keys come back to the script over that exec, never printed or logged, reach k6 through a Secret, and are revoked afterwards.
+- **The start:** each run waits until the autoscaler is at 2 pods.
+- **The timeline:** every 5 s it records the autoscaler's pods and CPU, the ready pods, and the nodes.
+
+**Results, against step 8's on kind:**
+
+| Autoscaling (10 → 60 requests a second, held 3 minutes, back to 10) | kind (step 8) | EKS |
+|---|---|---|
+| requests | 15,808 | 15,914 |
+| failed | 0 | 0 |
+| p50 / p95 / p99 / max | 36 ms / 865 ms / ... / 8.8 s | 15 ms / 70 ms / 1.2 s / 3.0 s |
+| not started (k6 had no free virtual user) | 166 | 60 |
+| pods | 2 → 4 → 2 | 2 → 4 → 2: decided about 100 s in (step 8: 79 s, timed from k6's start rather than the timeline's), back to 2 about 1.5 min after the load dropped |
+| nodes | 1 (kind) | 2 throughout: 4 gateway pods and everything else fit |
+
+| Rolling update (12 a second for 4 minutes, two `rollout restart`s) | kind (step 8) | EKS |
+|---|---|---|
+| requests | 2,964 | 2,964 |
+| failed | 0 | 0 |
+| p95 / max | 45 ms / 796 ms | 31 ms / 317 ms |
+| one update took | 23 s and 20 s | 17.6 s and 23.7 s |
+
+What it shows:
+- **The chart behaved on EKS as it did on kind,** with no change to the gateway:
+  - the autoscaler added pods under load and removed them after its 2-minute window;
+  - step 8's two fixes held: readiness from a background check, and the `preStop` pause, with no request failed during a scale-up or an update.
+- **EKS was faster, mostly because of the machines and the test's position.** k6 ran on the cluster's own network, while on kind it ran on Windows and crossed into Docker's VM. The nodes are dedicated, where kind shared a 2015 desktop (an i7-6700) with everything else. So the p95 gap (70 ms against 865 ms) says more about where the test ran than about Kubernetes.
+- **The slowest requests are still the ramp.** The p99 of 1.2 s and the 60 requests k6 couldn't start fall in the 30-odd seconds between the autoscaler's decision and the new pods serving, as on kind.
+- **Auto Mode never needed a third node.** It would have stepped in if the 4 pods hadn't fit. Watching that happen would need a bigger load, or a smaller node size than `large`.
+
+**Two bugs in the first run, both in the test, not the cluster:**
+- **The keys were rate-limited.** The first run had 47% of requests refused with 429: every key had the default 60 requests a minute, so 20 keys allowed 20 a second, not 60. Those 429s were fast answers, which made the latency look better. Step 8 and `compare_load.py` raise the limits on their test keys; `eks/load.py` now does too.
+- **The script waited only for success.** k6 exits with an error when a threshold fails, which makes the Job Failed rather than Complete, so the script sat until its 20-minute timeout. It now waits for either.
+
+The invalid run cost about 20 minutes of the cluster (about $0.10) and isn't in the results.
+
+New files:
+- `eks/load.py`: step 8's load tests as an in-cluster k6 Job, with a timeline.
+- `results/eks/{autoscale,rollout}.{json,md}`: the results.
+
+### Stage 4: torn down, and what it cost
+
+```powershell
+uv run python eks/down.py            # then `eks/down.py --check` any time: exits non-zero if anything is left
+```
+
+Everything was gone at 17:16 UTC, 1 hour 32 minutes after creation started. The script's check found nothing left, and a wider sweep of us-east-2 agreed: no instances, volumes, Elastic IPs or NAT gateways, no VPC but the default, no eksctl IAM roles, and no cluster. kubectl was left with only the kind context, and none selected.
+
+**It took three tries, and each failure is now handled in `eks/down.py`:**
+1. **Stuck draining the last node, for 10 minutes.** Deleting the public node pool evicted metrics-server's pods. Auto Mode's built-in pool then started two nodes for them in the private subnets, the same trap as stage 2 in reverse. Those can never join, so metrics-server's PodDisruptionBudget (at most 1 unavailable) kept the last public node from draining; Auto Mode would only have forced it after 24 hours. Deleting the add-on, then the two stuck node claims, freed it. `down.py` now removes metrics-server before the node pool.
+2. **"Cluster currently has an update in progress."** The control plane refused deletion while the add-on's removal was still settling, though `list-updates` showed nothing a minute later. A retry went through.
+3. **No kubectl context.** The failed `eksctl delete cluster` had already removed the cluster from kubectl's config, and `down.py` (rightly) won't run kubectl against an unknown context. It now restores the context with `eksctl utils write-kubeconfig` first.
+
+**Cost, estimated** from the times above at us-east-2's on-demand prices. The bill shows in Cost Explorer about a day later.
+
+| | Time | About |
+|---|---|---|
+| EKS control plane, $0.10 an hour | 1.54 h | $0.15 |
+| `c7i-flex.large` nodes, about $0.085 an hour each, plus Auto Mode's fee | about 2.6 node-hours: the two public nodes for about an hour each, plus four private-subnet nodes for 6 to 12 minutes each | $0.25 |
+| Public IPs, the gp3 volume, ECR storage | | under $0.02 |
+| **Total** | | **about $0.42** |
+
+The plan estimated $0.70 for 3 hours. It took half the time, but about 0.6 node-hours of that went to nodes in the private subnets that could never serve: Auto Mode's built-in pool cost more than its share.
+
+### Step 11 in short
+
+Plain language: the gateway moved from a practice cluster on this PC to a rented one at AWS, ran the same exams, passed them, and was returned in 92 minutes for about 40 cents. Most of the work was not the move itself, but the details of renting: where the machines go, how they reach the internet, and how to give everything back.
+
+- **What was built:**
+  - an EKS cluster as code (eksctl, Auto Mode, no NAT gateway);
+  - a node pool for the public subnets;
+  - EKS settings for the same Helm chart (one new chart value);
+  - scripts that bring it up stage by stage and tear it down with a check for anything billable left;
+  - step 8's load tests as an in-cluster k6 Job.
+- **The results:**
+  - the chart ran unchanged apart from where images come from;
+  - autoscaling under 60 requests a second had 0 failures (p95 70 ms);
+  - two rolling updates under load dropped nothing;
+  - 92 minutes and about $0.42 in all.
+- **The lessons:**
+  - **Defaults decide where things run.** Auto Mode's built-in pool puts nodes in the private subnets. Without a NAT gateway those nodes can't even reach the Kubernetes API, and nothing reports that directly: a node claim just sits "Unknown". It happened twice, at creation and at teardown, each time because an add-on's pods needed a node when only the built-in pool could provide one. Order matters as much as configuration.
+  - **Tearing down is a feature to build and test.** The first teardown failed three different ways: a disruption budget, an update in progress, and a missing context. A script that stops on the first error, plus a check that exits non-zero while anything is left, is what made it safe to retry.
+  - **A test can be wrong in ways that flatter the system.** The first load run's 47% of 429s also made its latency look better. The rate limiter's fast refusals had replaced real work.
+  - **Faster isn't the cluster's doing.** EKS's p95 was 12 times better than kind's, mostly because the test ran next to the gateway on dedicated machines, not on Windows crossing into Docker's VM.
+- **Different from the plan:** no Terraform (eksctl was simpler for a cluster that lives an hour), and no llama-server on EKS.
+- **Still open:**
+  - **the built-in node pool:** turning it off would remove the private-subnet trap, but then the nodes' IAM role and its access entry have to be made by hand;
+  - **the base image's 4 high findings** (glibc, zlib), until Debian's fixes reach `python:3.14.10-slim`;
+  - **the budget alert** (`ai-gateway-eks-5`) stays on the account, outside the repo;
+  - **the real bill:** confirm the cost in Cost Explorer after a day.
 
 ## Setup
 

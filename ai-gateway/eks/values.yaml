@@ -1,0 +1,30 @@
+# The chart's settings on EKS (step 11), on top of chart/ai-gateway/values.yaml. eks/up.py installs with them:
+#
+#     helm upgrade --install ai-gateway chart/ai-gateway -f eks/values.yaml --set image.repository=<ECR repository>
+#       --set-file routes=config/routes.yaml ...
+#
+# On kind every image was loaded into the node and never pulled. Here the nodes pull them: the gateway's from ECR (its
+# repository is set on the command line, since it names the AWS account), the others from their public registries,
+# pinned by the same digests as docker-compose.yml so the cluster runs exactly what was measured locally.
+
+image:
+  pullPolicy: IfNotPresent # tag: dev, as on kind; pushed to ECR by eks/up.py
+
+# llama-server stays off EKS (step 11's decisions): the `local` route answers 503 here.
+llm:
+  enabled: false
+
+postgres:
+  image: postgres:17-alpine@sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b
+  pullPolicy: IfNotPresent
+  # The gp3 StorageClass from eks/nodes.yaml (the default); 1 GiB as on kind, the smallest it makes is 1 GiB.
+  storage: 1Gi
+
+observability:
+  pullPolicy: IfNotPresent
+  prometheus:
+    image: prom/prometheus:v3.15.1@sha256:fa3302279710be2f21a8301ec17a8b4f2301fd829bd113839b3b6b02b6f191a2
+  jaeger:
+    image: jaegertracing/jaeger:2.22.0@sha256:836b967b5abcf1f7758066aa6b348619267a2f1459f72d472840570f9bd88a17
+  grafana:
+    image: grafana/grafana:13.3.0@sha256:488984b716c0862639f91a698adbe2862677a5a07bad42da5f03f3030883b205
