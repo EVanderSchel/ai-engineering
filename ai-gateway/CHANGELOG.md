@@ -4,7 +4,15 @@ All notable changes to this project are documented here, following [Keep a Chang
 
 ## [Unreleased]
 
+Add entries here as you make notable changes. Move them under a new version heading when you cut a release.
+
+## [1.0.0] - 2026-11-16
+
+First release: an AI gateway with self-hosted, optimized inference on Kubernetes. One OpenAI-compatible API in front of Claude (the Anthropic API and Amazon Bedrock) and small self-hosted models (llama.cpp; vLLM measured on a GPU; the NTEE classifier on ONNX Runtime), with routing, retries, circuit breakers and fallback; per-team keys, rate limits and budgets in PostgreSQL that never overspend; guardrails for personal data and prompt injection; logs, metrics, traces, a dashboard and alerts; a Helm chart run on kind and on EKS with autoscaling and zero-loss rolling updates; a prompt registry, an eval canary in CI and a drift monitor; a measured comparison with LiteLLM's proxy and a LangChain app; and a cost report (`docs/costs.md`: about $1.55 to build, $0 idle as left).
+
 ### Added
+
+- A cost report (`docs/costs.md`): per request (the gateway about 30 ms and a fraction of a cent of machine time; models at their list prices; the opt-in judges), building it (about $1.55, nearly all step 9's canary runs and step 11's EKS window), and idle ($0 as left; about $220 a month if the EKS cluster had stayed up). README "Results (v1.0.0)" with the known limitations.
 
 - Step 0: project scaffolding (uv, ruff, pytest), CI with change detection (lint, tests, dependency audit), weekly Dependabot updates.
 - Step 1: design doc (`docs/design.md`): responsibilities, architecture, the OpenAI-compatible API, routing and resilience rules, budgets and rate limits in PostgreSQL, guardrails, self-hosted inference, observability, the memory budget for the local cluster, and 15 numbered decisions.

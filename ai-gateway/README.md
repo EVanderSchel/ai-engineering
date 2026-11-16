@@ -4,6 +4,30 @@ Project 6 of the AI Engineer roadmap: an **AI gateway with self-hosted, optimize
 
 Plain language: the gateway is a building's main electrical panel. Every outlet (app) draws power through it; it meters each circuit (team), and a breaker trips before one circuit overloads the building. If the utility (a provider) goes down, it switches to the backup generator (another provider) on its own.
 
+## Results (v1.0.0)
+
+Every number below was measured on this project's own runs; the step sections further down show how. Almost all of it ran against free stand-ins for the models, so the whole project cost about $1.55 in paid calls and cloud time ([docs/costs.md](docs/costs.md)).
+
+| Area | Result |
+|---|---|
+| **Resilience** (step 3, injected outages) | Hard outage of the first provider: the gateway answered 100% of requests, calling directly 0%. A provider failing 30% of calls: 100% against 64.5%. No request passed its deadline. |
+| **Budgets and limits** (step 4) | 50 requests at once against a $0.50 budget: 13 served, 37 refused, never overspent. Revoking a key takes effect on the next request. |
+| **Guardrails** (step 5) | Personal data: recall 92%, precision 96%, about 1 ms a request. Injection on held-out messages: patterns caught 9 of 15, the opt-in Haiku 5.5 judge 15 of 15, with no false alarms from either, at about $0.00013 a request. |
+| **Self-hosted inference** (step 6) | Qwen2.5-0.5B: Q8_0 beat Q4_K_M under load (61 against 46 tokens/s) and matched F16's accuracy. On a T4 with vLLM: 3,700 tokens/s at 64 at once, $0.0034 per 1,000 answers against $0.21 on the CPU. The NTEE classifier kept Project 4's accuracy (58.8%) in 8-bit weights, where standard int8 fell to 19%. |
+| **Observability** (step 7) | JSON logs, Prometheus metrics, OpenTelemetry traces, a Grafana dashboard and six alerts (three more for drift in step 9). In a fault drill, 5 of 6 alerts fired on cue (the sixth needs a day of history). Logs and traces cost about 1 ms a request, against 30 to 45 ms for the database. |
+| **Kubernetes** (step 8, kind) | Autoscaling from 2 to 4 pods at 60 requests a second: 0 failed (5.5% before readiness was fixed). Rolling updates under load: 0 lost (16 of 2,964 before the `preStop` pause). |
+| **Quality over time** (step 9) | A prompt registry, and an eval canary in CI that fails a pull request costing more than 5 points of accuracy (the margin measured from three unchanged runs). Free format and cut-off checks on every live answer, with an opt-in sampled judge. |
+| **Build vs. adopt** (step 10, against LiteLLM's proxy) | The same 17 black-box checks: equal on routing, keys and limits. Our gateway never overspent a budget (LiteLLM went 10% over), passed a provider's refusal on instead of answering it with another model, and gave up on a hung provider in 3.0 s (LiteLLM: 12.2 s). Under load it added about 30 ms (LiteLLM 20 ms), but held 60 requests a second where LiteLLM fell 40% behind, in a fifth of the memory. LangChain worked through both, except tools and structured output, which our gateway refuses. |
+| **Managed Kubernetes** (step 11, EKS) | The same chart and tests on EKS Auto Mode: 0 failed under autoscaling (p95 70 ms) and rolling updates. Created and torn down as code: 92 minutes, about $0.42. |
+
+**Known limitations:**
+- **No tool calling or structured output** (`tools`, `response_format` are refused with a 400). This is the biggest gap against LiteLLM for real apps (step 10).
+- **One busy team is limited by its own database rows:** every request updates the same rate-bucket and budget rows, which PostgreSQL serializes (step 8). The same database path causes occasional 1 to 6 s stalls under load (step 10).
+- **Budgets are kept to the cent,** so a budget under one cent rounds to $0.00 (step 10).
+- **Answer schema validation** (`json_schema` on outputs) was planned for step 5 and not built.
+- **The drift judge is off on every route** until one opts in; turning it on sends that route's answers to the Claude API (step 9).
+- **The NTEE classifier isn't a service** and doesn't fit the local cluster's memory alongside everything else (step 8).
+
 ## Why this project
 
 The first five projects built AI applications. Job postings for AI engineers also ask for the platform underneath them, and the portfolio has nothing there yet. In 2026 analyses of AI engineer postings, **Kubernetes** appears at 60% of 198 hiring companies and **inference optimization** at 57%; observability (78%), distributed-systems patterns (62%) and security (62%) are also common. Saved postings ask for the same things in plain words: "AI Gateway services, MCP integrations, self-hosted inference", and debugging "provider outages, prompt regressions, quality drift and cost spikes".
@@ -26,7 +50,7 @@ Each step is merged on its own; numbers are measured, not assumed.
 | 9 | Quality: a versioned prompt registry, an eval canary that gates prompt and model changes on the earlier projects' gold sets, a drift monitor that scores sampled live traffic *(done; the judge is opt-in per route)* | Catching prompt regressions and drift |
 | 10 | Build vs. adopt: the same tests and load against LiteLLM's proxy; a LangChain app that uses the gateway unchanged *(done; tools and structured output not supported)* | When to build a platform piece and when to adopt one |
 | 11 | Optional: the chart on Amazon EKS for a short, measured window (infrastructure as code), then torn down *(done: 92 minutes, about $0.42)* | Managed Kubernetes and its cost |
-| Final | Write-up, cost report, release `ai-gateway-v1.0.0` | |
+| Final | Write-up, cost report ([docs/costs.md](docs/costs.md)), release `ai-gateway-v1.0.0` *(done)* | |
 
 ## Step 1: design
 
