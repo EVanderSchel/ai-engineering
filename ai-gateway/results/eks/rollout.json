@@ -1,0 +1,226 @@
+{
+  "test": "rollout",
+  "date": "2026-11-16T16:41:36+00:00",
+  "k6_env": {
+    "RATE": "12",
+    "HOLD": "4m"
+  },
+  "summary": {
+    "requests": 2964,
+    "failed_pct": 0,
+    "failed": 0,
+    "not_started": 0,
+    "p50_ms": 11.1,
+    "p95_ms": 30.9,
+    "p99_ms": 56.4,
+    "max_ms": 317.5,
+    "error_statuses": {},
+    "transport_errors": 0
+  },
+  "restarts": [
+    {
+      "at_s": 60,
+      "took_s": 17.6
+    },
+    {
+      "at_s": 150,
+      "took_s": 23.7
+    }
+  ],
+  "scale_events": [
+    {
+      "time": "2026-11-16T16:44:38Z",
+      "message": "failed to get cpu utilization: did not receive metrics for targeted pods (pods might be unready)"
+    },
+    {
+      "time": "2026-11-16T16:44:38Z",
+      "message": "invalid metrics (1 invalid out of 1), first error is: failed to get cpu resource metric value: failed to get cpu utilization: did not receive metrics for targeted pods (pods might be unready)"
+    }
+  ],
+  "timeline": [
+    {
+      "t": 7,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 2,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 20,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 2,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 31,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 15,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 43,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 8,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 54,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 19,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 66,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 20,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 77,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 20,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 88,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 21,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 99,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": null,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 111,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 21,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 122,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 21,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 133,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 23,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 144,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 23,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 156,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 24,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 167,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 24,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 178,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 23,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 190,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": null,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 201,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 33,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 212,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 33,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 223,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 23,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 235,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 23,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 246,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 25,
+      "ready": 2,
+      "nodes": 2
+    },
+    {
+      "t": 257,
+      "pods": 2,
+      "desired": 2,
+      "cpu_pct": 25,
+      "ready": 2,
+      "nodes": 2
+    }
+  ]
+}

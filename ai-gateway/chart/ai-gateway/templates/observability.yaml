@@ -116,7 +116,7 @@ spec:
       containers:
         - name: prometheus
           image: {{ $o.prometheus.image | quote }}
-          imagePullPolicy: Never
+          imagePullPolicy: {{ $o.pullPolicy }}
           args:
             - --config.file=/etc/prometheus/prometheus.yml
             - --storage.tsdb.path=/prometheus
@@ -180,7 +180,7 @@ spec:
       containers:
         - name: jaeger
           image: {{ $o.jaeger.image | quote }}
-          imagePullPolicy: Never
+          imagePullPolicy: {{ $o.pullPolicy }}
           ports:
             - { name: ui, containerPort: 16686 }
             - { name: otlp-http, containerPort: 4318 }
@@ -270,7 +270,7 @@ spec:
       containers:
         - name: grafana
           image: {{ $o.grafana.image | quote }}
-          imagePullPolicy: Never
+          imagePullPolicy: {{ $o.pullPolicy }}
           env:
             # The admin password, from the Secret (k8s/make_secret.py copies GRAFANA_ADMIN_PASSWORD from .env).
             - name: GF_SECURITY_ADMIN_PASSWORD

@@ -1,0 +1,58 @@
+# Where the pods run on EKS (step 11), applied by eks/up.py once the cluster exists. The ${...} values are filled in
+# there: the node role and security group copied from Auto Mode's built-in NodeClass, the public subnets from the VPC
+# eksctl made.
+#
+# Plain language: the built-in node pool would put machines in the private subnets, which have no way out to the
+# internet without a NAT gateway, so they couldn't download images. This pool puts them in the public subnets with
+# public addresses, and is preferred over the built-in one.
+apiVersion: eks.amazonaws.com/v1
+kind: NodeClass
+metadata:
+  name: public
+spec:
+  role: ${NODE_ROLE}
+  subnetSelectorTerms: ${SUBNETS}
+  securityGroupSelectorTerms: ${SECURITY_GROUPS}
+  advancedNetworking:
+    associatePublicIPAddress: true
+---
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: public
+spec:
+  weight: 100 # chosen before the built-in general-purpose pool, whose nodes would be in private subnets
+  template:
+    spec:
+      nodeClassRef:
+        group: eks.amazonaws.com
+        kind: NodeClass
+        name: public
+      requirements:
+        # The gateway's image is built on this PC: x86 only, so no Graviton (arm64) nodes.
+        - { key: kubernetes.io/arch, operator: In, values: [amd64] }
+        - { key: karpenter.sh/capacity-type, operator: In, values: [on-demand] }
+        # Small general-purpose and compute nodes: 2 vCPUs, 4-8 GiB.
+        - { key: eks.amazonaws.com/instance-category, operator: In, values: [c, m] }
+        - { key: eks.amazonaws.com/instance-size, operator: In, values: [large] }
+  # A ceiling on what autoscaling can start: four large nodes at most.
+  limits:
+    cpu: "8"
+    memory: 32Gi
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 2m
+---
+# Auto Mode runs the EBS driver but defines no StorageClass, so PostgreSQL's volume claim needs this one.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.eks.amazonaws.com
+volumeBindingMode: WaitForFirstConsumer # made in the zone of the node that first uses it
+reclaimPolicy: Delete # deleted with its claim, so eks/down.py leaves no volume behind
+parameters:
+  type: gp3
+  encrypted: "true"
