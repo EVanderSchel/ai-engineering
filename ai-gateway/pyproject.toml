@@ -6,10 +6,10 @@ requires-python = ">=3.14,<3.15"
 # Direct dependencies; exact versions with checksums live in uv.lock. Install with `uv sync`.
 # Added by the steps that need them (the gateway service in step 2, PostgreSQL in step 4, ...).
 dependencies = [
-    "anthropic>=2.6.0",
-    "boto3>=1.43.126",
-    "fastapi>=0.162.2",
-    "httpx2>=2.16",
+    "anthropic>=2.8.0",
+    "boto3>=1.44.3",
+    "fastapi>=0.163.1",
+    "httpx2>=2.16.2",
     "opentelemetry-api>=1.45.2",
     "opentelemetry-exporter-otlp-proto-http>=1.45.2",
     "opentelemetry-sdk>=1.45.2",
@@ -22,12 +22,12 @@ dependencies = [
 
 [dependency-groups]
 lint = [
-    "ruff>=0.17.4",
+    "ruff>=0.17.5",
 ]
 dev = [
     "botocore[crt]>=1.43.126",
     "httpx>=0.28",
-    "openai>=3.46.0",
+    "openai>=3.51.0",
     "pytest>=9.2.0",
     { include-group = "lint" },
     { include-group = "classifier" },
@@ -37,13 +37,13 @@ dev = [
 classifier = [
     "onnx>=1.23.2",
     "onnx-ir>=1.1.0",
-    "onnxruntime>=1.31.1",
+    "onnxruntime>=1.32.0",
     "tokenizers>=0.23.3",
 ]
 # Step 10 stage 4: a LangChain app run against both gateways (src/langchain_app.py); in dev so CI runs its tests.
 compare = [
-    "langchain-core==1.7.6",
-    "langchain-openai==1.7.4",
+    "langchain-core==1.8.1",
+    "langchain-openai==1.8.0",
 ]
 
 [tool.uv]
